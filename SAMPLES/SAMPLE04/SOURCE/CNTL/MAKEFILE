@@ -1,0 +1,8 @@
+# Makefile for SAMPLE04
+.RECIPEPREFIX = -   # use - as the recipe prefix char
+
+hlq     = # <=== enter your sample hlq here
+sometgt = $(hlq).NEWDS
+
+$(sometgt) :
+- CALL ALLOCDS $(sometgt)
