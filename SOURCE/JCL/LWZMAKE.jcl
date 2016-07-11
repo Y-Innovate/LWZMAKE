@@ -1,14 +1,14 @@
-//(JOBCARD)                                                             00010000
+//(JOBCARD) <=== FILL IN                                                00010000
 //*                                                                     00020000
 //      EXPORT SYMLIST=*                                                00021000
-//         SET LWZMHLQ=(HIGH LEVEL QUALIFIER(S))                        00022000
+//         SET LWZMHLQ=(HIGH LEVEL QUALIFIER(S)) <=== FILL IN           00022000
 //         SET MEMBER=LWZMAKE                                           00023000
 //*                                                                     00024000
 //ASM     EXEC PGM=ASMA90,PARM='ADATA,GOFF,LIST(133)'                   00025001
 //SYSLIB    DD DISP=SHR,DSN=SYS1.MACLIB                                 00026000
 //          DD DISP=SHR,DSN=SYS1.MODGEN                                 00027000
-//          DD DISP=SHR,DSN=SYS1.SCEEMAC                                00028000
-//          DD DISP=SHR,DSN=SYS1.SASMMAC2                               00029000
+//          DD DISP=SHR,DSN=CEE.SCEEMAC   <=== CHECK                    00028000
+//          DD DISP=SHR,DSN=HLA.SASMMAC2  <=== CHECK                    00029000
 //          DD DISP=SHR,DSN=&LWZMHLQ..ASM                               00030000
 //SYSIN     DD DISP=SHR,DSN=&LWZMHLQ..ASM(&MEMBER)                      00040000
 //SYSLIN    DD DISP=SHR,DSN=&LWZMHLQ..OBJECT(&MEMBER)                   00050000
@@ -31,8 +31,8 @@
 //*                                                                     00150700
 //LKED    EXEC PGM=IEWL,COND=(0,NE),                                    00150800
 //             PARM='LIST,XREF,RENT,REUS'                               00150900
-//SYSLIB    DD DISP=SHR,DSN=SYS1.SCEELKED                               00151000
-//          DD DISP=SHR,DSN=SYS1.SCEELKEX                               00152000
+//SYSLIB    DD DISP=SHR,DSN=CEE.SCEELKED  <=== CHECK                    00151000
+//          DD DISP=SHR,DSN=CEE.SCEELKEX  <=== CHECK                    00152000
 //          DD DISP=SHR,DSN=&LWZMHLQ..OBJECT                            00153000
 //SYSLIN    DD *,SYMBOLS=EXECSYS                                        00154000
   MODE AMODE(31),RMODE(ANY)                                             00155000
