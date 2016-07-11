@@ -1,0 +1,8 @@
+# Makefile for SAMPLE02
+.RECIPEPREFIX = -   # use - as the recipe prefix char
+
+.PHONY JUST_ECHO
+JUST_ECHO :
+- CALL JUSTECHO Anything after the REXX name is parameter data
+- CALL JUSTECHO Any line can be continued with a continuation\
+- character

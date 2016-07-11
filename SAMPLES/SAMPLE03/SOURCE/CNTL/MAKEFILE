@@ -1,0 +1,8 @@
+# Makefile for SAMPLE03
+.RECIPEPREFIX = -   # use - as the recipe prefix char
+
+somevar = Hello world!
+
+.PHONY JUST_ECHO
+JUST_ECHO :
+- CALL JUSTECHO $(somevar)
