@@ -2,7 +2,7 @@
 //*
 //      EXPORT SYMLIST=*
 //         SET LWZMHLQ=(HLQ FOR LWZMAKE LOAD MOD)  <=== FILL IN
-//         SET SAMPHLQ=(HLQ FOR SAMPLE05)          <=== FILL IN
+//         SET SAMPHLQ=(HLQ FOR SAMPLE06)          <=== FILL IN
 //      JCLLIB ORDER=(&LWZMHLQ..CNTL)
 //*
 //ZMAKE   EXEC PGM=IKJEFT1B
