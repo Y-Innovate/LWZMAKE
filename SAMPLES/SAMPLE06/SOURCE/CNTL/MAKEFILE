@@ -1,0 +1,20 @@
+# Makefile for SAMPLE06
+.RECIPEPREFIX = -   # use - as the recipe prefix char
+
+hlq      := # <=== enter your sample hlq here
+objlib   := $(hlq).OBJECT
+loadlib  := $(hlq).LOAD
+sometgts := $(objlib) $(loadlib)
+
+.PHONY ALL
+ALL : $(sometgts)
+
+$(objlib) :
+- CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B) LRECL(80)\
+-             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+- CALL TSOCMD FREE DATASET('$@')
+
+$(loadlib) :
+- CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(U) LRECL(0) BLKSIZE(32760)\
+-             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+- CALL TSOCMD FREE DATASET('$@')

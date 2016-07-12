@@ -1,0 +1,12 @@
+# Makefile for SAMPLE05
+.RECIPEPREFIX = -   # use - as the recipe prefix char
+
+hlq      := # <=== enter your sample hlq here
+sometgts := $(hlq).NEWDS1
+sometgts := $(sometgts) $(hlq).NEWDS2
+
+.PHONY ALL
+ALL : $(sometgts)
+
+$(sometgts) :
+- CALL ALLOCDS $@
