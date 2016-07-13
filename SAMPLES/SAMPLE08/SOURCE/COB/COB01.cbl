@@ -1,0 +1,11 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. COB01
+
+       PROCEDURE DIVISION.
+       MAIN SECTION.
+           DISPLAY 'HELLO WORLD'
+           .
+       MAIN-END.
+           GOBACK.
+
+       END PROGRAM COB01.

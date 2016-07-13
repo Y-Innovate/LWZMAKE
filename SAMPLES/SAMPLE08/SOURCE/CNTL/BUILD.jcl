@@ -1,0 +1,12 @@
+//(JOBCARD)   <=== FILL IN
+//*
+//      EXPORT SYMLIST=*
+//         SET LWZMHLQ=(HLQ FOR LWZMAKE LOAD MOD)  <=== FILL IN
+//         SET SAMPHLQ=(HLQ FOR SAMPLE08)          <=== FILL IN
+//      JCLLIB ORDER=(&SAMPHLQ..CNTL)
+//*
+//ZMAKE   EXEC PROC=ISPFMAKE,
+//             LWZMHLQ=&LWZMHLQ,
+//             TARGET='CLEAN_ALL',
+//             MAKEFILE=&SAMPHLQ..CNTL(MAKEFILE),
+//             EXECLIB=&SAMPHLQ..EXEC
