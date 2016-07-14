@@ -4149,7 +4149,7 @@ LWZMAKE_SCAN_CHARA_TOKEN     DC    A(LWZMAKE_SCAN_CHAR)                 41450000
 SCAN_STATE_TABLEA_TOKEN      DC    A(SCAN_STATE_TABLE)                  41490000
 *                                                                       41500000
 * Translate table for starting character for a normal token             41510000
-* Can be Ýa-zA-Z¨                                                       41520000
+* Can be [a-zA-Z]                                                       41520000
 NORMAL_TOKEN_STARTCHAR DS 0F                                            41530000
          DC    256X'FF'                                                 41540000
          ORG   NORMAL_TOKEN_STARTCHAR+C'a'                              41550000
@@ -4167,7 +4167,7 @@ NORMAL_TOKEN_STARTCHAR DS 0F                                            41530000
          ORG                                                            41670000
 *                                                                       41680000
 * Translate table for any character for a normal token except the first 41690000
-* Can be Ý$#@_a-zA-Z0-9¨                                                41700000
+* Can be [$#@_a-zA-Z0-9]                                                41700000
 NORMAL_TOKEN_NEXTCHAR DS 0F                                             41710000
          DC    256X'FF'                                                 41720000
          ORG   NORMAL_TOKEN_NEXTCHAR+C'$'                               41730000
@@ -4195,7 +4195,7 @@ NORMAL_TOKEN_NEXTCHAR DS 0F                                             41710000
          ORG                                                            41950000
 *                                                                       41960000
 * Translate table for any character for a special token                 41970000
-* Can be Ý_A-Z¨                                                         41980000
+* Can be [_A-Z]                                                         41980000
 SPECIAL_TOKEN_NEXTCHAR DS 0F                                            41990000
          DC    256X'FF'                                                 42000000
          ORG   SPECIAL_TOKEN_NEXTCHAR+C'_'                              42010000
@@ -4209,7 +4209,7 @@ SPECIAL_TOKEN_NEXTCHAR DS 0F                                            41990000
          ORG                                                            42090000
 *                                                                       42100000
 * Translate table for any character for a number token                  42110000
-* Can be Ý0-9¨                                                          42120000
+* Can be [0-9]                                                          42120000
 NUMBER_TOKEN_CHAR DS 0F                                                 42130000
          DC    256X'FF'                                                 42140000
          ORG   NUMBER_TOKEN_CHAR+C'0'                                   42150000
