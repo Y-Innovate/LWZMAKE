@@ -240,7 +240,7 @@ RET      EQU   *                                                        02250000
 *                                                                       02400000
 INIT     EQU   *                                                        02410000
 *        Set trace level, for a different trace level change here       02420000
-         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_DEBUG                      02430004
+         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_WARNING                    02430004
 *                                                                       02440000
          MVC   G_RETCODE,=F'0'    * Initial return code 0               02450000
 *                                                                       02460000
