@@ -240,7 +240,7 @@ RET      EQU   *                                                        02250000
 *                                                                       02400000
 INIT     EQU   *                                                        02410000
 *        Set trace level, for a different trace level change here       02420000
-         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_WARNING                    02430000
+         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_DEBUG                      02430004
 *                                                                       02440000
          MVC   G_RETCODE,=F'0'    * Initial return code 0               02450000
 *                                                                       02460000
@@ -302,9 +302,9 @@ INIT     EQU   *                                                        02410000
          MVC   G_LWZMAKE_TRACEA,LWZMAKE_TRACEA                          03020000
          MVC   G_LWZMAKE_RPTA,LWZMAKE_RPTA                              03030000
 *                                                                       03040000
-*        Clear REXX environment block pointer                           03050001
-         MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)                             03060001
-*                                                                       03070001
+*        Clear REXX environment block pointer                           03050000
+         MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)                             03060000
+*                                                                       03070000
 *        Allocate multi-purpose tokens                                  03080000
          GETMAIN RU,LV=SCAN_TOKEN_MAXLEN                                03090000
          ST    R1,G_SCAN_TOKENA                                         03100000
@@ -821,18 +821,18 @@ G_IRXINIT_USRFIELD_PTR      DS    CL4                                   08200000
 G_IRXINIT_RESERVED_PTR      DS    CL4                                   08210000
 G_IRXINIT_ENVBLOCK_PTR      DS    CL4                                   08220000
 G_IRXINIT_REASON            DS    CL4                                   08230000
-*                                                                       08240001
-* REXX maintain entries host command env table IRXSUBCM parameters      08250001
-G_IRXSUBCM_PAR5A            DS    5A                                    08260001
-G_IRXSUBCM_FUNCTION         DS    CL8                                   08270001
-G_IRXSUBCM_STRING           DS    CL32                                  08280001
-G_IRXSUBCM_STRING_LEN       DS    CL4                                   08290001
-G_IRXSUBCM_HOSTENV_NAME     DS    CL8                                   08300001
-G_IRXSUBCM_ENVBLOCK_PTR     DS    CL4                                   08310001
+*                                                                       08240000
+* REXX maintain entries host command env table IRXSUBCM parameters      08250000
+G_IRXSUBCM_PAR5A            DS    5A                                    08260000
+G_IRXSUBCM_FUNCTION         DS    CL8                                   08270000
+G_IRXSUBCM_STRING           DS    CL32                                  08280000
+G_IRXSUBCM_STRING_LEN       DS    CL4                                   08290000
+G_IRXSUBCM_HOSTENV_NAME     DS    CL8                                   08300000
+G_IRXSUBCM_ENVBLOCK_PTR     DS    CL4                                   08310000
 *                                                                       08320000
 * REXX execute ISPEXEC parameters                                       08330000
-G_USE_ISPEXEC               DS    C                                     08340001
-                            DS    0F                                    08350001
+G_USE_ISPEXEC               DS    C                                     08340000
+                            DS    0F                                    08350000
 G_ISPEXEC_PAR2A             DS    2A                                    08360000
 *                                                                       08370000
 * REXX execute IRXEXEC parameters                                       08380000
@@ -3802,20 +3802,20 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
                      TM    G_SCAN_STATE,SCAN_STATE_IN_EXPAND            38020000
                   ENDIF                                                 38030000
 *                 If either of the tests above gives CC ones            38040000
-                  IF (O) THEN                                           38050000
-                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1    38060000
-                     L     R15,LWZMAKE_SCAN_CHARA_TOKEN                 38070000
-                     BASR  R14,R15             * Link to SCAN_CHAR      38080000
-                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1    38090000
-                     B     SCAN_TOKEN_VALID    * Skip to finish token   38100000
-                  ENDIF                                                 38110000
-               ENDIF                                                    38120000
-*              If not expected or the other tests above fail, write     38130000
-*              error and stop                                           38140000
-               MLWZMRPT RPTLINE=CL133'0Unexpected target member variablX38150000
-               e',APND_LC=C'Y'                                          38160000
-               MVC   G_RETCODE,=F'8' * Set return code 8                38170000
-               B     SCAN_TOKEN_RET  * Skip rest of tokenizer           38180000
+                  IF (NO) THEN                                          38050007
+                     MVI   G_SCAN_TOKENTYPE,X'00'                       38060007
+                  ENDIF                                                 38070007
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38080007
+                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN                    38090007
+                  BASR  R14,R15             * Link to SCAN_CHAR         38100007
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38110007
+                  B     SCAN_TOKEN_VALID    * Skip to finish token      38120007
+               ELSE                                                     38130007
+                  MLWZMRPT RPTLINE=CL133'0Unexpected target member variX38140007
+               able',APND_LC=C'Y'                                       38150007
+                  MVC   G_RETCODE,=F'8' * Set return code 8             38160007
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer        38170007
+               ENDIF                                                    38180000
             ENDIF                                                       38190000
 *                                                                       38200000
 *           So it's not $@ or $%, continue checking normal variable     38210000
@@ -3824,7 +3824,7 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
             L     R6,G_SCAN_CURRCOL * Get current column                38240000
             C     R6,=F'70'         * Check for pos 71 or above         38250000
             IF (NL) THEN            * If so write error and stop        38260000
-               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'       38270000
+               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'       38270003
                MVC   G_RETCODE,=F'8' * Set return code 8                38280000
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer           38290000
             ENDIF                                                       38300000
@@ -3839,7 +3839,7 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
                   MVI   G_SCAN_CLOSE_BRACKET,C'}'                       38390000
                ELSE                                                     38400000
 *                 Neither ( nor { is a syntax error                     38410000
-                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'    38420000
+                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'    38420005
                   MVC   G_RETCODE,=F'8' * Set return code 8             38430000
                   B     SCAN_TOKEN_RET  * Skip rest of tokenizer        38440000
                ENDIF                                                    38450000
@@ -4149,7 +4149,7 @@ LWZMAKE_SCAN_CHARA_TOKEN     DC    A(LWZMAKE_SCAN_CHAR)                 41450000
 SCAN_STATE_TABLEA_TOKEN      DC    A(SCAN_STATE_TABLE)                  41490000
 *                                                                       41500000
 * Translate table for starting character for a normal token             41510000
-* Can be [a-zA-Z]                                                       41520000
+* Can be Ýa-zA-Z¨                                                       41520000
 NORMAL_TOKEN_STARTCHAR DS 0F                                            41530000
          DC    256X'FF'                                                 41540000
          ORG   NORMAL_TOKEN_STARTCHAR+C'a'                              41550000
@@ -4167,7 +4167,7 @@ NORMAL_TOKEN_STARTCHAR DS 0F                                            41530000
          ORG                                                            41670000
 *                                                                       41680000
 * Translate table for any character for a normal token except the first 41690000
-* Can be [$#@_a-zA-Z0-9]                                                41700000
+* Can be Ý$#@_a-zA-Z0-9¨                                                41700000
 NORMAL_TOKEN_NEXTCHAR DS 0F                                             41710000
          DC    256X'FF'                                                 41720000
          ORG   NORMAL_TOKEN_NEXTCHAR+C'$'                               41730000
@@ -4195,7 +4195,7 @@ NORMAL_TOKEN_NEXTCHAR DS 0F                                             41710000
          ORG                                                            41950000
 *                                                                       41960000
 * Translate table for any character for a special token                 41970000
-* Can be [_A-Z]                                                         41980000
+* Can be Ý_A-Z¨                                                         41980000
 SPECIAL_TOKEN_NEXTCHAR DS 0F                                            41990000
          DC    256X'FF'                                                 42000000
          ORG   SPECIAL_TOKEN_NEXTCHAR+C'_'                              42010000
@@ -4209,7 +4209,7 @@ SPECIAL_TOKEN_NEXTCHAR DS 0F                                            41990000
          ORG                                                            42090000
 *                                                                       42100000
 * Translate table for any character for a number token                  42110000
-* Can be [0-9]                                                          42120000
+* Can be Ý0-9¨                                                          42120000
 NUMBER_TOKEN_CHAR DS 0F                                                 42130000
          DC    256X'FF'                                                 42140000
          ORG   NUMBER_TOKEN_CHAR+C'0'                                   42150000
@@ -5670,1755 +5670,1755 @@ EXEC_TGT_CALL_EXPANDED EQU *                                            56420000
             L     R15,G_LWZMAKE_RPTA                                    56700000
             BASR  R14,R15                                               56710000
 *                                                                       56720000
-            IF (CLI,G_USE_ISPEXEC,EQ,C' ') THEN                         56730001
-               MVI   G_USE_ISPEXEC,C'N'                                 56740001
-*                                                                       56750001
-               MVC   G_IRXINIT_FUNCTION,=CL8'FINDENVB'                  56760001
-               MVC   G_IRXINIT_PARMMOD,=CL8' '                          56770001
-               MVC   G_IRXINIT_INSTORPARM_PTR,=A(0)                     56780001
-               MVC   G_IRXINIT_USRFIELD_PTR,=X'80000000'                56790001
-               MVC   G_IRXINIT_RESERVED_PTR,=A(0)                       56800001
-               MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)                       56810001
-               MVC   G_IRXINIT_REASON,=A(0)                             56820001
+            IF (CLI,G_USE_ISPEXEC,EQ,C' ') THEN                         56730000
+               MVI   G_USE_ISPEXEC,C'N'                                 56740000
+*                                                                       56750000
+               MVC   G_IRXINIT_FUNCTION,=CL8'FINDENVB'                  56760000
+               MVC   G_IRXINIT_PARMMOD,=CL8' '                          56770000
+               MVC   G_IRXINIT_INSTORPARM_PTR,=A(0)                     56780000
+               MVC   G_IRXINIT_USRFIELD_PTR,=X'80000000'                56790000
+               MVC   G_IRXINIT_RESERVED_PTR,=A(0)                       56800000
+               MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)                       56810000
+               MVC   G_IRXINIT_REASON,=A(0)                             56820000
 *                                                                       56830000
-               XR    R0,R0                                              56840001
-               LA    R1,G_IRXINIT_FUNCTION                              56850001
-               ST    R1,G_IRXINIT_PAR7A                                 56860001
-               LA    R1,G_IRXINIT_PARMMOD                               56870001
-               ST    R1,G_IRXINIT_PAR7A+4                               56880001
-               LA    R1,G_IRXINIT_INSTORPARM_PTR                        56890001
-               ST    R1,G_IRXINIT_PAR7A+8                               56900001
-               LA    R1,G_IRXINIT_USRFIELD_PTR                          56910001
-               ST    R1,G_IRXINIT_PAR7A+12                              56920001
-               LA    R1,G_IRXINIT_RESERVED_PTR                          56930001
-               ST    R1,G_IRXINIT_PAR7A+16                              56940001
-               LA    R1,G_IRXINIT_ENVBLOCK_PTR                          56950001
-               ST    R1,G_IRXINIT_PAR7A+20                              56960001
-               LA    R1,G_IRXINIT_REASON                                56970001
-               O     R1,=X'80000000'                                    56980001
-               ST    R1,G_IRXINIT_PAR7A+24                              56990001
-               LA    R1,G_IRXINIT_PAR7A                                 57000001
+               XR    R0,R0                                              56840000
+               LA    R1,G_IRXINIT_FUNCTION                              56850000
+               ST    R1,G_IRXINIT_PAR7A                                 56860000
+               LA    R1,G_IRXINIT_PARMMOD                               56870000
+               ST    R1,G_IRXINIT_PAR7A+4                               56880000
+               LA    R1,G_IRXINIT_INSTORPARM_PTR                        56890000
+               ST    R1,G_IRXINIT_PAR7A+8                               56900000
+               LA    R1,G_IRXINIT_USRFIELD_PTR                          56910000
+               ST    R1,G_IRXINIT_PAR7A+12                              56920000
+               LA    R1,G_IRXINIT_RESERVED_PTR                          56930000
+               ST    R1,G_IRXINIT_PAR7A+16                              56940000
+               LA    R1,G_IRXINIT_ENVBLOCK_PTR                          56950000
+               ST    R1,G_IRXINIT_PAR7A+20                              56960000
+               LA    R1,G_IRXINIT_REASON                                56970000
+               O     R1,=X'80000000'                                    56980000
+               ST    R1,G_IRXINIT_PAR7A+24                              56990000
+               LA    R1,G_IRXINIT_PAR7A                                 57000000
 *                                                                       57010000
-               LINK  EP=IRXINIT,SF=(E,G_LINKD)                          57020001
+               LINK  EP=IRXINIT,SF=(E,G_LINKD)                          57020000
 *                                                                       57030000
-               C     R15,=A(0)                                          57040001
-               BE    IRXINIT_OK                                         57050001
-               C     R15,=A(4)                                          57060001
-               BE    IRXINIT_OK                                         57070001
-               C     R15,=A(28)                                         57080001
-               BE    IRXINIT_OK                                         57090001
-               MLWZMRPT RPTLINE=CL133'0Error finding REXX environment'  57100001
-               MVC   G_RETCODE,=F'12'                                   57110001
-               BR    R8                                                 57120001
-IRXINIT_OK     EQU   *                                                  57130001
-*                                                                       57140001
-               C     R15,=A(28)                                         57150001
-               IF (NE) THEN                                             57160001
-                  MVC   G_IRXSUBCM_FUNCTION,=CL8'QUERY'                 57170001
-                  MVC   G_IRXSUBCM_STRING,=CL32' '                      57180001
-                  MVC   G_IRXSUBCM_STRING(8),=CL8'ISPEXEC'              57190001
-                  MVC   G_IRXSUBCM_STRING_LEN,=A(32)                    57200001
-                  MVC   G_IRXSUBCM_HOSTENV_NAME,=CL8' '                 57210001
-                  MVC   G_IRXSUBCM_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR  57220001
-*                                                                       57230001
-                  XR    R0,R0                                           57240001
-                  LA    R1,G_IRXSUBCM_FUNCTION                          57250001
-                  ST    R1,G_IRXSUBCM_PAR5A                             57260001
-                  LA    R1,G_IRXSUBCM_STRING                            57270001
-                  ST    R1,G_IRXSUBCM_PAR5A+4                           57280001
-                  LA    R1,G_IRXSUBCM_STRING_LEN                        57290001
-                  ST    R1,G_IRXSUBCM_PAR5A+8                           57300001
-                  LA    R1,G_IRXSUBCM_HOSTENV_NAME                      57310001
-                  ST    R1,G_IRXSUBCM_PAR5A+12                          57320001
-                  LA    R1,G_IRXSUBCM_ENVBLOCK_PTR                      57330001
-                  O     R1,=X'80000000'                                 57340001
-                  ST    R1,G_IRXSUBCM_PAR5A+16                          57350001
-                  LA    R1,G_IRXSUBCM_PAR5A                             57360002
-*                                                                       57370001
-                  LINK  EP=IRXSUBCM,SF=(E,G_LINKD)                      57380001
-*                                                                       57390001
-                  LTR   R15,R15                                         57400001
-                  IF (Z) THEN                                           57410001
-                     MVI   G_USE_ISPEXEC,C'Y'                           57420001
-                  ELSE                                                  57430001
-                     C     R15,=A(8)                                    57440001
-                     IF (NE) THEN                                       57450001
-                        MLWZMRPT RPTLINE=CL133'0Error checking ISPEXEC X57460001
-               availability'                                            57470001
-                        MVC   G_RETCODE,=F'12'                          57480001
-                        BR    R8                                        57490001
-                     ENDIF                                              57500001
-                  ENDIF                                                 57510001
-               ENDIF                                                    57520001
-            ENDIF                                                       57530001
+               C     R15,=A(0)                                          57040000
+               BE    IRXINIT_OK                                         57050000
+               C     R15,=A(4)                                          57060000
+               BE    IRXINIT_OK                                         57070000
+               C     R15,=A(28)                                         57080000
+               BE    IRXINIT_OK                                         57090000
+               MLWZMRPT RPTLINE=CL133'0Error finding REXX environment'  57100000
+               MVC   G_RETCODE,=F'12'                                   57110000
+               BR    R8                                                 57120000
+IRXINIT_OK     EQU   *                                                  57130000
+*                                                                       57140000
+               C     R15,=A(28)                                         57150000
+               IF (NE) THEN                                             57160000
+                  MVC   G_IRXSUBCM_FUNCTION,=CL8'QUERY'                 57170000
+                  MVC   G_IRXSUBCM_STRING,=CL32' '                      57180000
+                  MVC   G_IRXSUBCM_STRING(8),=CL8'ISPEXEC'              57190000
+                  MVC   G_IRXSUBCM_STRING_LEN,=A(32)                    57200000
+                  MVC   G_IRXSUBCM_HOSTENV_NAME,=CL8' '                 57210000
+                  MVC   G_IRXSUBCM_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR  57220000
+*                                                                       57230000
+                  XR    R0,R0                                           57240000
+                  LA    R1,G_IRXSUBCM_FUNCTION                          57250000
+                  ST    R1,G_IRXSUBCM_PAR5A                             57260000
+                  LA    R1,G_IRXSUBCM_STRING                            57270000
+                  ST    R1,G_IRXSUBCM_PAR5A+4                           57280000
+                  LA    R1,G_IRXSUBCM_STRING_LEN                        57290000
+                  ST    R1,G_IRXSUBCM_PAR5A+8                           57300000
+                  LA    R1,G_IRXSUBCM_HOSTENV_NAME                      57310000
+                  ST    R1,G_IRXSUBCM_PAR5A+12                          57320000
+                  LA    R1,G_IRXSUBCM_ENVBLOCK_PTR                      57330000
+                  O     R1,=X'80000000'                                 57340000
+                  ST    R1,G_IRXSUBCM_PAR5A+16                          57350000
+                  LA    R1,G_IRXSUBCM_PAR5A                             57360000
+*                                                                       57370000
+                  LINK  EP=IRXSUBCM,SF=(E,G_LINKD)                      57380000
+*                                                                       57390000
+                  LTR   R15,R15                                         57400000
+                  IF (Z) THEN                                           57410000
+                     MVI   G_USE_ISPEXEC,C'Y'                           57420000
+                  ELSE                                                  57430000
+                     C     R15,=A(8)                                    57440000
+                     IF (NE) THEN                                       57450000
+                        MLWZMRPT RPTLINE=CL133'0Error checking ISPEXEC X57460000
+               availability'                                            57470000
+                        MVC   G_RETCODE,=F'12'                          57480000
+                        BR    R8                                        57490000
+                     ENDIF                                              57500000
+                  ENDIF                                                 57510000
+               ENDIF                                                    57520000
+            ENDIF                                                       57530000
 *                                                                       57540000
-            IF (CLI,G_USE_ISPEXEC,EQ,C'Y') THEN                         57541001
-               L     R6,G_SCAN_TOKENA                                   57550001
-               MVC   0(12,R6),=C'SELECT CMD(%'                          57560001
-               LA    R5,12                                              57570001
-               LA    R6,12(,R6)                                         57580001
-               LA    R3,STMT_C_EXEC                                     57590001
-               XR    R4,R4                                              57600001
-               LH    R4,STMT_C_EXECLEN                                  57610001
-               CH    R4,=H'8'                                           57620001
-               IF (H) THEN                                              57630001
-                  LH    R4,=H'8'                                        57640001
-               ENDIF                                                    57650001
-               BCTR  R4,R0                                              57660001
-               B     *+10                                               57670001
-               MVC   0(1,R6),0(R3)                                      57680001
-               EX    R4,*-6                                             57690001
-               LA    R4,1(,R4)                                          57700001
-               AR    R6,R4                                              57710001
-               AR    R5,R4                                              57720001
-               CLC   G_SCAN_TOKEN2_LEN,=F'0'                            57730001
-               IF (NE) THEN                                             57740001
-                  MVI   0(R6),C' '                                      57750001
-                  LA    R6,1(,R6)                                       57760001
-                  LA    R5,1(,R5)                                       57770001
-                  LR    R0,R6                                           57780001
-                  L     R2,G_SCAN_TOKEN2A                               57790001
-                  L     R1,G_SCAN_TOKEN2_LEN                            57800001
-                  LR    R3,R1                                           57810001
-                  MVCL  R0,R2                                           57820001
-                  A     R5,G_SCAN_TOKEN2_LEN                            57830001
-                  A     R6,G_SCAN_TOKEN2_LEN                            57840001
-               ENDIF                                                    57850001
-               MVI   0(R6),C')'                                         57860001
-               LA    R5,1(,R5)                                          57870001
-               ST    R5,G_SCAN_TOKEN_LEN                                57880001
-               LA    R1,G_SCAN_TOKEN_LEN                                57890001
-               ST    R1,G_ISPEXEC_PAR2A                                 57900001
-               L     R1,G_SCAN_TOKENA                                   57910001
-               O     R1,=X'80000000'                                    57920001
-               ST    R1,G_ISPEXEC_PAR2A+4                               57930001
-               LA    R1,G_ISPEXEC_PAR2A                                 57940001
-*                                                                       57950001
-               LINK  EP=ISPEXEC,SF=(E,G_LINKD)                          57960001
-*                                                                       57970001
-               LTR   R15,R15                                            57980001
-               IF (NZ) THEN                                             57990001
-                  MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'    58000001
-                  MVC   G_RETCODE,=F'12'                                58010001
-                  BR    R8                                              58020001
-               ENDIF                                                    58030001
-*                                                                       58040001
-               B     EXEC_CALL_END                                      58050001
-            ENDIF                                                       58051001
-*                                                                       58060000
-            LA    R6,G_IRXEXEC_EXECBLK                                  58070000
-            USING EXECBLK,R6                                            58080000
-            MVC   EXEC_BLK_ACRYN,=CL8'IRXEXECB'                         58090000
-            LA    R5,EXECBLEN                                           58100000
-            ST    R5,EXEC_BLK_LENGTH                                    58110000
-            MVC   EXEC_MEMBER,=CL8' '                                   58120000
-            LA    R2,EXEC_MEMBER                                        58130000
-            LA    R3,STMT_C_EXEC                                        58140000
-            XR    R4,R4                                                 58150000
-            LH    R4,STMT_C_EXECLEN                                     58160000
-            CH    R4,=H'8'                                              58170000
-            IF (H) THEN                                                 58180000
-               LH    R4,=H'8'                                           58190000
-            ENDIF                                                       58200000
-            BCTR  R4,R0                                                 58210000
-            B     *+10                                                  58220000
-            MVC   0(1,R2),0(R3)                                         58230000
-            EX    R4,*-6                                                58240000
-            MVC   EXEC_DDNAME,=CL8' '                                   58250000
-            MVC   EXEC_SUBCOM,=CL8' '                                   58260000
-            XR    R5,R5                                                 58270000
-            ST    R5,EXEC_BLK_LENGTH+4                                  58280000
-            ST    R5,EXEC_DSNPTR                                        58290000
-            ST    R5,EXEC_DSNLEN                                        58300000
-            DROP  R6                                                    58310000
-*                                                                       58320000
-            LA    R6,G_IRXEXEC_EVALBLK                                  58330000
-            USING EVALBLOCK,R6                                          58340000
-            XR    R5,R5                                                 58350000
-            ST    R5,EVALBLOCK_EVPAD1                                   58360000
-            ST    R5,EVALBLOCK_EVPAD2                                   58370000
-            LA    R5,EVALBLK_SIZ                                        58380000
-            SRA   R5,3                                                  58390000
-            ST    R5,EVALBLOCK_EVSIZE                                   58400000
-            DROP  R6                                                    58410000
-*                                                                       58420000
-            LA    R1,G_IRXEXEC_EXECBLK                                  58430000
-            ST    R1,G_IRXEXEC_EXECBLK_PTR                              58440000
-            CLC   G_SCAN_TOKEN2_LEN,=F'0'                               58450000
-            IF (NE) THEN                                                58460000
-               MVC   G_IRXEXEC_ARGS(4),G_SCAN_TOKEN2A                   58470000
-               MVC   G_IRXEXEC_ARGS+4(4),G_SCAN_TOKEN2_LEN              58480000
-               MVC   G_IRXEXEC_ARGS+8(8),=X'FFFFFFFFFFFFFFFF'           58490000
-            ELSE                                                        58500000
-               MVC   G_IRXEXEC_ARGS,=X'FFFFFFFFFFFFFFFF'                58510000
-            ENDIF                                                       58520000
-            LA    R1,G_IRXEXEC_ARGS                                     58530000
-            ST    R1,G_IRXEXEC_ARGS_PTR                                 58540000
-            MVC   G_IRXEXEC_FLAGS,=X'40000000'                          58550000
-            MVC   G_IRXEXEC_INSTBLK_PTR,=A(0)                           58560000
-            MVC   G_IRXEXEC_CPPL_PTR,=A(0)                              58570000
-            LA    R1,G_IRXEXEC_EVALBLK                                  58580000
-            ST    R1,G_IRXEXEC_EVALBLK_PTR                              58590000
-            MVC   G_IRXEXEC_WORKAREA_PTR,=A(0)                          58600000
-            MVC   G_IRXEXEC_USRFIELD_PTR,=X'8000000'                    58610000
-            MVC   G_IRXEXEC_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR         58620000
-            LA    R1,G_IRXEXEC_REASON                                   58630000
-            ST    R1,G_IRXEXEC_REASON_PTR                               58640000
-            XR    R0,R0                                                 58650000
-            LA    R1,G_IRXEXEC_EXECBLK_PTR                              58660000
-            ST    R1,G_IRXEXEC_PAR10A                                   58670000
-            LA    R1,G_IRXEXEC_ARGS_PTR                                 58680000
-            ST    R1,G_IRXEXEC_PAR10A+4                                 58690000
-            LA    R1,G_IRXEXEC_FLAGS                                    58700000
-            ST    R1,G_IRXEXEC_PAR10A+8                                 58710000
-            LA    R1,G_IRXEXEC_INSTBLK_PTR                              58720000
-            ST    R1,G_IRXEXEC_PAR10A+12                                58730000
-            LA    R1,G_IRXEXEC_CPPL_PTR                                 58740000
-            ST    R1,G_IRXEXEC_PAR10A+16                                58750000
-            LA    R1,G_IRXEXEC_EVALBLK_PTR                              58760000
-            ST    R1,G_IRXEXEC_PAR10A+20                                58770000
-            LA    R1,G_IRXEXEC_WORKAREA_PTR                             58780000
-            ST    R1,G_IRXEXEC_PAR10A+24                                58790000
-            LA    R1,G_IRXEXEC_USRFIELD_PTR                             58800000
-            ST    R1,G_IRXEXEC_PAR10A+28                                58810000
-            LA    R1,G_IRXEXEC_ENVBLOCK_PTR                             58820000
-            ST    R1,G_IRXEXEC_PAR10A+32                                58830000
-            LA    R1,G_IRXEXEC_REASON_PTR                               58840000
-            O     R1,=X'80000000'                                       58850000
-            ST    R1,G_IRXEXEC_PAR10A+36                                58860000
-            LA    R1,G_IRXEXEC_PAR10A                                   58870000
-*                                                                       58880000
-            LINK  EP=IRXEXEC,SF=(E,G_LINKD)                             58890000
+            IF (CLI,G_USE_ISPEXEC,EQ,C'Y') THEN                         57550000
+               L     R6,G_SCAN_TOKENA                                   57560000
+               MVC   0(12,R6),=C'SELECT CMD(%'                          57570000
+               LA    R5,12                                              57580000
+               LA    R6,12(,R6)                                         57590000
+               LA    R3,STMT_C_EXEC                                     57600000
+               XR    R4,R4                                              57610000
+               LH    R4,STMT_C_EXECLEN                                  57620000
+               CH    R4,=H'8'                                           57630000
+               IF (H) THEN                                              57640000
+                  LH    R4,=H'8'                                        57650000
+               ENDIF                                                    57660000
+               BCTR  R4,R0                                              57670000
+               B     *+10                                               57680000
+               MVC   0(1,R6),0(R3)                                      57690000
+               EX    R4,*-6                                             57700000
+               LA    R4,1(,R4)                                          57710000
+               AR    R6,R4                                              57720000
+               AR    R5,R4                                              57730000
+               CLC   G_SCAN_TOKEN2_LEN,=F'0'                            57740000
+               IF (NE) THEN                                             57750000
+                  MVI   0(R6),C' '                                      57760000
+                  LA    R6,1(,R6)                                       57770000
+                  LA    R5,1(,R5)                                       57780000
+                  LR    R0,R6                                           57790000
+                  L     R2,G_SCAN_TOKEN2A                               57800000
+                  L     R1,G_SCAN_TOKEN2_LEN                            57810000
+                  LR    R3,R1                                           57820000
+                  MVCL  R0,R2                                           57830000
+                  A     R5,G_SCAN_TOKEN2_LEN                            57840000
+                  A     R6,G_SCAN_TOKEN2_LEN                            57850000
+               ENDIF                                                    57860000
+               MVI   0(R6),C')'                                         57870000
+               LA    R5,1(,R5)                                          57880000
+               ST    R5,G_SCAN_TOKEN_LEN                                57890000
+               LA    R1,G_SCAN_TOKEN_LEN                                57900000
+               ST    R1,G_ISPEXEC_PAR2A                                 57910000
+               L     R1,G_SCAN_TOKENA                                   57920000
+               O     R1,=X'80000000'                                    57930000
+               ST    R1,G_ISPEXEC_PAR2A+4                               57940000
+               LA    R1,G_ISPEXEC_PAR2A                                 57950000
+*                                                                       57960000
+               LINK  EP=ISPEXEC,SF=(E,G_LINKD)                          57970000
+*                                                                       57980000
+               LTR   R15,R15                                            57990000
+               IF (NZ) THEN                                             58000000
+                  MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'    58010000
+                  MVC   G_RETCODE,=F'12'                                58020000
+                  BR    R8                                              58030000
+               ENDIF                                                    58040000
+*                                                                       58050000
+               B     EXEC_CALL_END                                      58060000
+            ENDIF                                                       58070000
+*                                                                       58080000
+            LA    R6,G_IRXEXEC_EXECBLK                                  58090000
+            USING EXECBLK,R6                                            58100000
+            MVC   EXEC_BLK_ACRYN,=CL8'IRXEXECB'                         58110000
+            LA    R5,EXECBLEN                                           58120000
+            ST    R5,EXEC_BLK_LENGTH                                    58130000
+            MVC   EXEC_MEMBER,=CL8' '                                   58140000
+            LA    R2,EXEC_MEMBER                                        58150000
+            LA    R3,STMT_C_EXEC                                        58160000
+            XR    R4,R4                                                 58170000
+            LH    R4,STMT_C_EXECLEN                                     58180000
+            CH    R4,=H'8'                                              58190000
+            IF (H) THEN                                                 58200000
+               LH    R4,=H'8'                                           58210000
+            ENDIF                                                       58220000
+            BCTR  R4,R0                                                 58230000
+            B     *+10                                                  58240000
+            MVC   0(1,R2),0(R3)                                         58250000
+            EX    R4,*-6                                                58260000
+            MVC   EXEC_DDNAME,=CL8' '                                   58270000
+            MVC   EXEC_SUBCOM,=CL8' '                                   58280000
+            XR    R5,R5                                                 58290000
+            ST    R5,EXEC_BLK_LENGTH+4                                  58300000
+            ST    R5,EXEC_DSNPTR                                        58310000
+            ST    R5,EXEC_DSNLEN                                        58320000
+            DROP  R6                                                    58330000
+*                                                                       58340000
+            LA    R6,G_IRXEXEC_EVALBLK                                  58350000
+            USING EVALBLOCK,R6                                          58360000
+            XR    R5,R5                                                 58370000
+            ST    R5,EVALBLOCK_EVPAD1                                   58380000
+            ST    R5,EVALBLOCK_EVPAD2                                   58390000
+            LA    R5,EVALBLK_SIZ                                        58400000
+            SRA   R5,3                                                  58410000
+            ST    R5,EVALBLOCK_EVSIZE                                   58420000
+            DROP  R6                                                    58430000
+*                                                                       58440000
+            LA    R1,G_IRXEXEC_EXECBLK                                  58450000
+            ST    R1,G_IRXEXEC_EXECBLK_PTR                              58460000
+            CLC   G_SCAN_TOKEN2_LEN,=F'0'                               58470000
+            IF (NE) THEN                                                58480000
+               MVC   G_IRXEXEC_ARGS(4),G_SCAN_TOKEN2A                   58490000
+               MVC   G_IRXEXEC_ARGS+4(4),G_SCAN_TOKEN2_LEN              58500000
+               MVC   G_IRXEXEC_ARGS+8(8),=X'FFFFFFFFFFFFFFFF'           58510000
+            ELSE                                                        58520000
+               MVC   G_IRXEXEC_ARGS,=X'FFFFFFFFFFFFFFFF'                58530000
+            ENDIF                                                       58540000
+            LA    R1,G_IRXEXEC_ARGS                                     58550000
+            ST    R1,G_IRXEXEC_ARGS_PTR                                 58560000
+            MVC   G_IRXEXEC_FLAGS,=X'40000000'                          58570000
+            MVC   G_IRXEXEC_INSTBLK_PTR,=A(0)                           58580000
+            MVC   G_IRXEXEC_CPPL_PTR,=A(0)                              58590000
+            LA    R1,G_IRXEXEC_EVALBLK                                  58600000
+            ST    R1,G_IRXEXEC_EVALBLK_PTR                              58610000
+            MVC   G_IRXEXEC_WORKAREA_PTR,=A(0)                          58620000
+            MVC   G_IRXEXEC_USRFIELD_PTR,=X'8000000'                    58630000
+            MVC   G_IRXEXEC_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR         58640000
+            LA    R1,G_IRXEXEC_REASON                                   58650000
+            ST    R1,G_IRXEXEC_REASON_PTR                               58660000
+            XR    R0,R0                                                 58670000
+            LA    R1,G_IRXEXEC_EXECBLK_PTR                              58680000
+            ST    R1,G_IRXEXEC_PAR10A                                   58690000
+            LA    R1,G_IRXEXEC_ARGS_PTR                                 58700000
+            ST    R1,G_IRXEXEC_PAR10A+4                                 58710000
+            LA    R1,G_IRXEXEC_FLAGS                                    58720000
+            ST    R1,G_IRXEXEC_PAR10A+8                                 58730000
+            LA    R1,G_IRXEXEC_INSTBLK_PTR                              58740000
+            ST    R1,G_IRXEXEC_PAR10A+12                                58750000
+            LA    R1,G_IRXEXEC_CPPL_PTR                                 58760000
+            ST    R1,G_IRXEXEC_PAR10A+16                                58770000
+            LA    R1,G_IRXEXEC_EVALBLK_PTR                              58780000
+            ST    R1,G_IRXEXEC_PAR10A+20                                58790000
+            LA    R1,G_IRXEXEC_WORKAREA_PTR                             58800000
+            ST    R1,G_IRXEXEC_PAR10A+24                                58810000
+            LA    R1,G_IRXEXEC_USRFIELD_PTR                             58820000
+            ST    R1,G_IRXEXEC_PAR10A+28                                58830000
+            LA    R1,G_IRXEXEC_ENVBLOCK_PTR                             58840000
+            ST    R1,G_IRXEXEC_PAR10A+32                                58850000
+            LA    R1,G_IRXEXEC_REASON_PTR                               58860000
+            O     R1,=X'80000000'                                       58870000
+            ST    R1,G_IRXEXEC_PAR10A+36                                58880000
+            LA    R1,G_IRXEXEC_PAR10A                                   58890000
 *                                                                       58900000
-            LTR   R15,R15                                               58910000
-            IF (NZ) THEN                                                58920000
-               MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'       58930000
-               MVC   G_RETCODE,=F'12'                                   58940000
-               BR    R8                                                 58950000
-            ENDIF                                                       58960000
-*                                                                       58970000
-            MVC   G_IRXINIT_ENVBLOCK_PTR,G_IRXEXEC_ENVBLOCK_PTR         58980001
-*                                                                       58990001
-            LA    R5,G_IRXEXEC_EVALBLK                                  59000000
-            USING EVALBLOCK,R5                                          59010000
-*                                                                       59020000
-            CLC   EVALBLOCK_EVLEN,=F'1'                                 59030000
-            BNE   EXEC_REXX_ERROR                                       59040000
-            CLI   EVALBLOCK_EVDATA,C'0'                                 59050000
-            BE    EXEC_REXX_NO_ERROR                                    59060000
-EXEC_REXX_ERROR EQU *                                                   59070000
-            MVC   G_LWZMRPT_LINE,=CL133'0REXX exec returned'            59080000
-            LA    R2,G_LWZMRPT_LINE+20                                  59090000
-            LA    R3,EVALBLOCK_EVDATA                                   59100000
-            L     R4,EVALBLOCK_EVLEN                                    59110000
-            C     R4,=F'113'                                            59120000
-            IF (H) THEN                                                 59130000
-               L     R4,=F'113'                                         59140000
-            ENDIF                                                       59150000
-            BCTR  R4,R0                                                 59160000
-            B     *+10                                                  59170000
-            MVC   0(1,R2),0(R3)                                         59180000
-            EX    R4,*-6                                                59190000
-            L     R15,G_LWZMAKE_RPTA                                    59200000
-            BASR  R14,R15                                               59210000
-            MVC   G_RETCODE,=F'8'                                       59220000
-            BR    R8                                                    59230000
-EXEC_REXX_NO_ERROR EQU *                                                59240000
-*                                                                       59250000
-            DROP  R5                                                    59260000
+            LINK  EP=IRXEXEC,SF=(E,G_LINKD)                             58910000
+*                                                                       58920000
+            LTR   R15,R15                                               58930000
+            IF (NZ) THEN                                                58940000
+               MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'       58950000
+               MVC   G_RETCODE,=F'12'                                   58960000
+               BR    R8                                                 58970000
+            ENDIF                                                       58980000
+*                                                                       58990000
+            MVC   G_IRXINIT_ENVBLOCK_PTR,G_IRXEXEC_ENVBLOCK_PTR         59000000
+*                                                                       59010000
+            LA    R5,G_IRXEXEC_EVALBLK                                  59020000
+            USING EVALBLOCK,R5                                          59030000
+*                                                                       59040000
+            CLC   EVALBLOCK_EVLEN,=F'1'                                 59050000
+            BNE   EXEC_REXX_ERROR                                       59060000
+            CLI   EVALBLOCK_EVDATA,C'0'                                 59070000
+            BE    EXEC_REXX_NO_ERROR                                    59080000
+EXEC_REXX_ERROR EQU *                                                   59090000
+            MVC   G_LWZMRPT_LINE,=CL133'0REXX exec returned'            59100000
+            LA    R2,G_LWZMRPT_LINE+20                                  59110000
+            LA    R3,EVALBLOCK_EVDATA                                   59120000
+            L     R4,EVALBLOCK_EVLEN                                    59130000
+            C     R4,=F'113'                                            59140000
+            IF (H) THEN                                                 59150000
+               L     R4,=F'113'                                         59160000
+            ENDIF                                                       59170000
+            BCTR  R4,R0                                                 59180000
+            B     *+10                                                  59190000
+            MVC   0(1,R2),0(R3)                                         59200000
+            EX    R4,*-6                                                59210000
+            L     R15,G_LWZMAKE_RPTA                                    59220000
+            BASR  R14,R15                                               59230000
+            MVC   G_RETCODE,=F'8'                                       59240000
+            BR    R8                                                    59250000
+EXEC_REXX_NO_ERROR EQU *                                                59260000
 *                                                                       59270000
-EXEC_CALL_END EQU *                                                     59280000
-            L     R2,G_SCAN_TOKEN_MAXLEN                                59290000
-            L     R3,G_SCAN_TOKENA                                      59300000
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage  59310000
-            MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA                   59320000
-            MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN       59330000
-            MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN             59340000
-*                                                                       59350000
-            L     R2,G_SCAN_TOKEN2_MAXLEN                               59360000
-            L     R3,G_SCAN_TOKEN2A                                     59370000
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage  59380000
-            MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A                 59390000
-            MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN     59400000
-            MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN           59410000
-         ENDIF                                                          59420000
-*                                                                       59430000
-         DROP  R7                                                       59440000
-         USING STMT_DSECT,R7                                            59450000
-*                                                                       59460000
-         LT    R7,STMT_NEXT_PTR                                         59470000
-         BZ    EXEC_TGT_BUILD_RET                                       59480000
-*                                                                       59490000
-         CLI   STMT_IN_RECIPE,C'Y'                                      59500000
-         BE    NEXT_RECIPE_STMT                                         59510000
-*                                                                       59520000
-         DROP  R7                                                       59530000
+            DROP  R5                                                    59280000
+*                                                                       59290000
+EXEC_CALL_END EQU *                                                     59300000
+            L     R2,G_SCAN_TOKEN_MAXLEN                                59310000
+            L     R3,G_SCAN_TOKENA                                      59320000
+            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage  59330000
+            MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA                   59340000
+            MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN       59350000
+            MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN             59360000
+*                                                                       59370000
+            L     R2,G_SCAN_TOKEN2_MAXLEN                               59380000
+            L     R3,G_SCAN_TOKEN2A                                     59390000
+            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage  59400000
+            MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A                 59410000
+            MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN     59420000
+            MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN           59430000
+         ENDIF                                                          59440000
+*                                                                       59450000
+         DROP  R7                                                       59460000
+         USING STMT_DSECT,R7                                            59470000
+*                                                                       59480000
+         LT    R7,STMT_NEXT_PTR                                         59490000
+         BZ    EXEC_TGT_BUILD_RET                                       59500000
+*                                                                       59510000
+         CLI   STMT_IN_RECIPE,C'Y'                                      59520000
+         BE    NEXT_RECIPE_STMT                                         59530000
 *                                                                       59540000
-EXEC_TGT_BUILD_RET EQU *                                                59550000
-         BR    R8                                                       59560000
-*                                                                       59570000
-EXEC_TGT_BUILD_NO_RECIPE EQU *                                          59580000
-         MLWZMRPT RPTLINE=CL133' ..................... No recipe'       59590000
-         BR    R8                                                       59600000
-*                                                                       59610000
-         LTORG                                                          59620000
+         DROP  R7                                                       59550000
+*                                                                       59560000
+EXEC_TGT_BUILD_RET EQU *                                                59570000
+         BR    R8                                                       59580000
+*                                                                       59590000
+EXEC_TGT_BUILD_NO_RECIPE EQU *                                          59600000
+         MLWZMRPT RPTLINE=CL133' ..................... No recipe'       59610000
+         BR    R8                                                       59620000
 *                                                                       59630000
-LWZMAKE_SCAN_TOKENA_EXEC    DC    A(LWZMAKE_SCAN_TOKEN)                 59640000
-LWZMAKE_SCAN_VARA_EXEC      DC    A(LWZMAKE_SCAN_VAR)                   59650000
-LWZMAKE_FINDPNYA_EXEC       DC    A(LWZMAKE_FINDPNY)                    59660000
-LWZMAKE_FINDTGTA_EXEC       DC    A(LWZMAKE_FINDTGT)                    59670000
-LWZMAKE_EXEC_TGTA_EXEC      DC    A(LWZMAKE_EXEC_TGT)                   59680000
-LWZMAKE_GET_DATEA_EXEC      DC    A(LWZMAKE_GET_DATE)                   59690000
-LWZMAKE_APPEND_TOKENA_EXEC  DC    A(LWZMAKE_APPEND_TOKEN)               59700000
-*                                                                       59710000
-WORKAREA_EXEC_TGT           DSECT                                       59720000
-EXEC_TGT_SA                 DS    18F                                   59730000
-RETCODE_EXEC_TGT            DS    F                                     59740000
-EXEC_TGT_PARA               DS    A                                     59750000
-EXEC_NEXTTGT_PARA           DS    A                                     59760000
-EXEC_NEXTTGT_PAR            DS    CL(EXEC_TGT_PAR_LEN)                  59770000
-*                                                                       59780000
-                            DS    0F                                    59790000
-TARGET_ALTER_DATE           DS    CL16                                  59800000
-*                                                                       59810000
-                            DS    0F                                    59820000
-EXEC_WORD_SPLIT_PTR         DS    A                                     59830000
-EXEC_WORD_SPLIT_LEN         DS    F                                     59840000
-*                                                                       59850000
-                            DS    0F                                    59860000
-EXEC_IRXEXECB               DS    CL(EXECBLK_V2_LEN)                    59870000
-*                                                                       59880000
-EXEC_WTOBLOCK               DS    0F                                    59890000
-EXEC_WTOLEN                 DS    H                                     59900000
-EXEC_WTOFIL                 DS    H                                     59910000
-EXEC_WTOTEXT                DS    CL133                                 59920000
-*                                                                       59930000
-                            DS    0F                                    59940000
-EXEC_SAVE_SCAN_TOKEN_LEN    DS    F                                     59950000
-EXEC_SAVE_SCAN_TOKEN2_LEN   DS    F                                     59960000
-EXEC_SAVE_SCAN_TOKEN_MAXLEN DS    F                                     59970000
-EXEC_SAVE_SCAN_TOKEN2_MAXLEN DS    F                                    59980000
-EXEC_SAVE_SCAN_TOKENA       DS    A                                     59990000
-EXEC_SAVE_SCAN_TOKEN2A      DS    A                                     60000000
-WORKAREA_EXEC_TGT_LEN       EQU *-WORKAREA_EXEC_TGT                     60010000
-*                                                                       60020000
-EXEC_TGT_PAR                DSECT                                       60030000
-EXEC_TGT_PTR                DS    A                                     60040000
-EXEC_TGT_PAR_LEN            EQU   *-EXEC_TGT_PAR                        60050000
-*                                                                       60060000
-LWZMAKE  CSECT                                                          60070000
+         LTORG                                                          59640000
+*                                                                       59650000
+LWZMAKE_SCAN_TOKENA_EXEC    DC    A(LWZMAKE_SCAN_TOKEN)                 59660000
+LWZMAKE_SCAN_VARA_EXEC      DC    A(LWZMAKE_SCAN_VAR)                   59670000
+LWZMAKE_FINDPNYA_EXEC       DC    A(LWZMAKE_FINDPNY)                    59680000
+LWZMAKE_FINDTGTA_EXEC       DC    A(LWZMAKE_FINDTGT)                    59690000
+LWZMAKE_EXEC_TGTA_EXEC      DC    A(LWZMAKE_EXEC_TGT)                   59700000
+LWZMAKE_GET_DATEA_EXEC      DC    A(LWZMAKE_GET_DATE)                   59710000
+LWZMAKE_APPEND_TOKENA_EXEC  DC    A(LWZMAKE_APPEND_TOKEN)               59720000
+*                                                                       59730000
+WORKAREA_EXEC_TGT           DSECT                                       59740000
+EXEC_TGT_SA                 DS    18F                                   59750000
+RETCODE_EXEC_TGT            DS    F                                     59760000
+EXEC_TGT_PARA               DS    A                                     59770000
+EXEC_NEXTTGT_PARA           DS    A                                     59780000
+EXEC_NEXTTGT_PAR            DS    CL(EXEC_TGT_PAR_LEN)                  59790000
+*                                                                       59800000
+                            DS    0F                                    59810000
+TARGET_ALTER_DATE           DS    CL16                                  59820000
+*                                                                       59830000
+                            DS    0F                                    59840000
+EXEC_WORD_SPLIT_PTR         DS    A                                     59850000
+EXEC_WORD_SPLIT_LEN         DS    F                                     59860000
+*                                                                       59870000
+                            DS    0F                                    59880000
+EXEC_IRXEXECB               DS    CL(EXECBLK_V2_LEN)                    59890000
+*                                                                       59900000
+EXEC_WTOBLOCK               DS    0F                                    59910000
+EXEC_WTOLEN                 DS    H                                     59920000
+EXEC_WTOFIL                 DS    H                                     59930000
+EXEC_WTOTEXT                DS    CL133                                 59940000
+*                                                                       59950000
+                            DS    0F                                    59960000
+EXEC_SAVE_SCAN_TOKEN_LEN    DS    F                                     59970000
+EXEC_SAVE_SCAN_TOKEN2_LEN   DS    F                                     59980000
+EXEC_SAVE_SCAN_TOKEN_MAXLEN DS    F                                     59990000
+EXEC_SAVE_SCAN_TOKEN2_MAXLEN DS    F                                    60000000
+EXEC_SAVE_SCAN_TOKENA       DS    A                                     60010000
+EXEC_SAVE_SCAN_TOKEN2A      DS    A                                     60020000
+WORKAREA_EXEC_TGT_LEN       EQU *-WORKAREA_EXEC_TGT                     60030000
+*                                                                       60040000
+EXEC_TGT_PAR                DSECT                                       60050000
+EXEC_TGT_PTR                DS    A                                     60060000
+EXEC_TGT_PAR_LEN            EQU   *-EXEC_TGT_PAR                        60070000
 *                                                                       60080000
-* Get the date of a file                                                60090000
+LWZMAKE  CSECT                                                          60090000
 *                                                                       60100000
-         DROP                                                           60110000
+* Get the date of a file                                                60110000
 *                                                                       60120000
-LWZMAKE_GET_DATE DS    0F                                               60130000
-         STM   R14,R12,12(R13)   * Save callers registers               60140000
-         LR    R10,R15                                                  60150000
-         LA    R11,4095(,R10)                                           60160000
-         LA    R11,1(,R11)                                              60170000
-         USING LWZMAKE_GET_DATE,R10,R11                                 60180000
-         GETMAIN RU,LV=GET_DATE_DSECT_SIZ                               60190000
-         ST    R13,4(R1)         * Backward chain callers SA            60200000
-         ST    R1,8(R13)         * Forward chain my SA                  60210000
-         LR    R13,R1            * Point R13 to my SA                   60220000
-         USING GET_DATE_DSECT,R13 * Establish addressing of workarea    60230000
-         USING GLOBAL_DATA_DSECT,R9                                     60240000
-*                                                                       60250000
-*        Trace record to start section                                  60260000
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX60270000
-               KE_GET_DATE'                                             60280000
-*                                                                       60290000
-         MVC   G_SAVE_ALTER_DATE,=CL16' '                               60300000
+         DROP                                                           60130000
+*                                                                       60140000
+LWZMAKE_GET_DATE DS    0F                                               60150000
+         STM   R14,R12,12(R13)   * Save callers registers               60160000
+         LR    R10,R15                                                  60170000
+         LA    R11,4095(,R10)                                           60180000
+         LA    R11,1(,R11)                                              60190000
+         USING LWZMAKE_GET_DATE,R10,R11                                 60200000
+         GETMAIN RU,LV=GET_DATE_DSECT_SIZ                               60210000
+         ST    R13,4(R1)         * Backward chain callers SA            60220000
+         ST    R1,8(R13)         * Forward chain my SA                  60230000
+         LR    R13,R1            * Point R13 to my SA                   60240000
+         USING GET_DATE_DSECT,R13 * Establish addressing of workarea    60250000
+         USING GLOBAL_DATA_DSECT,R9                                     60260000
+*                                                                       60270000
+*        Trace record to start section                                  60280000
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX60290000
+               KE_GET_DATE'                                             60300000
 *                                                                       60310000
-         L     R3,G_SCAN_TOKENA                                         60320000
-         L     R4,G_SCAN_TOKEN_LEN                                      60330000
-         XR    R6,R6                                                    60340000
-         XR    R7,R7                                                    60350000
-*                                                                       60360000
-GET_DATE_TEST_QUAL1 EQU *                                               60370000
-         LTR   R4,R4                                                    60380000
-         BZ    GET_DATE_NOT_MVSDS                                       60390000
-         TRT   0(1,R3),TRT_ALPHANAT                                     60400000
-         BNZ   GET_DATE_NOT_MVSDS                                       60410000
-         LA    R3,1(,R3)                                                60420000
-         BCT   R4,*+8                                                   60430000
-         B     GET_DATE_MVSDS                                           60440000
-         LR    R5,R4                                                    60450000
-         C     R5,=F'7'                                                 60460000
-         IF (H) THEN                                                    60470000
-            L     R5,=F'7'                                              60480000
-         ENDIF                                                          60490000
-         BCTR  R5,R0                                                    60500000
-         B     *+10                                                     60510000
-         TRT   0(1,R3),TRT_ALPHANUMNATDASH                              60520000
-         EX    R5,*-6                                                   60530000
-         IF (Z) THEN                                                    60540000
-            LA    R5,1(,R5)                                             60550000
-         ELSE                                                           60560000
-            LR    R5,R1                                                 60570000
-            SR    R5,R3                                                 60580000
-         ENDIF                                                          60590000
-         AR    R3,R5                                                    60600000
-         SR    R4,R5                                                    60610000
-         BZ    GET_DATE_MVSDS                                           60620000
-         IF (CLI,0(R3),EQ,C'.') THEN                                    60630000
-            LA    R3,1(,R3)                                             60640000
-            BCTR  R4,R0                                                 60650000
-            B     GET_DATE_TEST_QUAL1                                   60660000
-         ENDIF                                                          60670000
-         CLI   0(R3),C'('                                               60680000
-         BNE   GET_DATE_NOT_MVSDS                                       60690000
-         LR    R6,R3                                                    60700000
-         LA    R3,1(,R3)                                                60710000
-         BCT   R4,*+8                                                   60720000
-         B     GET_DATE_NOT_MVSDS                                       60730000
-         TRT   0(1,R3),TRT_ALPHANAT                                     60740000
-         BNZ   GET_DATE_NOT_MVSDS                                       60750000
-         LR    R6,R3                                                    60760000
-         LA    R3,1(,R3)                                                60770000
-         BCT   R4,*+8                                                   60780000
-         B     GET_DATE_NOT_MVSDS                                       60790000
-         LR    R5,R4                                                    60800000
-         C     R5,=F'7'                                                 60810000
-         IF (H) THEN                                                    60820000
-            L     R5,=F'7'                                              60830000
-         ENDIF                                                          60840000
-         BCTR  R5,R0                                                    60850000
-         B     *+10                                                     60860000
-         TRT   0(1,R3),TRT_ALPHANUMNATDASH                              60870000
-         EX    R5,*-6                                                   60880000
-         IF (Z) THEN                                                    60890000
-            LA    R5,1(,R5)                                             60900000
-         ELSE                                                           60910000
-            LR    R5,R1                                                 60920000
-            SR    R5,R3                                                 60930000
-         ENDIF                                                          60940000
-         AR    R3,R5                                                    60950000
-         SR    R4,R5                                                    60960000
-         BZ    GET_DATE_NOT_MVSDS                                       60970000
-         CLI   0(R3),C')'                                               60980000
-         BNE   GET_DATE_NOT_MVSDS                                       60990000
-         LR    R7,R3                                                    61000000
-         SR    R7,R6                                                    61010000
-         LA    R3,1(,R3)                                                61020000
-         BCT   R4,GET_DATE_NOT_MVSDS                                    61030000
-*                                                                       61040000
-GET_DATE_MVSDS EQU *                                                    61050000
-         ST    R6,G_MVSDS_MEMBER_PTR                                    61060000
-         ST    R7,G_MVSDS_MEMBER_LEN                                    61070000
-*                                                                       61080000
-         MLWZMRPT RPTLINE=CL133' ..................... Name is MVS dataX61090000
-                set name'                                               61100000
-*                                                                       61110000
-         BAL   R8,GET_DATE_IGGCSI00                                     61120000
+         MVC   G_SAVE_ALTER_DATE,=CL16' '                               60320000
+*                                                                       60330000
+         L     R3,G_SCAN_TOKENA                                         60340000
+         L     R4,G_SCAN_TOKEN_LEN                                      60350000
+         XR    R6,R6                                                    60360000
+         XR    R7,R7                                                    60370000
+*                                                                       60380000
+GET_DATE_TEST_QUAL1 EQU *                                               60390000
+         LTR   R4,R4                                                    60400000
+         BZ    GET_DATE_NOT_MVSDS                                       60410000
+         TRT   0(1,R3),TRT_ALPHANAT                                     60420000
+         BNZ   GET_DATE_NOT_MVSDS                                       60430000
+         LA    R3,1(,R3)                                                60440000
+         BCT   R4,*+8                                                   60450000
+         B     GET_DATE_MVSDS                                           60460000
+         LR    R5,R4                                                    60470000
+         C     R5,=F'7'                                                 60480000
+         IF (H) THEN                                                    60490000
+            L     R5,=F'7'                                              60500000
+         ENDIF                                                          60510000
+         BCTR  R5,R0                                                    60520000
+         B     *+10                                                     60530000
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH                              60540000
+         EX    R5,*-6                                                   60550000
+         IF (Z) THEN                                                    60560000
+            LA    R5,1(,R5)                                             60570000
+         ELSE                                                           60580000
+            LR    R5,R1                                                 60590000
+            SR    R5,R3                                                 60600000
+         ENDIF                                                          60610000
+         AR    R3,R5                                                    60620000
+         SR    R4,R5                                                    60630000
+         BZ    GET_DATE_MVSDS                                           60640000
+         IF (CLI,0(R3),EQ,C'.') THEN                                    60650000
+            LA    R3,1(,R3)                                             60660000
+            BCTR  R4,R0                                                 60670000
+            B     GET_DATE_TEST_QUAL1                                   60680000
+         ENDIF                                                          60690000
+         CLI   0(R3),C'('                                               60700000
+         BNE   GET_DATE_NOT_MVSDS                                       60710000
+         LR    R6,R3                                                    60720000
+         LA    R3,1(,R3)                                                60730000
+         BCT   R4,*+8                                                   60740000
+         B     GET_DATE_NOT_MVSDS                                       60750000
+         TRT   0(1,R3),TRT_ALPHANAT                                     60760000
+         BNZ   GET_DATE_NOT_MVSDS                                       60770000
+         LR    R6,R3                                                    60780000
+         LA    R3,1(,R3)                                                60790000
+         BCT   R4,*+8                                                   60800000
+         B     GET_DATE_NOT_MVSDS                                       60810000
+         LR    R5,R4                                                    60820000
+         C     R5,=F'7'                                                 60830000
+         IF (H) THEN                                                    60840000
+            L     R5,=F'7'                                              60850000
+         ENDIF                                                          60860000
+         BCTR  R5,R0                                                    60870000
+         B     *+10                                                     60880000
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH                              60890000
+         EX    R5,*-6                                                   60900000
+         IF (Z) THEN                                                    60910000
+            LA    R5,1(,R5)                                             60920000
+         ELSE                                                           60930000
+            LR    R5,R1                                                 60940000
+            SR    R5,R3                                                 60950000
+         ENDIF                                                          60960000
+         AR    R3,R5                                                    60970000
+         SR    R4,R5                                                    60980000
+         BZ    GET_DATE_NOT_MVSDS                                       60990000
+         CLI   0(R3),C')'                                               61000000
+         BNE   GET_DATE_NOT_MVSDS                                       61010000
+         LR    R7,R3                                                    61020000
+         SR    R7,R6                                                    61030000
+         LA    R3,1(,R3)                                                61040000
+         BCT   R4,GET_DATE_NOT_MVSDS                                    61050000
+*                                                                       61060000
+GET_DATE_MVSDS EQU *                                                    61070000
+         ST    R6,G_MVSDS_MEMBER_PTR                                    61080000
+         ST    R7,G_MVSDS_MEMBER_LEN                                    61090000
+*                                                                       61100000
+         MLWZMRPT RPTLINE=CL133' ..................... Name is MVS dataX61110000
+                set name'                                               61120000
 *                                                                       61130000
-         CLC   G_RETCODE,=A(0)                                          61140000
-         BNE   GET_DATE_RET                                             61150000
-*                                                                       61160000
-         CLI   G_DSFOUND,C'Y'                                           61170000
-         BNE   GET_DATE_RET                                             61180000
-*                                                                       61190000
-         CLC   G_MVSDS_MEMBER_PTR,=A(0)                                 61200000
-         BE    GET_DATE_RET                                             61210000
-*                                                                       61220000
-         BAL   R8,GET_DATE_OBTAIN                                       61230000
+         BAL   R8,GET_DATE_IGGCSI00                                     61140000
+*                                                                       61150000
+         CLC   G_RETCODE,=A(0)                                          61160000
+         BNE   GET_DATE_RET                                             61170000
+*                                                                       61180000
+         CLI   G_DSFOUND,C'Y'                                           61190000
+         BNE   GET_DATE_RET                                             61200000
+*                                                                       61210000
+         CLC   G_MVSDS_MEMBER_PTR,=A(0)                                 61220000
+         BE    GET_DATE_RET                                             61230000
 *                                                                       61240000
-         CLC   G_RETCODE,=A(0)                                          61250000
-         BNE   GET_DATE_RET                                             61260000
-*                                                                       61270000
-         IF (TM,OBTAIN_GD+(DS1RECFM-OBTAIN_DSECT),DS1RECFU,O) THEN      61280000
-            BAL   R8,GET_DATE_LOADMOD                                   61290000
-         ELSE                                                           61300000
-            BAL   R8,GET_DATE_STATS                                     61310000
-         ENDIF                                                          61320000
-*                                                                       61330000
-         B     GET_DATE_RET                                             61340000
+         BAL   R8,GET_DATE_OBTAIN                                       61250000
+*                                                                       61260000
+         CLC   G_RETCODE,=A(0)                                          61270000
+         BNE   GET_DATE_RET                                             61280000
+*                                                                       61290000
+         IF (TM,OBTAIN_GD+(DS1RECFM-OBTAIN_DSECT),DS1RECFU,O) THEN      61300000
+            BAL   R8,GET_DATE_LOADMOD                                   61310000
+         ELSE                                                           61320000
+            BAL   R8,GET_DATE_STATS                                     61330000
+         ENDIF                                                          61340000
 *                                                                       61350000
-GET_DATE_NOT_MVSDS EQU *                                                61360000
-         MLWZMRPT RPTLINE=CL133' ..................... Name is not MVS X61370000
-               data set name'                                           61380000
-         MVC   G_SAVE_ALTER_DATE,=16X'FF'                               61390000
-*                                                                       61400000
-GET_DATE_RET EQU *                                                      61410000
-         L     R3,4(,R13)        * Restore address of callers SA        61420000
-         FREEMAIN RU,LV=GET_DATE_DSECT_SIZ,A=(R13)                      61430000
-         LR    R13,R3                                                   61440000
-         LM    R14,R12,12(R13)                                          61450000
-         BR    R14                    Return to caller                  61460000
-*                                                                       61470000
-* Perform catalog search with IGGCSI00                                  61480000
+         B     GET_DATE_RET                                             61360000
+*                                                                       61370000
+GET_DATE_NOT_MVSDS EQU *                                                61380000
+         MLWZMRPT RPTLINE=CL133' ..................... Name is not MVS X61390000
+               data set name'                                           61400000
+         MVC   G_SAVE_ALTER_DATE,=16X'FF'                               61410000
+*                                                                       61420000
+GET_DATE_RET EQU *                                                      61430000
+         L     R3,4(,R13)        * Restore address of callers SA        61440000
+         FREEMAIN RU,LV=GET_DATE_DSECT_SIZ,A=(R13)                      61450000
+         LR    R13,R3                                                   61460000
+         LM    R14,R12,12(R13)                                          61470000
+         BR    R14                    Return to caller                  61480000
 *                                                                       61490000
-GET_DATE_IGGCSI00 EQU *                                                 61500000
-         MVI   G_DSFOUND,C'N'                                           61510000
-*                                                                       61520000
-         LA    R1,DAREA_GD                                              61530000
-         ST    R1,DAREAPTR_GD                                           61540000
-         L     R2,=A(DAREA_GD_SIZ)                                      61550000
-         ST    R2,0(,R1)                                                61560000
-*                                                                       61570000
-         LA    R2,CSIFIELD_GD                                           61580000
-         L     R3,=A(CSIFIELD_GD_LEN)                                   61590000
-         LA    R4,CONST_CSIFIELD_GD                                     61600000
-         L     R5,=A(CONST_CSIFIELD_GD_LEN)                             61610000
-         MVCL  R2,R4                                                    61620000
-*                                                                       61630000
-         LA    R2,CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)                 61640000
-         L     R3,G_SCAN_TOKENA                                         61650000
-         L     R4,G_SCAN_TOKEN_LEN                                      61660000
-         LT    R5,G_MVSDS_MEMBER_PTR                                    61670000
-         IF (NZ) THEN                                                   61680000
-            SR    R5,R3                                                 61690000
-            BCTR  R5,R0                                                 61700000
-            LR    R4,R5                                                 61710000
-         ENDIF                                                          61720000
-         C     R4,=A(L'CSIFILTK)                                        61730000
-         IF (H)                                                         61740000
-            L     R4,=A(L'CSIFILTK)                                     61750000
-         ENDIF                                                          61760000
-         BCTR  R4,R0                                                    61770000
-         B     *+10                                                     61780000
-         MVC   0(1,R2),0(R3)                                            61790000
-         EX    R4,*-6                                                   61800000
-*                                                                       61810000
-         LA    R1,PARMLIST_GD                                           61820000
-         LA    R2,MODRSNRT_GD                                           61830000
-         ST    R2,0(R1)                                                 61840000
-         LA    R2,CSIFIELD_GD                                           61850000
-         ST    R2,4(R1)                                                 61860000
-         L     R2,DAREAPTR_GD                                           61870000
-         O     R2,=X'80000000'                                          61880000
-         ST    R2,8(R1)                                                 61890000
-*                                                                       61900000
-         L     R15,G_IGGCSI00A                                          61910000
-         BASR  R14,R15                                                  61920000
-*                                                                       61930000
-         C     R15,=F'4'                                                61940000
-         IF (H) THEN                                                    61950000
-            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX61960000
-               rror code'                                               61970000
-            MVC   G_RETCODE,=F'12'                                      61980000
-            BR    R8                                                    61990000
-         ENDIF                                                          62000000
-*                                                                       62010000
-         LA    R1,DAREA_GD                                              62020000
-         CLC   8(4,R1),=F'64'                                           62030000
-         IF (H) THEN                                                    62040000
-            MVI   G_DSFOUND,C'Y'                                        62050000
-            MVC   G_LWZMRPT_LINE,=CL133' ..................... Found inX62060000
-                catalog'                                                62070000
-         ELSE                                                           62080000
-            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            62090000
-            MVC   G_LWZMRPT_LINE,=CL133' ..................... Not founX62100000
-               d in catalog'                                            62110000
-         ENDIF                                                          62120000
-         L     R15,G_LWZMAKE_RPTA                                       62130000
-         BASR  R14,R15                                                  62140000
-*                                                                       62150000
-GET_DATE_IGGCSI00_RET EQU *                                             62160000
-         BR    R8                                                       62170000
-*                                                                       62180000
-* Perform CAMLST OBTAIN                                                 62190000
+* Perform catalog search with IGGCSI00                                  61500000
+*                                                                       61510000
+GET_DATE_IGGCSI00 EQU *                                                 61520000
+         MVI   G_DSFOUND,C'N'                                           61530000
+*                                                                       61540000
+         LA    R1,DAREA_GD                                              61550000
+         ST    R1,DAREAPTR_GD                                           61560000
+         L     R2,=A(DAREA_GD_SIZ)                                      61570000
+         ST    R2,0(,R1)                                                61580000
+*                                                                       61590000
+         LA    R2,CSIFIELD_GD                                           61600000
+         L     R3,=A(CSIFIELD_GD_LEN)                                   61610000
+         LA    R4,CONST_CSIFIELD_GD                                     61620000
+         L     R5,=A(CONST_CSIFIELD_GD_LEN)                             61630000
+         MVCL  R2,R4                                                    61640000
+*                                                                       61650000
+         LA    R2,CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)                 61660000
+         L     R3,G_SCAN_TOKENA                                         61670000
+         L     R4,G_SCAN_TOKEN_LEN                                      61680000
+         LT    R5,G_MVSDS_MEMBER_PTR                                    61690000
+         IF (NZ) THEN                                                   61700000
+            SR    R5,R3                                                 61710000
+            BCTR  R5,R0                                                 61720000
+            LR    R4,R5                                                 61730000
+         ENDIF                                                          61740000
+         C     R4,=A(L'CSIFILTK)                                        61750000
+         IF (H)                                                         61760000
+            L     R4,=A(L'CSIFILTK)                                     61770000
+         ENDIF                                                          61780000
+         BCTR  R4,R0                                                    61790000
+         B     *+10                                                     61800000
+         MVC   0(1,R2),0(R3)                                            61810000
+         EX    R4,*-6                                                   61820000
+*                                                                       61830000
+         LA    R1,PARMLIST_GD                                           61840000
+         LA    R2,MODRSNRT_GD                                           61850000
+         ST    R2,0(R1)                                                 61860000
+         LA    R2,CSIFIELD_GD                                           61870000
+         ST    R2,4(R1)                                                 61880000
+         L     R2,DAREAPTR_GD                                           61890000
+         O     R2,=X'80000000'                                          61900000
+         ST    R2,8(R1)                                                 61910000
+*                                                                       61920000
+         L     R15,G_IGGCSI00A                                          61930000
+         BASR  R14,R15                                                  61940000
+*                                                                       61950000
+         C     R15,=F'4'                                                61960000
+         IF (H) THEN                                                    61970000
+            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX61980000
+               rror code'                                               61990000
+            MVC   G_RETCODE,=F'12'                                      62000000
+            BR    R8                                                    62010000
+         ENDIF                                                          62020000
+*                                                                       62030000
+         LA    R1,DAREA_GD                                              62040000
+         CLC   8(4,R1),=F'64'                                           62050000
+         IF (H) THEN                                                    62060000
+            MVI   G_DSFOUND,C'Y'                                        62070000
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Found inX62080000
+                catalog'                                                62090000
+         ELSE                                                           62100000
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            62110000
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Not founX62120000
+               d in catalog'                                            62130000
+         ENDIF                                                          62140000
+         L     R15,G_LWZMAKE_RPTA                                       62150000
+         BASR  R14,R15                                                  62160000
+*                                                                       62170000
+GET_DATE_IGGCSI00_RET EQU *                                             62180000
+         BR    R8                                                       62190000
 *                                                                       62200000
-GET_DATE_OBTAIN EQU *                                                   62210000
-         XR    R1,R1                                                    62220000
-         ICM   R1,B'1000',=AL1(193)                                     62230000
-         ST    R1,DSCBPAR_GD                                            62240000
-         MVC   OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_GX62250000
-               D+(CSIFILTK-CSIFIELD_DSECT)                              62260000
-         LA    R1,OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)                     62270000
-         ST    R1,DSCBPAR_GD+4                                          62280000
-         LA    R1,DAREA_GD+110                                          62290000
-         CLC   0(2,R1),=H'12'   * Is volume name present                62300000
-         BL    GET_DATE_OBTAIN_RET                                      62310000
-         LA    R1,6(,R1)                                                62320000
-         ST    R1,DSCBPAR_GD+8                                          62330000
-         LA    R1,OBTAIN_GD+(DS1FMTID-OBTAIN_DSECT)                     62340000
-         ST    R1,DSCBPAR_GD+12                                         62350000
-*                                                                       62360000
-         OBTAIN DSCBPAR_GD                                              62370000
+* Perform CAMLST OBTAIN                                                 62210000
+*                                                                       62220000
+GET_DATE_OBTAIN EQU *                                                   62230000
+         XR    R1,R1                                                    62240000
+         ICM   R1,B'1000',=AL1(193)                                     62250000
+         ST    R1,DSCBPAR_GD                                            62260000
+         MVC   OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_GX62270000
+               D+(CSIFILTK-CSIFIELD_DSECT)                              62280000
+         LA    R1,OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)                     62290000
+         ST    R1,DSCBPAR_GD+4                                          62300000
+         LA    R1,DAREA_GD+110                                          62310000
+         CLC   0(2,R1),=H'12'   * Is volume name present                62320000
+         BL    GET_DATE_OBTAIN_RET                                      62330000
+         LA    R1,6(,R1)                                                62340000
+         ST    R1,DSCBPAR_GD+8                                          62350000
+         LA    R1,OBTAIN_GD+(DS1FMTID-OBTAIN_DSECT)                     62360000
+         ST    R1,DSCBPAR_GD+12                                         62370000
 *                                                                       62380000
-         LTR   R15,R15                                                  62390000
-         IF (NZ) THEN                                                   62400000
-            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'  62410000
-            MVC   G_RETCODE,=F'12'                                      62420000
-            BR    R8                                                    62430000
-         ENDIF                                                          62440000
-*                                                                       62450000
-         IF (TM,OBTAIN_GD+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN      62460000
-            MVC   G_LWZMRPT_LINE,=CL133'0Member specified on non-PDS daX62470000
-               taset'                                                   62480000
-            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFIELD_GD+(CSIFILTK-CX62490000
-               SIFIELD_DSECT)                                           62500000
-            L     R15,G_LWZMAKE_RPTA                                    62510000
-            BASR  R14,R15                                               62520000
-            MVC   G_RETCODE,=F'8'                                       62530000
-            BR    R8                                                    62540000
-         ENDIF                                                          62550000
-*                                                                       62560000
-GET_DATE_OBTAIN_RET EQU *                                               62570000
-         BR    R8                                                       62580000
-*                                                                       62590000
-* Get the date from a load module                                       62600000
+         OBTAIN DSCBPAR_GD                                              62390000
+*                                                                       62400000
+         LTR   R15,R15                                                  62410000
+         IF (NZ) THEN                                                   62420000
+            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'  62430000
+            MVC   G_RETCODE,=F'12'                                      62440000
+            BR    R8                                                    62450000
+         ENDIF                                                          62460000
+*                                                                       62470000
+         IF (TM,OBTAIN_GD+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN      62480000
+            MVC   G_LWZMRPT_LINE,=CL133'0Member specified on non-PDS daX62490000
+               taset'                                                   62500000
+            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFIELD_GD+(CSIFILTK-CX62510000
+               SIFIELD_DSECT)                                           62520000
+            L     R15,G_LWZMAKE_RPTA                                    62530000
+            BASR  R14,R15                                               62540000
+            MVC   G_RETCODE,=F'8'                                       62550000
+            BR    R8                                                    62560000
+         ENDIF                                                          62570000
+*                                                                       62580000
+GET_DATE_OBTAIN_RET EQU *                                               62590000
+         BR    R8                                                       62600000
 *                                                                       62610000
-GET_DATE_LOADMOD EQU *                                                  62620000
-         MLWZMRPT RPTLINE=CL133' ..................... Retrieving load X62630000
-               module creation date/time'                               62640000
-*                                                                       62650000
-         MVI   G_DSFOUND,C'N'                                           62660000
+* Get the date from a load module                                       62620000
+*                                                                       62630000
+GET_DATE_LOADMOD EQU *                                                  62640000
+         MLWZMRPT RPTLINE=CL133' ..................... Retrieving load X62650000
+               module creation date/time'                               62660000
 *                                                                       62670000
-         MVC   MEM8_GD,=CL8' '                                          62680000
-         LA    R2,MEM8_GD                                               62690000
-         L     R3,G_MVSDS_MEMBER_PTR                                    62700000
-         L     R4,G_MVSDS_MEMBER_LEN                                    62710000
-         BCTR  R4,R0                                                    62720000
-         B     *+10                                                     62730000
-         MVC   0(1,R2),0(R3)                                            62740000
-         EX    R4,*-6                                                   62750000
-*                                                                       62760000
-         LA    R6,DYNALLOC_AREA_GD                                      62770000
-         USING S99RBP,R6                                                62780000
-         LA    R4,S99RBPTR+4                                            62790000
-         USING S99RB,R4                                                 62800000
-         ST    R4,S99RBPTR                                              62810000
-         OI    S99RBPTR,S99RBPND                                        62820000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              62830000
-         MVI   S99RBLN,S99RBEND-S99RB                                   62840000
-         MVI   S99VERB,S99VRBAL                                         62850000
-         OI    S99FLG11,S99MSGL0                                        62860000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             62870000
-         MVC   0(CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_GD_L,R5),CDSNTU_GD  62880000
-         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           62890000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                62900000
-         ST    R3,S99TXTPP                                              62910000
-         ST    R5,0(,R3)                                                62920000
-         LA    R5,CDSNTU_GD_L(,R5)                                      62930000
-         ST    R5,4(,R3)                                                62940000
-         LA    R5,CSTATUSTU_GD_L(,R5)                                   62950000
-         O     R5,=X'80000000'                                          62960000
-         ST    R5,8(,R3)                                                62970000
-         LA    R1,DYNALLOC_AREA_GD                                      62980000
-         DYNALLOC                                                       62990000
-*                                                                       63000000
-         DROP  R6                                                       63010000
-         DROP  R4                                                       63020000
-*                                                                       63030000
-         LTR   R15,R15                                                  63040000
-         IF (NZ) THEN                                                   63050000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         63060000
-            MVC   G_RETCODE,=F'8'                                       63070000
-            BR    R8                                                    63080000
-         ENDIF                                                          63090000
-*                                                                       63100000
-         L     R1,G_DCB_MEM_PTR                                         63110000
-         LA    R2,DCBPDS_BDR-DCB_DSECT(,R1)                             63120000
-         MVC   0(LEN_DCBPDS_BDR,R2),CDCBPDS_BDR                         63130000
-         L     R6,DYNALLOC_AREA_GD                                      63140000
-         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_GD_L+CSTATUSTU_GD_L(,R6)   63150000
-         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              63160000
-*                                                                       63170000
-         OPEN  ((R2)),MODE=31,MF=(E,G_OPEND)                            63180000
+         MVI   G_DSFOUND,C'N'                                           62680000
+*                                                                       62690000
+         MVC   MEM8_GD,=CL8' '                                          62700000
+         LA    R2,MEM8_GD                                               62710000
+         L     R3,G_MVSDS_MEMBER_PTR                                    62720000
+         L     R4,G_MVSDS_MEMBER_LEN                                    62730000
+         BCTR  R4,R0                                                    62740000
+         B     *+10                                                     62750000
+         MVC   0(1,R2),0(R3)                                            62760000
+         EX    R4,*-6                                                   62770000
+*                                                                       62780000
+         LA    R6,DYNALLOC_AREA_GD                                      62790000
+         USING S99RBP,R6                                                62800000
+         LA    R4,S99RBPTR+4                                            62810000
+         USING S99RB,R4                                                 62820000
+         ST    R4,S99RBPTR                                              62830000
+         OI    S99RBPTR,S99RBPND                                        62840000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              62850000
+         MVI   S99RBLN,S99RBEND-S99RB                                   62860000
+         MVI   S99VERB,S99VRBAL                                         62870000
+         OI    S99FLG11,S99MSGL0                                        62880000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             62890000
+         MVC   0(CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_GD_L,R5),CDSNTU_GD  62900000
+         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           62910000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                62920000
+         ST    R3,S99TXTPP                                              62930000
+         ST    R5,0(,R3)                                                62940000
+         LA    R5,CDSNTU_GD_L(,R5)                                      62950000
+         ST    R5,4(,R3)                                                62960000
+         LA    R5,CSTATUSTU_GD_L(,R5)                                   62970000
+         O     R5,=X'80000000'                                          62980000
+         ST    R5,8(,R3)                                                62990000
+         LA    R1,DYNALLOC_AREA_GD                                      63000000
+         DYNALLOC                                                       63010000
+*                                                                       63020000
+         DROP  R6                                                       63030000
+         DROP  R4                                                       63040000
+*                                                                       63050000
+         LTR   R15,R15                                                  63060000
+         IF (NZ) THEN                                                   63070000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         63080000
+            MVC   G_RETCODE,=F'8'                                       63090000
+            BR    R8                                                    63100000
+         ENDIF                                                          63110000
+*                                                                       63120000
+         L     R1,G_DCB_MEM_PTR                                         63130000
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R1)                             63140000
+         MVC   0(LEN_DCBPDS_BDR,R2),CDCBPDS_BDR                         63150000
+         L     R6,DYNALLOC_AREA_GD                                      63160000
+         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_GD_L+CSTATUSTU_GD_L(,R6)   63170000
+         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              63180000
 *                                                                       63190000
-         LTR   R15,R15                                                  63200000
-         IF (NZ) THEN                                                   63210000
-            MLWZMRPT RPTLINE=CL133'0OPEN failed for accessing PDS with X63220000
-               load modules'                                            63230000
-            MVC   G_RETCODE,=F'8'                                       63240000
-            B     GET_DATE_LOADMOD_DEALLOC                              63250000
-         ENDIF                                                          63260000
-*                                                                       63270000
-         MVC   IEWBFDAT_SB_SB(2),=C'SB'                                 63280000
-         MVC   IEWBFDAT_SB_SB+2(2),=X'0001'                             63290000
-         XC    IEWBFDAT_SB_MTOKEN,IEWBFDAT_SB_MTOKEN                    63300000
-         MVC   IEWBFDAT_SB_PGMNAME,MEM8_GD                              63310000
-*                                                                       63320000
-         LA    R1,IEWBFDAT_SB_SB                                        63330000
-         ST    R1,IEWBFDAT_SB_PAR4A                                     63340000
-         LA    R1,IEWBFDAT_SB_MTOKEN                                    63350000
-         ST    R1,IEWBFDAT_SB_PAR4A+4                                   63360000
-         L     R14,G_DCB_MEM_PTR                                        63370000
-         LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)                            63380000
-         ST    R1,IEWBFDAT_SB_PAR4A+8                                   63390000
-         LA    R1,IEWBFDAT_SB_PGMNAME                                   63400000
-         O     R1,=X'80000000'                                          63410000
-         ST    R1,IEWBFDAT_SB_PAR4A+12                                  63420000
-         LA    R1,IEWBFDAT_SB_PAR4A                                     63430000
-*                                                                       63440000
-         L     R15,G_IEWBFDATA                                          63450000
-         BASR  R14,R15                                                  63460000
-*                                                                       63470000
-         C     R15,=A(0)                                                63480000
-         BE    GET_DATE_LOADMOD_NOERR1                                  63490000
-         C     R15,=A(4)                                                63500000
+         OPEN  ((R2)),MODE=31,MF=(E,G_OPEND)                            63200000
+*                                                                       63210000
+         LTR   R15,R15                                                  63220000
+         IF (NZ) THEN                                                   63230000
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for accessing PDS with X63240000
+               load modules'                                            63250000
+            MVC   G_RETCODE,=F'8'                                       63260000
+            B     GET_DATE_LOADMOD_DEALLOC                              63270000
+         ENDIF                                                          63280000
+*                                                                       63290000
+         MVC   IEWBFDAT_SB_SB(2),=C'SB'                                 63300000
+         MVC   IEWBFDAT_SB_SB+2(2),=X'0001'                             63310000
+         XC    IEWBFDAT_SB_MTOKEN,IEWBFDAT_SB_MTOKEN                    63320000
+         MVC   IEWBFDAT_SB_PGMNAME,MEM8_GD                              63330000
+*                                                                       63340000
+         LA    R1,IEWBFDAT_SB_SB                                        63350000
+         ST    R1,IEWBFDAT_SB_PAR4A                                     63360000
+         LA    R1,IEWBFDAT_SB_MTOKEN                                    63370000
+         ST    R1,IEWBFDAT_SB_PAR4A+4                                   63380000
+         L     R14,G_DCB_MEM_PTR                                        63390000
+         LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)                            63400000
+         ST    R1,IEWBFDAT_SB_PAR4A+8                                   63410000
+         LA    R1,IEWBFDAT_SB_PGMNAME                                   63420000
+         O     R1,=X'80000000'                                          63430000
+         ST    R1,IEWBFDAT_SB_PAR4A+12                                  63440000
+         LA    R1,IEWBFDAT_SB_PAR4A                                     63450000
+*                                                                       63460000
+         L     R15,G_IEWBFDATA                                          63470000
+         BASR  R14,R15                                                  63480000
+*                                                                       63490000
+         C     R15,=A(0)                                                63500000
          BE    GET_DATE_LOADMOD_NOERR1                                  63510000
-         C     R15,=A(12)                                               63520000
-         IF (EQ) THEN                                                   63530000
-            C     R0,=X'10800032'                                       63540000
-            BE    GET_DATE_LOADMOD_NOTFOUND                             63550000
-         ENDIF                                                          63560000
-         CVD   R15,G_DEC8         * convert return value to packed      63570000
-         UNPK  G_ZONED8,G_DEC8    * convert return value to zoned       63580000
-         OI    G_ZONED8+7,X'F0'   * get rid of sign                     63590000
-         MVC   G_HELPER_DATA(8),G_ZONED8                                63600000
-         MVI   G_HELPER_DATA+8,C' '                                     63610000
-         ST    R0,G_DEC8          * Put ptr in area of at least 5 bytes 63620000
-         UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex           63630000
-         TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex                  63640000
-         MVC   G_HELPER_DATA+9(8),G_ZONED8                              63650000
-         LA    R14,G_HELPER_DATA                                        63660000
-         ST    R14,G_LWZMTRC_DATA_PTR                                   63670000
-         MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                              63680000
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA           63690000
-         MLWZMRPT RPTLINE=CL133'0Error starting binder fast data accessX63700000
-                session'                                                63710000
-         MVC   G_RETCODE,=F'12'                                         63720000
-         BR    R8                                                       63730000
-*                                                                       63740000
-GET_DATE_LOADMOD_NOERR1 EQU *                                           63750000
-         MVI   G_DSFOUND,C'Y'                                           63760000
-*                                                                       63770000
-IEWBIDB_BASE EQU R6                      Base register for IDRB buffer. 63780000
-IDB_BASE     EQU R7                      Base register for IDRB entry.  63790000
-         IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.    63800000
-         IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.              63810000
-*                                                                       63820000
-         MVC   IEWBFDAT_GD_GD(2),=C'GD'                                 63830000
-         MVC   IEWBFDAT_GD_GD+2(2),=X'0001'                             63840000
-         MVC   IEWBFDAT_GD_MTOKEN,IEWBFDAT_SB_MTOKEN                    63850000
-         MVC   IEWBFDAT_GD_B_IDRB(2),=H'6'                              63860000
-         MVC   IEWBFDAT_GD_B_IDRB+2(6),=C'B_IDRB'                       63870000
-         XC    IEWBFDAT_GD_CURSOR,IEWBFDAT_GD_CURSOR                    63880000
-*                                                                       63890000
-         LA    R1,IEWBFDAT_GD_GD                                        63900000
-         ST    R1,IEWBFDAT_GD_PAR8A                                     63910000
-         LA    R1,IEWBFDAT_GD_MTOKEN                                    63920000
-         ST    R1,IEWBFDAT_GD_PAR8A+4                                   63930000
-         LA    R1,IEWBFDAT_GD_B_IDRB                                    63940000
-         ST    R1,IEWBFDAT_GD_PAR8A+8                                   63950000
-         XR    R1,R1                                                    63960000
-         ST    R1,IEWBFDAT_GD_PAR8A+12                                  63970000
-         ST    IEWBIDB_BASE,IEWBFDAT_GD_PAR8A+16                        63980000
-         LA    R1,IEWBFDAT_GD_CURSOR                                    63990000
-         ST    R1,IEWBFDAT_GD_PAR8A+20                                  64000000
-         LA    R1,IEWBFDAT_GD_COUNT                                     64010000
-         ST    R1,IEWBFDAT_GD_PAR8A+24                                  64020000
-         L     R1,=X'80000000'                                          64030000
-         ST    R1,IEWBFDAT_GD_PAR8A+28                                  64040000
-         LA    R1,IEWBFDAT_GD_PAR8A                                     64050000
-*                                                                       64060000
-         L     R15,G_IEWBFDATA                                          64070000
-         BASR  R14,R15                                                  64080000
-*                                                                       64090000
-         C     R15,=A(0)                                                64100000
-         IF (NE) THEN                                                   64110000
-            C     R15,=A(4)                                             64120000
-         ENDIF                                                          64130000
-         IF (NE) THEN                                                   64140000
-            CVD   R15,G_DEC8      * convert return value to packed      64150000
-            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned       64160000
-            OI    G_ZONED8+7,X'F0' * get rid of sign                    64170000
-            MVC   G_HELPER_DATA(8),G_ZONED8                             64180000
-            MVI   G_HELPER_DATA+8,C' '                                  64190000
-            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes 64200000
-            UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex        64210000
-            TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex               64220000
-            MVC   G_HELPER_DATA+9(8),G_ZONED8                           64230000
-            LA    R14,G_HELPER_DATA                                     64240000
-            ST    R14,G_LWZMTRC_DATA_PTR                                64250000
-            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                           64260000
-            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA        64270000
-            MLWZMRPT RPTLINE=CL133'0Error during binder fast data accesX64280000
-               s get data function'                                     64290000
-            MVC   G_RETCODE,=F'12'                                      64300000
-            BR    R8                                                    64310000
-         ENDIF                                                          64320000
-*                                                                       64330000
-         MVC   IEWBFDAT_EN_EN(2),=C'EN'                                 64340000
-         MVC   IEWBFDAT_EN_EN+2(2),=X'0001'                             64350000
-         MVC   IEWBFDAT_EN_MTOKEN,IEWBFDAT_SB_MTOKEN                    64360000
-*                                                                       64370000
-         LA    R1,IEWBFDAT_EN_EN                                        64380000
-         ST    R1,IEWBFDAT_EN_PAR2A                                     64390000
-         LA    R1,IEWBFDAT_EN_MTOKEN                                    64400000
-         ST    R1,IEWBFDAT_EN_PAR2A+4                                   64410000
-         LA    R1,IEWBFDAT_EN_PAR2A                                     64420000
-*                                                                       64430000
-         L     R15,G_IEWBFDATA                                          64440000
-         BASR  R14,R15                                                  64450000
-*                                                                       64460000
-         LTR   R15,R15                                                  64470000
-         IF (NZ) THEN                                                   64480000
-            CVD   R15,G_DEC8      * convert return value to packed      64490000
-            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned       64500000
-            OI    G_ZONED8+7,X'F0' * get rid of sign                    64510000
-            MVC   G_HELPER_DATA(8),G_ZONED8                             64520000
-            MVI   G_HELPER_DATA+8,C' '                                  64530000
-            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes 64540000
-            UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex     64550000
-            TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex            64560000
-            MVC   G_HELPER_DATA+9(8),G_ZONED8                           64570000
-            LA    R14,G_HELPER_DATA                                     64580000
-            ST    R14,G_LWZMTRC_DATA_PTR                                64590000
-            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                           64600000
-            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA        64610000
-            MLWZMRPT RPTLINE=CL133'0Error ending binder fast data accesX64620000
-               s session'                                               64630000
-            MVC   G_RETCODE,=F'12'                                      64640000
-            BR    R8                                                    64650000
-         ENDIF                                                          64660000
-*                                                                       64670000
-         MVI   CONVTOD_INAREA,X'00'                                     64680000
-         MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA                      64690000
-         PACK  CONVTOD_INAREA(4),IDB_TIME_BOUND(L'IDB_TIME_BOUND+1)     64700000
-         MVI   CONVTOD_INAREA+4,X'00'                                   64710000
-         PACK  CONVTOD_INAREA+8(5),IDB_DATE_BOUND(L'IDB_DATE_BOUND+1)   64720000
-         MVI   CONVTOD_OUTAREA,X'00'                                    64730000
-         MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA                     64740000
-         MVI   STCKCONV_OUTAREA,X'00'                                   64750000
-         MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA                  64760000
-         CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIMETYPEX64770000
-               =DEC,DATETYPE=YYYYDDD,MF=(E,CONVTOD_PLIST)               64780000
-         STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREA,TIMEX64790000
-               TYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)         64800000
-         MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8                     64810000
-         MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA                     64820000
-         MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)                         64830000
-         MVN   DATEWORK_DEC_2+7(1),=X'0F'                               64840000
-         UNPK  DATEWORK_ZON,DATEWORK_DEC_2                              64850000
-         MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                           64860000
-*                                                                       64870000
-         IEWBUFF FUNC=FREEBUF,TYPE=IDRB  Free IDRB buffer.              64880000
+         C     R15,=A(4)                                                63520000
+         BE    GET_DATE_LOADMOD_NOERR1                                  63530000
+         C     R15,=A(12)                                               63540000
+         IF (EQ) THEN                                                   63550000
+            C     R0,=X'10800032'                                       63560000
+            BE    GET_DATE_LOADMOD_NOTFOUND                             63570000
+         ENDIF                                                          63580000
+         CVD   R15,G_DEC8         * convert return value to packed      63590000
+         UNPK  G_ZONED8,G_DEC8    * convert return value to zoned       63600000
+         OI    G_ZONED8+7,X'F0'   * get rid of sign                     63610000
+         MVC   G_HELPER_DATA(8),G_ZONED8                                63620000
+         MVI   G_HELPER_DATA+8,C' '                                     63630000
+         ST    R0,G_DEC8          * Put ptr in area of at least 5 bytes 63640000
+         UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex           63650000
+         TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex                  63660000
+         MVC   G_HELPER_DATA+9(8),G_ZONED8                              63670000
+         LA    R14,G_HELPER_DATA                                        63680000
+         ST    R14,G_LWZMTRC_DATA_PTR                                   63690000
+         MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                              63700000
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA           63710000
+         MLWZMRPT RPTLINE=CL133'0Error starting binder fast data accessX63720000
+                session'                                                63730000
+         MVC   G_RETCODE,=F'12'                                         63740000
+         BR    R8                                                       63750000
+*                                                                       63760000
+GET_DATE_LOADMOD_NOERR1 EQU *                                           63770000
+         MVI   G_DSFOUND,C'Y'                                           63780000
+*                                                                       63790000
+IEWBIDB_BASE EQU R6                      Base register for IDRB buffer. 63800000
+IDB_BASE     EQU R7                      Base register for IDRB entry.  63810000
+         IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.    63820000
+         IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.              63830000
+*                                                                       63840000
+         MVC   IEWBFDAT_GD_GD(2),=C'GD'                                 63850000
+         MVC   IEWBFDAT_GD_GD+2(2),=X'0001'                             63860000
+         MVC   IEWBFDAT_GD_MTOKEN,IEWBFDAT_SB_MTOKEN                    63870000
+         MVC   IEWBFDAT_GD_B_IDRB(2),=H'6'                              63880000
+         MVC   IEWBFDAT_GD_B_IDRB+2(6),=C'B_IDRB'                       63890000
+         XC    IEWBFDAT_GD_CURSOR,IEWBFDAT_GD_CURSOR                    63900000
+*                                                                       63910000
+         LA    R1,IEWBFDAT_GD_GD                                        63920000
+         ST    R1,IEWBFDAT_GD_PAR8A                                     63930000
+         LA    R1,IEWBFDAT_GD_MTOKEN                                    63940000
+         ST    R1,IEWBFDAT_GD_PAR8A+4                                   63950000
+         LA    R1,IEWBFDAT_GD_B_IDRB                                    63960000
+         ST    R1,IEWBFDAT_GD_PAR8A+8                                   63970000
+         XR    R1,R1                                                    63980000
+         ST    R1,IEWBFDAT_GD_PAR8A+12                                  63990000
+         ST    IEWBIDB_BASE,IEWBFDAT_GD_PAR8A+16                        64000000
+         LA    R1,IEWBFDAT_GD_CURSOR                                    64010000
+         ST    R1,IEWBFDAT_GD_PAR8A+20                                  64020000
+         LA    R1,IEWBFDAT_GD_COUNT                                     64030000
+         ST    R1,IEWBFDAT_GD_PAR8A+24                                  64040000
+         L     R1,=X'80000000'                                          64050000
+         ST    R1,IEWBFDAT_GD_PAR8A+28                                  64060000
+         LA    R1,IEWBFDAT_GD_PAR8A                                     64070000
+*                                                                       64080000
+         L     R15,G_IEWBFDATA                                          64090000
+         BASR  R14,R15                                                  64100000
+*                                                                       64110000
+         C     R15,=A(0)                                                64120000
+         IF (NE) THEN                                                   64130000
+            C     R15,=A(4)                                             64140000
+         ENDIF                                                          64150000
+         IF (NE) THEN                                                   64160000
+            CVD   R15,G_DEC8      * convert return value to packed      64170000
+            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned       64180000
+            OI    G_ZONED8+7,X'F0' * get rid of sign                    64190000
+            MVC   G_HELPER_DATA(8),G_ZONED8                             64200000
+            MVI   G_HELPER_DATA+8,C' '                                  64210000
+            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes 64220000
+            UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex        64230000
+            TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex               64240000
+            MVC   G_HELPER_DATA+9(8),G_ZONED8                           64250000
+            LA    R14,G_HELPER_DATA                                     64260000
+            ST    R14,G_LWZMTRC_DATA_PTR                                64270000
+            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                           64280000
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA        64290000
+            MLWZMRPT RPTLINE=CL133'0Error during binder fast data accesX64300000
+               s get data function'                                     64310000
+            MVC   G_RETCODE,=F'12'                                      64320000
+            BR    R8                                                    64330000
+         ENDIF                                                          64340000
+*                                                                       64350000
+         MVC   IEWBFDAT_EN_EN(2),=C'EN'                                 64360000
+         MVC   IEWBFDAT_EN_EN+2(2),=X'0001'                             64370000
+         MVC   IEWBFDAT_EN_MTOKEN,IEWBFDAT_SB_MTOKEN                    64380000
+*                                                                       64390000
+         LA    R1,IEWBFDAT_EN_EN                                        64400000
+         ST    R1,IEWBFDAT_EN_PAR2A                                     64410000
+         LA    R1,IEWBFDAT_EN_MTOKEN                                    64420000
+         ST    R1,IEWBFDAT_EN_PAR2A+4                                   64430000
+         LA    R1,IEWBFDAT_EN_PAR2A                                     64440000
+*                                                                       64450000
+         L     R15,G_IEWBFDATA                                          64460000
+         BASR  R14,R15                                                  64470000
+*                                                                       64480000
+         LTR   R15,R15                                                  64490000
+         IF (NZ) THEN                                                   64500000
+            CVD   R15,G_DEC8      * convert return value to packed      64510000
+            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned       64520000
+            OI    G_ZONED8+7,X'F0' * get rid of sign                    64530000
+            MVC   G_HELPER_DATA(8),G_ZONED8                             64540000
+            MVI   G_HELPER_DATA+8,C' '                                  64550000
+            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes 64560000
+            UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex     64570000
+            TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex            64580000
+            MVC   G_HELPER_DATA+9(8),G_ZONED8                           64590000
+            LA    R14,G_HELPER_DATA                                     64600000
+            ST    R14,G_LWZMTRC_DATA_PTR                                64610000
+            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)                           64620000
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA        64630000
+            MLWZMRPT RPTLINE=CL133'0Error ending binder fast data accesX64640000
+               s session'                                               64650000
+            MVC   G_RETCODE,=F'12'                                      64660000
+            BR    R8                                                    64670000
+         ENDIF                                                          64680000
+*                                                                       64690000
+         MVI   CONVTOD_INAREA,X'00'                                     64700000
+         MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA                      64710000
+         PACK  CONVTOD_INAREA(4),IDB_TIME_BOUND(L'IDB_TIME_BOUND+1)     64720000
+         MVI   CONVTOD_INAREA+4,X'00'                                   64730000
+         PACK  CONVTOD_INAREA+8(5),IDB_DATE_BOUND(L'IDB_DATE_BOUND+1)   64740000
+         MVI   CONVTOD_OUTAREA,X'00'                                    64750000
+         MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA                     64760000
+         MVI   STCKCONV_OUTAREA,X'00'                                   64770000
+         MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA                  64780000
+         CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIMETYPEX64790000
+               =DEC,DATETYPE=YYYYDDD,MF=(E,CONVTOD_PLIST)               64800000
+         STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREA,TIMEX64810000
+               TYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)         64820000
+         MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8                     64830000
+         MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA                     64840000
+         MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)                         64850000
+         MVN   DATEWORK_DEC_2+7(1),=X'0F'                               64860000
+         UNPK  DATEWORK_ZON,DATEWORK_DEC_2                              64870000
+         MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                           64880000
 *                                                                       64890000
-GET_DATE_LOADMOD_NOTFOUND EQU *                                         64900000
+         IEWBUFF FUNC=FREEBUF,TYPE=IDRB  Free IDRB buffer.              64900000
 *                                                                       64910000
-         IF (CLI,G_DSFOUND,EQ,C'Y') THEN                                64920000
-            MVC   G_LWZMRPT_LINE,=CL133' ..................... Load modX64930000
-               ule found in PDS, last altered on'                       64940000
-            MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                        64950000
-            MVC   G_LWZMRPT_LINE+65(19),=C'0000-00-00 00:00:00'         64960000
-            MVC   G_LWZMRPT_LINE+65(4),G_SAVE_ALTER_DATE+2              64970000
-            MVC   G_LWZMRPT_LINE+70(2),G_SAVE_ALTER_DATE+6              64980000
-            MVC   G_LWZMRPT_LINE+73(2),G_SAVE_ALTER_DATE+8              64990000
-            MVC   G_LWZMRPT_LINE+76(2),G_SAVE_ALTER_DATE+10             65000000
-            MVC   G_LWZMRPT_LINE+79(2),G_SAVE_ALTER_DATE+12             65010000
-            MVC   G_LWZMRPT_LINE+82(2),G_SAVE_ALTER_DATE+14             65020000
-            L     R15,G_LWZMAKE_RPTA                                    65030000
-            BASR  R14,R15                                               65040000
-         ELSE                                                           65050000
-            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            65060000
-            MLWZMRPT RPTLINE=CL133' ..................... Load module nX65070000
-               ot found in PDS'                                         65080000
-         ENDIF                                                          65090000
-*                                                                       65100000
-         DROP  R6                                                       65110000
-         DROP  R7                                                       65120000
-*                                                                       65130000
-GET_DATE_LOADMOD_CLOSE EQU *                                            65140000
-         L     R14,G_DCB_MEM_PTR                                        65150000
-         LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)                            65160000
-         CLOSE ((R2)),MODE=31                                           65170000
-*                                                                       65180000
-GET_DATE_LOADMOD_DEALLOC EQU *                                          65190000
-         LA    R6,DYNALLOC_AREA_GD                                      65200000
-         USING S99RBP,R6                                                65210000
-         LA    R4,S99RBPTR+4                                            65220000
-         USING S99RB,R4                                                 65230000
-         ST    R4,S99RBPTR                                              65240000
-         OI    S99RBPTR,S99RBPND                                        65250000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              65260000
-         MVI   S99RBLN,S99RBEND-S99RB                                   65270000
-         MVI   S99VERB,S99VRBUN                                         65280000
-         OI    S99FLG11,S99MSGL0                                        65290000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             65300000
-         MVC   0(CDSNTU_GD_L,R5),CDSNTU_GD                              65310000
-         LA    R2,CSIFIELD_GD                                           65320000
-         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           65330000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                65340000
-         ST    R3,S99TXTPP                                              65350000
-         O     R5,=X'80000000'                                          65360000
-         ST    R5,0(,R3)                                                65370000
-         LA    R1,DYNALLOC_AREA_GD                                      65380000
-         DYNALLOC                                                       65390000
-*                                                                       65400000
-         LTR   R15,R15                                                  65410000
-         IF (NZ) THEN                                                   65420000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       65430000
-            MVC   G_RETCODE,=F'8'                                       65440000
-            BR    R8                                                    65450000
-         ENDIF                                                          65460000
-*                                                                       65470000
-GET_DATE_LOADMOD_RET EQU *                                              65480000
-         BR    R8                                                       65490000
-*                                                                       65500000
-* Get the date from member stats                                        65510000
+GET_DATE_LOADMOD_NOTFOUND EQU *                                         64920000
+*                                                                       64930000
+         IF (CLI,G_DSFOUND,EQ,C'Y') THEN                                64940000
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Load modX64950000
+               ule found in PDS, last altered on'                       64960000
+            MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                        64970000
+            MVC   G_LWZMRPT_LINE+65(19),=C'0000-00-00 00:00:00'         64980000
+            MVC   G_LWZMRPT_LINE+65(4),G_SAVE_ALTER_DATE+2              64990000
+            MVC   G_LWZMRPT_LINE+70(2),G_SAVE_ALTER_DATE+6              65000000
+            MVC   G_LWZMRPT_LINE+73(2),G_SAVE_ALTER_DATE+8              65010000
+            MVC   G_LWZMRPT_LINE+76(2),G_SAVE_ALTER_DATE+10             65020000
+            MVC   G_LWZMRPT_LINE+79(2),G_SAVE_ALTER_DATE+12             65030000
+            MVC   G_LWZMRPT_LINE+82(2),G_SAVE_ALTER_DATE+14             65040000
+            L     R15,G_LWZMAKE_RPTA                                    65050000
+            BASR  R14,R15                                               65060000
+         ELSE                                                           65070000
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            65080000
+            MLWZMRPT RPTLINE=CL133' ..................... Load module nX65090000
+               ot found in PDS'                                         65100000
+         ENDIF                                                          65110000
+*                                                                       65120000
+         DROP  R6                                                       65130000
+         DROP  R7                                                       65140000
+*                                                                       65150000
+GET_DATE_LOADMOD_CLOSE EQU *                                            65160000
+         L     R14,G_DCB_MEM_PTR                                        65170000
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)                            65180000
+         CLOSE ((R2)),MODE=31                                           65190000
+*                                                                       65200000
+GET_DATE_LOADMOD_DEALLOC EQU *                                          65210000
+         LA    R6,DYNALLOC_AREA_GD                                      65220000
+         USING S99RBP,R6                                                65230000
+         LA    R4,S99RBPTR+4                                            65240000
+         USING S99RB,R4                                                 65250000
+         ST    R4,S99RBPTR                                              65260000
+         OI    S99RBPTR,S99RBPND                                        65270000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              65280000
+         MVI   S99RBLN,S99RBEND-S99RB                                   65290000
+         MVI   S99VERB,S99VRBUN                                         65300000
+         OI    S99FLG11,S99MSGL0                                        65310000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             65320000
+         MVC   0(CDSNTU_GD_L,R5),CDSNTU_GD                              65330000
+         LA    R2,CSIFIELD_GD                                           65340000
+         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           65350000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                65360000
+         ST    R3,S99TXTPP                                              65370000
+         O     R5,=X'80000000'                                          65380000
+         ST    R5,0(,R3)                                                65390000
+         LA    R1,DYNALLOC_AREA_GD                                      65400000
+         DYNALLOC                                                       65410000
+*                                                                       65420000
+         LTR   R15,R15                                                  65430000
+         IF (NZ) THEN                                                   65440000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       65450000
+            MVC   G_RETCODE,=F'8'                                       65460000
+            BR    R8                                                    65470000
+         ENDIF                                                          65480000
+*                                                                       65490000
+GET_DATE_LOADMOD_RET EQU *                                              65500000
+         BR    R8                                                       65510000
 *                                                                       65520000
-GET_DATE_STATS EQU *                                                    65530000
-         MLWZMRPT RPTLINE=CL133' ..................... Retrieving PDS mX65540000
-               ember stats'                                             65550000
-*                                                                       65560000
-         MVI   G_DSFOUND,C'N'                                           65570000
+* Get the date from member stats                                        65530000
+*                                                                       65540000
+GET_DATE_STATS EQU *                                                    65550000
+         MLWZMRPT RPTLINE=CL133' ..................... Retrieving PDS mX65560000
+               ember stats'                                             65570000
 *                                                                       65580000
-         MVC   MEM8_GD,=CL8' '                                          65590000
-         LA    R2,MEM8_GD                                               65600000
-         L     R3,G_MVSDS_MEMBER_PTR                                    65610000
-         L     R4,G_MVSDS_MEMBER_LEN                                    65620000
-         BCTR  R4,R0                                                    65630000
-         B     *+10                                                     65640000
-         MVC   0(1,R2),0(R3)                                            65650000
-         EX    R4,*-6                                                   65660000
-*                                                                       65670000
-         LA    R6,DYNALLOC_AREA_GD                                      65680000
-         USING S99RBP,R6                                                65690000
-         LA    R4,S99RBPTR+4                                            65700000
-         USING S99RB,R4                                                 65710000
-         ST    R4,S99RBPTR                                              65720000
-         OI    S99RBPTR,S99RBPND                                        65730000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              65740000
-         MVI   S99RBLN,S99RBEND-S99RB                                   65750000
-         MVI   S99VERB,S99VRBAL                                         65760000
-         OI    S99FLG11,S99MSGL0                                        65770000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             65780000
-         MVC   0(CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_GD_L,R5),CDSNTU_GD  65790000
-         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           65800000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                65810000
-         ST    R3,S99TXTPP                                              65820000
-         ST    R5,0(,R3)                                                65830000
-         LA    R5,CDSNTU_GD_L(,R5)                                      65840000
-         ST    R5,4(,R3)                                                65850000
-         LA    R5,CSTATUSTU_GD_L(,R5)                                   65860000
-         O     R5,=X'80000000'                                          65870000
-         ST    R5,8(,R3)                                                65880000
-         LA    R1,DYNALLOC_AREA_GD                                      65890000
-         DYNALLOC                                                       65900000
-*                                                                       65910000
-         DROP  R6                                                       65920000
-         DROP  R4                                                       65930000
-*                                                                       65940000
-         LTR   R15,R15                                                  65950000
-         IF (NZ) THEN                                                   65960000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         65970000
-            MVC   G_RETCODE,=F'8'                                       65980000
-            BR    R8                                                    65990000
-         ENDIF                                                          66000000
-*                                                                       66010000
-         L     R1,G_DCB_MEM_PTR                                         66020000
-         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_GD,R1),CDCBPDS_DIR_GX66030000
-               D                                                        66040000
-         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_GD,R1),CDCBEPDS_DIX66050000
-               R_GD                                                     66060000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             66070000
-         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)                            66080000
-         ST    R3,DCBDCBE-IHADCB(,R2)                                   66090000
-         LA    R4,PDSDIR_IS_EOF_GD                                      66100000
-         ST    R4,DCBEEODA-DCBE(,R3)                                    66110000
-         L     R6,DYNALLOC_AREA_GD                                      66120000
-         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_GD_L+CSTATUSTU_GD_L(,R6)   66130000
-         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              66140000
-*                                                                       66150000
-         MVI   PDSDIR_EOF_GD,C'N'                                       66160000
+         MVI   G_DSFOUND,C'N'                                           65590000
+*                                                                       65600000
+         MVC   MEM8_GD,=CL8' '                                          65610000
+         LA    R2,MEM8_GD                                               65620000
+         L     R3,G_MVSDS_MEMBER_PTR                                    65630000
+         L     R4,G_MVSDS_MEMBER_LEN                                    65640000
+         BCTR  R4,R0                                                    65650000
+         B     *+10                                                     65660000
+         MVC   0(1,R2),0(R3)                                            65670000
+         EX    R4,*-6                                                   65680000
+*                                                                       65690000
+         LA    R6,DYNALLOC_AREA_GD                                      65700000
+         USING S99RBP,R6                                                65710000
+         LA    R4,S99RBPTR+4                                            65720000
+         USING S99RB,R4                                                 65730000
+         ST    R4,S99RBPTR                                              65740000
+         OI    S99RBPTR,S99RBPND                                        65750000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              65760000
+         MVI   S99RBLN,S99RBEND-S99RB                                   65770000
+         MVI   S99VERB,S99VRBAL                                         65780000
+         OI    S99FLG11,S99MSGL0                                        65790000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             65800000
+         MVC   0(CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_GD_L,R5),CDSNTU_GD  65810000
+         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           65820000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                65830000
+         ST    R3,S99TXTPP                                              65840000
+         ST    R5,0(,R3)                                                65850000
+         LA    R5,CDSNTU_GD_L(,R5)                                      65860000
+         ST    R5,4(,R3)                                                65870000
+         LA    R5,CSTATUSTU_GD_L(,R5)                                   65880000
+         O     R5,=X'80000000'                                          65890000
+         ST    R5,8(,R3)                                                65900000
+         LA    R1,DYNALLOC_AREA_GD                                      65910000
+         DYNALLOC                                                       65920000
+*                                                                       65930000
+         DROP  R6                                                       65940000
+         DROP  R4                                                       65950000
+*                                                                       65960000
+         LTR   R15,R15                                                  65970000
+         IF (NZ) THEN                                                   65980000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         65990000
+            MVC   G_RETCODE,=F'8'                                       66000000
+            BR    R8                                                    66010000
+         ENDIF                                                          66020000
+*                                                                       66030000
+         L     R1,G_DCB_MEM_PTR                                         66040000
+         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_GD,R1),CDCBPDS_DIR_GX66050000
+               D                                                        66060000
+         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_GD,R1),CDCBEPDS_DIX66070000
+               R_GD                                                     66080000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             66090000
+         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)                            66100000
+         ST    R3,DCBDCBE-IHADCB(,R2)                                   66110000
+         LA    R4,PDSDIR_IS_EOF_GD                                      66120000
+         ST    R4,DCBEEODA-DCBE(,R3)                                    66130000
+         L     R6,DYNALLOC_AREA_GD                                      66140000
+         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_GD_L+CSTATUSTU_GD_L(,R6)   66150000
+         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              66160000
 *                                                                       66170000
-         LA    R6,GET_DATE_OPENPDS                                      66180000
-         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)                      66190000
-GET_DATE_OPENPDS EQU *                                                  66200000
-*                                                                       66210000
-         LTR   R15,R15                                                  66220000
-         IF (NZ) THEN                                                   66230000
-            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX66240000
-               ry'                                                      66250000
-            MVC   G_RETCODE,=F'8'                                       66260000
-            B     GET_DATE_DEALLOC                                      66270000
-         ENDIF                                                          66280000
-*                                                                       66290000
-GET_DATE_GET_DIRREC EQU *                                               66300000
-         L     R1,G_DCB_MEM_PTR                                         66310000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             66320000
-         LA    R6,GET_DATE_DIRREC_NOMORE                                66330000
-         GET   (R2),DIRREC_GD                                           66340000
-*                                                                       66350000
-         LA    R3,DIRREC_GD                                             66360000
-         XR    R4,R4                                                    66370000
-         LH    R4,0(,R3)                                                66380000
-         C     R4,=F'14'                                                66390000
-         BL    GET_DATE_DIRREC_END_OF_BLOCK                             66400000
-         LA    R3,2(,R3)                                                66410000
-         S     R4,=F'2'                                                 66420000
-GET_DATE_NEXT_DIRREC_ENTRY EQU *                                        66430000
-         CLC   0(8,R3),=8X'FF'                                          66440000
-         BE    GET_DATE_DIRREC_NOMORE                                   66450000
-         CLC   0(8,R3),MEM8_GD                                          66460000
-         IF (EQ) THEN                                                   66470000
-            MVI   G_DSFOUND,C'Y'                                        66480000
-            L     R5,8(,R3)                                             66490000
-            N     R5,=X'0000001F'                                       66500000
-            SLL   R5,1                                                  66510000
-            C     R5,=F'30'                                             66520000
-            IF (NL) THEN                                                66530000
-               MVI   CONVTOD_INAREA,X'00'                               66540000
-               MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA                66550000
-               MVC   CONVTOD_INAREA(2),24(R3)                           66560000
-               MVC   CONVTOD_INAREA+2(1),15(R3)                         66570000
-               MVC   CONVTOD_INAREA+8(4),20(R3)                         66580000
-               MVI   CONVTOD_OUTAREA,X'00'                              66590000
-               MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA               66600000
-               MVI   STCKCONV_OUTAREA,X'00'                             66610000
-               MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA            66620000
-               CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIX66630000
-               METYPE=DEC,DATETYPE=YYDDD,MF=(E,CONVTOD_PLIST)           66640000
-               STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREX66650000
-               A,TIMETYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)   66660000
-               MVC   G_LWZMRPT_LINE,=CL133' ..................... MembeX66670000
-               r found in PDS directory, last altered on'               66680000
-               MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8               66690000
-               MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA               66700000
-               MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)                   66710000
-               MVN   DATEWORK_DEC_2+7(1),=X'0F'                         66720000
-               UNPK  DATEWORK_ZON,DATEWORK_DEC_2                        66730000
-               MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                     66740000
-               MVC   G_LWZMRPT_LINE+70(19),=C'0000-00-00 00:00:00'      66750000
-               MVC   G_LWZMRPT_LINE+70(4),DATEWORK_ZON+2                66760000
-               MVC   G_LWZMRPT_LINE+75(2),DATEWORK_ZON+6                66770000
-               MVC   G_LWZMRPT_LINE+78(2),DATEWORK_ZON+8                66780000
-               MVC   G_LWZMRPT_LINE+81(2),DATEWORK_ZON+10               66790000
-               MVC   G_LWZMRPT_LINE+84(2),DATEWORK_ZON+12               66800000
-               MVC   G_LWZMRPT_LINE+87(2),DATEWORK_ZON+14               66810000
-               L     R15,G_LWZMAKE_RPTA                                 66820000
-               BASR  R14,R15                                            66830000
-            ELSE                                                        66840000
-               MLWZMRPT RPTLINE=CL133' ..................... Member fouX66850000
-               nd in PDS directory but without statistics!!!'           66860000
-            ENDIF                                                       66870000
-            B     GET_DATE_DIRREC_NOMORE                                66880000
-         ELSE                                                           66890000
-            L     R5,8(,R3)                                             66900000
-            N     R5,=X'0000001F'                                       66910000
-            SLL   R5,1                                                  66920000
-            LA    R3,12(,R3)                                            66930000
-            S     R4,=F'12'                                             66940000
-            AR    R3,R5                                                 66950000
-            SR    R4,R5                                                 66960000
-            BC    B'0010',GET_DATE_NEXT_DIRREC_ENTRY                    66970000
-         ENDIF                                                          66980000
-*                                                                       66990000
-GET_DATE_DIRREC_END_OF_BLOCK EQU *                                      67000000
-         B     GET_DATE_GET_DIRREC                                      67010000
-*                                                                       67020000
-GET_DATE_DIRREC_NOMORE EQU *                                            67030000
+         MVI   PDSDIR_EOF_GD,C'N'                                       66180000
+*                                                                       66190000
+         LA    R6,GET_DATE_OPENPDS                                      66200000
+         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)                      66210000
+GET_DATE_OPENPDS EQU *                                                  66220000
+*                                                                       66230000
+         LTR   R15,R15                                                  66240000
+         IF (NZ) THEN                                                   66250000
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX66260000
+               ry'                                                      66270000
+            MVC   G_RETCODE,=F'8'                                       66280000
+            B     GET_DATE_DEALLOC                                      66290000
+         ENDIF                                                          66300000
+*                                                                       66310000
+GET_DATE_GET_DIRREC EQU *                                               66320000
+         L     R1,G_DCB_MEM_PTR                                         66330000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             66340000
+         LA    R6,GET_DATE_DIRREC_NOMORE                                66350000
+         GET   (R2),DIRREC_GD                                           66360000
+*                                                                       66370000
+         LA    R3,DIRREC_GD                                             66380000
+         XR    R4,R4                                                    66390000
+         LH    R4,0(,R3)                                                66400000
+         C     R4,=F'14'                                                66410000
+         BL    GET_DATE_DIRREC_END_OF_BLOCK                             66420000
+         LA    R3,2(,R3)                                                66430000
+         S     R4,=F'2'                                                 66440000
+GET_DATE_NEXT_DIRREC_ENTRY EQU *                                        66450000
+         CLC   0(8,R3),=8X'FF'                                          66460000
+         BE    GET_DATE_DIRREC_NOMORE                                   66470000
+         CLC   0(8,R3),MEM8_GD                                          66480000
+         IF (EQ) THEN                                                   66490000
+            MVI   G_DSFOUND,C'Y'                                        66500000
+            L     R5,8(,R3)                                             66510000
+            N     R5,=X'0000001F'                                       66520000
+            SLL   R5,1                                                  66530000
+            C     R5,=F'30'                                             66540000
+            IF (NL) THEN                                                66550000
+               MVI   CONVTOD_INAREA,X'00'                               66560000
+               MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA                66570000
+               MVC   CONVTOD_INAREA(2),24(R3)                           66580000
+               MVC   CONVTOD_INAREA+2(1),15(R3)                         66590000
+               MVC   CONVTOD_INAREA+8(4),20(R3)                         66600000
+               MVI   CONVTOD_OUTAREA,X'00'                              66610000
+               MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA               66620000
+               MVI   STCKCONV_OUTAREA,X'00'                             66630000
+               MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA            66640000
+               CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIX66650000
+               METYPE=DEC,DATETYPE=YYDDD,MF=(E,CONVTOD_PLIST)           66660000
+               STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREX66670000
+               A,TIMETYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)   66680000
+               MVC   G_LWZMRPT_LINE,=CL133' ..................... MembeX66690000
+               r found in PDS directory, last altered on'               66700000
+               MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8               66710000
+               MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA               66720000
+               MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)                   66730000
+               MVN   DATEWORK_DEC_2+7(1),=X'0F'                         66740000
+               UNPK  DATEWORK_ZON,DATEWORK_DEC_2                        66750000
+               MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON                     66760000
+               MVC   G_LWZMRPT_LINE+70(19),=C'0000-00-00 00:00:00'      66770000
+               MVC   G_LWZMRPT_LINE+70(4),DATEWORK_ZON+2                66780000
+               MVC   G_LWZMRPT_LINE+75(2),DATEWORK_ZON+6                66790000
+               MVC   G_LWZMRPT_LINE+78(2),DATEWORK_ZON+8                66800000
+               MVC   G_LWZMRPT_LINE+81(2),DATEWORK_ZON+10               66810000
+               MVC   G_LWZMRPT_LINE+84(2),DATEWORK_ZON+12               66820000
+               MVC   G_LWZMRPT_LINE+87(2),DATEWORK_ZON+14               66830000
+               L     R15,G_LWZMAKE_RPTA                                 66840000
+               BASR  R14,R15                                            66850000
+            ELSE                                                        66860000
+               MLWZMRPT RPTLINE=CL133' ..................... Member fouX66870000
+               nd in PDS directory but without statistics!!!'           66880000
+            ENDIF                                                       66890000
+            B     GET_DATE_DIRREC_NOMORE                                66900000
+         ELSE                                                           66910000
+            L     R5,8(,R3)                                             66920000
+            N     R5,=X'0000001F'                                       66930000
+            SLL   R5,1                                                  66940000
+            LA    R3,12(,R3)                                            66950000
+            S     R4,=F'12'                                             66960000
+            AR    R3,R5                                                 66970000
+            SR    R4,R5                                                 66980000
+            BC    B'0010',GET_DATE_NEXT_DIRREC_ENTRY                    66990000
+         ENDIF                                                          67000000
+*                                                                       67010000
+GET_DATE_DIRREC_END_OF_BLOCK EQU *                                      67020000
+         B     GET_DATE_GET_DIRREC                                      67030000
 *                                                                       67040000
-         L     R1,G_DCB_MEM_PTR                                         67050000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             67060000
-         CLOSE ((R2)),MODE=31                                           67070000
-*                                                                       67080000
-GET_DATE_DEALLOC EQU *                                                  67090000
-         LA    R6,DYNALLOC_AREA_GD                                      67100000
-         USING S99RBP,R6                                                67110000
-         LA    R4,S99RBPTR+4                                            67120000
-         USING S99RB,R4                                                 67130000
-         ST    R4,S99RBPTR                                              67140000
-         OI    S99RBPTR,S99RBPND                                        67150000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              67160000
-         MVI   S99RBLN,S99RBEND-S99RB                                   67170000
-         MVI   S99VERB,S99VRBUN                                         67180000
-         OI    S99FLG11,S99MSGL0                                        67190000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             67200000
-         MVC   0(CDSNTU_GD_L,R5),CDSNTU_GD                              67210000
-         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           67220000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                67230000
-         ST    R3,S99TXTPP                                              67240000
-         O     R5,=X'80000000'                                          67250000
-         ST    R5,0(,R3)                                                67260000
-         LA    R1,DYNALLOC_AREA_GD                                      67270000
-         DYNALLOC                                                       67280000
-*                                                                       67290000
-         LTR   R15,R15                                                  67300000
-         IF (NZ) THEN                                                   67310000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       67320000
-            MVC   G_RETCODE,=F'8'                                       67330000
-            BR    R8                                                    67340000
-         ENDIF                                                          67350000
-*                                                                       67360000
-         IF (CLI,G_DSFOUND,NE,C'Y') THEN                                67370000
-            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            67380000
-         ENDIF                                                          67390000
-*                                                                       67400000
-GET_DATE_STATS_RET EQU *                                                67410000
-         BR    R8                                                       67420000
-*                                                                       67430000
-* EODAD for DCBPDS                                                      67440000
+GET_DATE_DIRREC_NOMORE EQU *                                            67050000
+*                                                                       67060000
+         L     R1,G_DCB_MEM_PTR                                         67070000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             67080000
+         CLOSE ((R2)),MODE=31                                           67090000
+*                                                                       67100000
+GET_DATE_DEALLOC EQU *                                                  67110000
+         LA    R6,DYNALLOC_AREA_GD                                      67120000
+         USING S99RBP,R6                                                67130000
+         LA    R4,S99RBPTR+4                                            67140000
+         USING S99RB,R4                                                 67150000
+         ST    R4,S99RBPTR                                              67160000
+         OI    S99RBPTR,S99RBPND                                        67170000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              67180000
+         MVI   S99RBLN,S99RBEND-S99RB                                   67190000
+         MVI   S99VERB,S99VRBUN                                         67200000
+         OI    S99FLG11,S99MSGL0                                        67210000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             67220000
+         MVC   0(CDSNTU_GD_L,R5),CDSNTU_GD                              67230000
+         MVC   6(44,R5),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)           67240000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                67250000
+         ST    R3,S99TXTPP                                              67260000
+         O     R5,=X'80000000'                                          67270000
+         ST    R5,0(,R3)                                                67280000
+         LA    R1,DYNALLOC_AREA_GD                                      67290000
+         DYNALLOC                                                       67300000
+*                                                                       67310000
+         LTR   R15,R15                                                  67320000
+         IF (NZ) THEN                                                   67330000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       67340000
+            MVC   G_RETCODE,=F'8'                                       67350000
+            BR    R8                                                    67360000
+         ENDIF                                                          67370000
+*                                                                       67380000
+         IF (CLI,G_DSFOUND,NE,C'Y') THEN                                67390000
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'                            67400000
+         ENDIF                                                          67410000
+*                                                                       67420000
+GET_DATE_STATS_RET EQU *                                                67430000
+         BR    R8                                                       67440000
 *                                                                       67450000
-PDSDIR_IS_EOF_GD EQU *                                                  67460000
-         MVI   PDSDIR_EOF_GD,C'Y'                                       67470000
-         BR    R6                                                       67480000
-*                                                                       67490000
-         LTORG                                                          67500000
+* EODAD for DCBPDS                                                      67460000
+*                                                                       67470000
+PDSDIR_IS_EOF_GD EQU *                                                  67480000
+         MVI   PDSDIR_EOF_GD,C'Y'                                       67490000
+         BR    R6                                                       67500000
 *                                                                       67510000
-* Translate table for conversion to hex                                 67520000
-                            DS    0F                                    67530000
-GETDATE_HEXTAB              EQU   *-C'0'                                67540000
-                            DC    C'0123456789ABCDEF'                   67550000
-*                                                                       67560000
-TRT_ALPHANAT DS    0F A-Z $ # @                                         67570000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        67580000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    67590000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    67600000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    67610000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    67620000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    67630000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    67640000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    67650000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    67660000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    67670000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    67680000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    67690000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    67700000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    67710000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    67720000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    67730000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    67740000
-*                                                                       67750000
-TRT_ALPHANUMNATDASH DS    0F A-Z 0-9 $ # @ -                            67760000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        67770000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    67780000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    67790000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    67800000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    67810000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    67820000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    67830000
-         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    67840000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    67850000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    67860000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    67870000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    67880000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    67890000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    67900000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    67910000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    67920000
-         DC    X'00000000000000000000FFFFFFFFFFFF' F                    67930000
-*                                                                       67940000
-CONST_CSIFIELD_GD DS 0F                                                 67950000
-         DC    CL44' '        CSIFILTK FILTER   KEY                     67960000
-         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           67970000
-         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            67980000
-         DS    0CL16          CSIDTYPD ENTRY TYPES                      67990000
-         DC    CL16'                ' CSIDTYPS                          68000000
-         DS    0CL4           CSIOPTS  CSI OPTIONS                      68010000
-         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 68020000
-         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 68030000
-         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 68040000
-         DC    XL1'00'        CSIRESRV RESERVED                         68050000
-         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      68060000
-         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       68070000
-         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       68080000
-CONST_CSIFIELD_GD_LEN EQU *-CONST_CSIFIELD_GD                           68090000
-*                                                                       68100000
-CDSNTU_GD                   DC    AL2(DALDSNAM)                         68110000
-                            DC    X'0001'                               68120000
-                            DC    X'002C'                               68130000
-                            DC    CL44' '                               68140000
-CDSNTU_GD_L                 EQU   *-CDSNTU_GD                           68150000
-*                                                                       68160000
-CSTATUSTU_GD                DC    AL2(DALSTATS)                         68170000
-                            DC    X'0001'                               68180000
-                            DC    X'0001'                               68190000
-                            DC    X'08'                                 68200000
-CSTATUSTU_GD_L              EQU   *-CSTATUSTU_GD                        68210000
-*                                                                       68220000
-CRETDDN_GD                  DC    AL2(DALRTDDN)                         68230000
-                            DC    X'0001'                               68240000
-                            DC    X'0008'                               68250000
-                            DC    CL8' '                                68260000
-CRETDDN_GD_L                EQU   *-CRETDDN_GD                          68270000
-*                                                                       68280000
-CDCBPDS_DIR_GD              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX68290000
-               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_GD                68300000
-LEN_DCBPDS_DIR_GD           EQU   *-CDCBPDS_DIR_GD                      68310000
-CDCBEPDS_DIR_GD             DCBE  EODAD=0,RMODE31=BUFF                  68320000
-LEN_DCBEPDS_DIR_GD          EQU   *-CDCBEPDS_DIR_GD                     68330000
-*                                                                       68340000
-CDCBPDS_BDR                 DCB   MACRF=R,DSORG=PO,RECFM=U              68350000
-LEN_DCBPDS_BDR              EQU   *-CDCBPDS_BDR                         68360000
-*                                                                       68370000
-CONVTOD_L                   CONVTOD MF=L                                68380000
-CONVTOD_L_SIZ               EQU   *-CONVTOD_L                           68390000
-STCKCONV_L                  STCKCONV MF=L                               68400000
-STCKCONV_L_SIZ              EQU   *-STCKCONV_L                          68410000
-*                                                                       68420000
-IDBBUF                      IEWBUFF FUNC=MAPBUF,TYPE=IDRB,VERSION=6,BYTX68430000
-               ES=2048                                                  68440000
-*                                                                       68450000
-GET_DATE_DSECT              DSECT                                       68460000
-                            DS    18F * My savearea                     68470000
-*                                                                       68480000
-DAREAPTR_GD                 DS    A      DATA AREA POINTER (64K)        68490000
+         LTORG                                                          67520000
+*                                                                       67530000
+* Translate table for conversion to hex                                 67540000
+                            DS    0F                                    67550000
+GETDATE_HEXTAB              EQU   *-C'0'                                67560000
+                            DC    C'0123456789ABCDEF'                   67570000
+*                                                                       67580000
+TRT_ALPHANAT DS    0F A-Z $ # @                                         67590000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        67600000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    67610000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    67620000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    67630000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    67640000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    67650000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    67660000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    67670000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    67680000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    67690000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    67700000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    67710000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    67720000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    67730000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    67740000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    67750000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    67760000
+*                                                                       67770000
+TRT_ALPHANUMNATDASH DS    0F A-Z 0-9 $ # @ -                            67780000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        67790000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    67800000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    67810000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    67820000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    67830000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    67840000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    67850000
+         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    67860000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    67870000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    67880000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    67890000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    67900000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    67910000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    67920000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    67930000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    67940000
+         DC    X'00000000000000000000FFFFFFFFFFFF' F                    67950000
+*                                                                       67960000
+CONST_CSIFIELD_GD DS 0F                                                 67970000
+         DC    CL44' '        CSIFILTK FILTER   KEY                     67980000
+         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           67990000
+         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            68000000
+         DS    0CL16          CSIDTYPD ENTRY TYPES                      68010000
+         DC    CL16'                ' CSIDTYPS                          68020000
+         DS    0CL4           CSIOPTS  CSI OPTIONS                      68030000
+         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 68040000
+         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 68050000
+         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 68060000
+         DC    XL1'00'        CSIRESRV RESERVED                         68070000
+         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      68080000
+         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       68090000
+         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       68100000
+CONST_CSIFIELD_GD_LEN EQU *-CONST_CSIFIELD_GD                           68110000
+*                                                                       68120000
+CDSNTU_GD                   DC    AL2(DALDSNAM)                         68130000
+                            DC    X'0001'                               68140000
+                            DC    X'002C'                               68150000
+                            DC    CL44' '                               68160000
+CDSNTU_GD_L                 EQU   *-CDSNTU_GD                           68170000
+*                                                                       68180000
+CSTATUSTU_GD                DC    AL2(DALSTATS)                         68190000
+                            DC    X'0001'                               68200000
+                            DC    X'0001'                               68210000
+                            DC    X'08'                                 68220000
+CSTATUSTU_GD_L              EQU   *-CSTATUSTU_GD                        68230000
+*                                                                       68240000
+CRETDDN_GD                  DC    AL2(DALRTDDN)                         68250000
+                            DC    X'0001'                               68260000
+                            DC    X'0008'                               68270000
+                            DC    CL8' '                                68280000
+CRETDDN_GD_L                EQU   *-CRETDDN_GD                          68290000
+*                                                                       68300000
+CDCBPDS_DIR_GD              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX68310000
+               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_GD                68320000
+LEN_DCBPDS_DIR_GD           EQU   *-CDCBPDS_DIR_GD                      68330000
+CDCBEPDS_DIR_GD             DCBE  EODAD=0,RMODE31=BUFF                  68340000
+LEN_DCBEPDS_DIR_GD          EQU   *-CDCBEPDS_DIR_GD                     68350000
+*                                                                       68360000
+CDCBPDS_BDR                 DCB   MACRF=R,DSORG=PO,RECFM=U              68370000
+LEN_DCBPDS_BDR              EQU   *-CDCBPDS_BDR                         68380000
+*                                                                       68390000
+CONVTOD_L                   CONVTOD MF=L                                68400000
+CONVTOD_L_SIZ               EQU   *-CONVTOD_L                           68410000
+STCKCONV_L                  STCKCONV MF=L                               68420000
+STCKCONV_L_SIZ              EQU   *-STCKCONV_L                          68430000
+*                                                                       68440000
+IDBBUF                      IEWBUFF FUNC=MAPBUF,TYPE=IDRB,VERSION=6,BYTX68450000
+               ES=2048                                                  68460000
+*                                                                       68470000
+GET_DATE_DSECT              DSECT                                       68480000
+                            DS    18F * My savearea                     68490000
 *                                                                       68500000
-MODRSNRT_GD                 DS    0F                                    68510000
-PARMRC_GD                   DS    0CL4                                  68520000
-MODID_GD                    DS    CL2    MODULE ID                      68530000
-RSNCODE_GD                  DS    CL1    REASON CODE                    68540000
-RTNCODE_GD                  DS    CL1    RETURN CODE                    68550000
-*                                                                       68560000
-CSIFIELD_GD                 DS    0F                                    68570000
-                            ORG   *+CSIFIELD_DSECT_SIZ                  68580000
-CSIFIELD_GD_LEN             EQU   *-CSIFIELD_GD                         68590000
-*                                                                       68600000
-PARMLIST_GD                 DS    0F                                    68610000
-                            DS    A                                     68620000
-                            DS    A                                     68630000
+DAREAPTR_GD                 DS    A      DATA AREA POINTER (64K)        68510000
+*                                                                       68520000
+MODRSNRT_GD                 DS    0F                                    68530000
+PARMRC_GD                   DS    0CL4                                  68540000
+MODID_GD                    DS    CL2    MODULE ID                      68550000
+RSNCODE_GD                  DS    CL1    REASON CODE                    68560000
+RTNCODE_GD                  DS    CL1    RETURN CODE                    68570000
+*                                                                       68580000
+CSIFIELD_GD                 DS    0F                                    68590000
+                            ORG   *+CSIFIELD_DSECT_SIZ                  68600000
+CSIFIELD_GD_LEN             EQU   *-CSIFIELD_GD                         68610000
+*                                                                       68620000
+PARMLIST_GD                 DS    0F                                    68630000
                             DS    A                                     68640000
-*                                                                       68650000
-                            DS    0F                                    68660000
-CONVTOD_INAREA              DS    4F                                    68670000
-CONVTOD_OUTAREA             DS    2F                                    68680000
-CONVTOD_PLIST               DS    CL(CONVTOD_L_SIZ)                     68690000
-*                                                                       68700000
-                            DS    0F                                    68710000
-STCKCONV_OUTAREA            DS    CL16                                  68720000
-STCKCONV_PLIST              DS    CL(STCKCONV_L_SIZ)                    68730000
-*                                                                       68740000
-                            DS    0F                                    68750000
-DATEWORK_DEC_1              DS    CL8                                   68760000
-DATEWORK_DEC_2              DS    CL8                                   68770000
-DATEWORK_ZON                DS    CL16                                  68780000
-*                                                                       68790000
-                            DS    0F                                    68800000
-PDSDIR_EOF_GD               DS    C                                     68810000
-*                                                                       68820000
-                            DS    0F                                    68830000
-DSCBPAR_GD                  DS    4F                                    68840000
-OBTAIN_GD                   DS    0F                                    68850000
-                            ORG   *+OBTAIN_DSECT_SIZ                    68860000
-*                                                                       68870000
-DYNALLOC_AREA_GD            DS    0F                                    68880000
-                            ORG   *+4                                   68890000
-                            ORG   *+(S99RBEND-S99RB)                    68900000
-                            ORG   *+12                                  68910000
-                            ORG   *+CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_X68920000
-               GD_L                                                     68930000
-*                                                                       68940000
-                            DS    0F                                    68950000
-DIRREC_GD                   DS    CL256                                 68960000
-*                                                                       68970000
-MEM8_GD                     DS    CL8                                   68980000
+                            DS    A                                     68650000
+                            DS    A                                     68660000
+*                                                                       68670000
+                            DS    0F                                    68680000
+CONVTOD_INAREA              DS    4F                                    68690000
+CONVTOD_OUTAREA             DS    2F                                    68700000
+CONVTOD_PLIST               DS    CL(CONVTOD_L_SIZ)                     68710000
+*                                                                       68720000
+                            DS    0F                                    68730000
+STCKCONV_OUTAREA            DS    CL16                                  68740000
+STCKCONV_PLIST              DS    CL(STCKCONV_L_SIZ)                    68750000
+*                                                                       68760000
+                            DS    0F                                    68770000
+DATEWORK_DEC_1              DS    CL8                                   68780000
+DATEWORK_DEC_2              DS    CL8                                   68790000
+DATEWORK_ZON                DS    CL16                                  68800000
+*                                                                       68810000
+                            DS    0F                                    68820000
+PDSDIR_EOF_GD               DS    C                                     68830000
+*                                                                       68840000
+                            DS    0F                                    68850000
+DSCBPAR_GD                  DS    4F                                    68860000
+OBTAIN_GD                   DS    0F                                    68870000
+                            ORG   *+OBTAIN_DSECT_SIZ                    68880000
+*                                                                       68890000
+DYNALLOC_AREA_GD            DS    0F                                    68900000
+                            ORG   *+4                                   68910000
+                            ORG   *+(S99RBEND-S99RB)                    68920000
+                            ORG   *+12                                  68930000
+                            ORG   *+CDSNTU_GD_L+CSTATUSTU_GD_L+CRETDDN_X68940000
+               GD_L                                                     68950000
+*                                                                       68960000
+                            DS    0F                                    68970000
+DIRREC_GD                   DS    CL256                                 68980000
 *                                                                       68990000
-DAREA_GD                    DS    C                                     69000000
-                            ORG   *+1023                                69010000
-DAREA_GD_SIZ                EQU   *-DAREA_GD                            69020000
-*                                                                       69030000
-IEWBFDAT_SB_PAR4A           DS    4A                                    69040000
-IEWBFDAT_SB_SB              DS    CL4                                   69050000
-IEWBFDAT_SB_MTOKEN          DS    CL4                                   69060000
-IEWBFDAT_SB_PGMNAME         DS    CL8                                   69070000
-*                                                                       69080000
-IEWBFDAT_GD_PAR8A           DS    8A                                    69090000
-IEWBFDAT_GD_GD              DS    CL4                                   69100000
-IEWBFDAT_GD_MTOKEN          DS    CL4                                   69110000
-IEWBFDAT_GD_B_IDRB          DS    CL8                                   69120000
-IEWBFDAT_GD_CURSOR          DS    F                                     69130000
-IEWBFDAT_GD_COUNT           DS    F                                     69140000
-*                                                                       69150000
-IEWBFDAT_EN_PAR2A           DS    2A                                    69160000
-IEWBFDAT_EN_EN              DS    CL4                                   69170000
-IEWBFDAT_EN_MTOKEN          DS    CL4                                   69180000
-*                                                                       69190000
-GET_DATE_DSECT_SIZ          EQU   *-GET_DATE_DSECT                      69200000
+MEM8_GD                     DS    CL8                                   69000000
+*                                                                       69010000
+DAREA_GD                    DS    C                                     69020000
+                            ORG   *+1023                                69030000
+DAREA_GD_SIZ                EQU   *-DAREA_GD                            69040000
+*                                                                       69050000
+IEWBFDAT_SB_PAR4A           DS    4A                                    69060000
+IEWBFDAT_SB_SB              DS    CL4                                   69070000
+IEWBFDAT_SB_MTOKEN          DS    CL4                                   69080000
+IEWBFDAT_SB_PGMNAME         DS    CL8                                   69090000
+*                                                                       69100000
+IEWBFDAT_GD_PAR8A           DS    8A                                    69110000
+IEWBFDAT_GD_GD              DS    CL4                                   69120000
+IEWBFDAT_GD_MTOKEN          DS    CL4                                   69130000
+IEWBFDAT_GD_B_IDRB          DS    CL8                                   69140000
+IEWBFDAT_GD_CURSOR          DS    F                                     69150000
+IEWBFDAT_GD_COUNT           DS    F                                     69160000
+*                                                                       69170000
+IEWBFDAT_EN_PAR2A           DS    2A                                    69180000
+IEWBFDAT_EN_EN              DS    CL4                                   69190000
+IEWBFDAT_EN_MTOKEN          DS    CL4                                   69200000
 *                                                                       69210000
-         IEFZB4D0                                                       69220000
-         IEFZB4D2                                                       69230000
-*                                                                       69240000
-LWZMAKE  CSECT                                                          69250000
+GET_DATE_DSECT_SIZ          EQU   *-GET_DATE_DSECT                      69220000
+*                                                                       69230000
+         IEFZB4D0                                                       69240000
+         IEFZB4D2                                                       69250000
 *                                                                       69260000
-* Get the member list of a data set                                     69270000
+LWZMAKE  CSECT                                                          69270000
 *                                                                       69280000
-         DROP                                                           69290000
+* Get the member list of a data set                                     69290000
 *                                                                       69300000
-LWZMAKE_GET_MEMLIST DS    0F                                            69310000
-         STM   R14,R12,12(R13)   * Save callers registers               69320000
-         LR    R10,R15                                                  69330000
-         LA    R11,4095(,R10)                                           69340000
-         LA    R11,1(,R11)                                              69350000
-         USING LWZMAKE_GET_MEMLIST,R10,R11                              69360000
-         GETMAIN RU,LV=GET_MEMLIST_DSECT_SIZ                            69370000
-         ST    R13,4(R1)         * Backward chain callers SA            69380000
-         ST    R1,8(R13)         * Forward chain my SA                  69390000
-         LR    R13,R1            * Point R13 to my SA                   69400000
-         USING GET_MEMLIST_DSECT,R13 * Establish addressing of workarea 69410000
-         USING GLOBAL_DATA_DSECT,R9                                     69420000
-*                                                                       69430000
-*        Trace record to start section                                  69440000
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX69450000
-               KE_GET_MEMLIST'                                          69460000
-*                                                                       69470000
-         L     R3,G_SCAN_TOKEN2A                                        69480000
-         L     R4,G_SCAN_TOKEN2_LEN                                     69490000
-         XR    R6,R6                                                    69500000
-         XR    R7,R7                                                    69510000
-*                                                                       69520000
-GET_MEMLIST_TEST_QUAL1 EQU *                                            69530000
-         LTR   R4,R4                                                    69540000
-         BZ    GET_MEMLIST_NOT_MVSDS                                    69550000
-         TRT   0(1,R3),TRT_ALPHANAT_MEMLIST                             69560000
-         BNZ   GET_MEMLIST_NOT_MVSDS                                    69570000
-         LA    R3,1(,R3)                                                69580000
-         BCT   R4,*+8                                                   69590000
-         B     GET_MEMLIST_MVSDS                                        69600000
-         LR    R5,R4                                                    69610000
-         C     R5,=F'7'                                                 69620000
-         IF (H) THEN                                                    69630000
-            L     R5,=F'7'                                              69640000
-         ENDIF                                                          69650000
-         BCTR  R5,R0                                                    69660000
-         B     *+10                                                     69670000
-         TRT   0(1,R3),TRT_ALPHANUMNATDASH_MEMLIST                      69680000
-         EX    R5,*-6                                                   69690000
-         IF (Z) THEN                                                    69700000
-            LA    R5,1(,R5)                                             69710000
-         ELSE                                                           69720000
-            LR    R5,R1                                                 69730000
-            SR    R5,R3                                                 69740000
-         ENDIF                                                          69750000
-         AR    R3,R5                                                    69760000
-         SR    R4,R5                                                    69770000
-         BZ    GET_MEMLIST_MVSDS                                        69780000
-         IF (CLI,0(R3),EQ,C'.') THEN                                    69790000
-            LA    R3,1(,R3)                                             69800000
-            BCTR  R4,R0                                                 69810000
-            B     GET_MEMLIST_TEST_QUAL1                                69820000
-         ENDIF                                                          69830000
-         B     GET_MEMLIST_NOT_MVSDS                                    69840000
-*                                                                       69850000
-GET_MEMLIST_MVSDS EQU *                                                 69860000
-         BAL   R8,GET_MEMLIST_IGGCSI00                                  69870000
-*                                                                       69880000
-         CLC   G_RETCODE,=A(0)                                          69890000
-         BNE   GET_MEMLIST_RET                                          69900000
-*                                                                       69910000
-         CLI   G_DSFOUND,C'Y'                                           69920000
-         BNE   GET_MEMLIST_RET                                          69930000
-*                                                                       69940000
-         BAL   R8,GET_MEMLIST_OBTAIN                                    69950000
+         DROP                                                           69310000
+*                                                                       69320000
+LWZMAKE_GET_MEMLIST DS    0F                                            69330000
+         STM   R14,R12,12(R13)   * Save callers registers               69340000
+         LR    R10,R15                                                  69350000
+         LA    R11,4095(,R10)                                           69360000
+         LA    R11,1(,R11)                                              69370000
+         USING LWZMAKE_GET_MEMLIST,R10,R11                              69380000
+         GETMAIN RU,LV=GET_MEMLIST_DSECT_SIZ                            69390000
+         ST    R13,4(R1)         * Backward chain callers SA            69400000
+         ST    R1,8(R13)         * Forward chain my SA                  69410000
+         LR    R13,R1            * Point R13 to my SA                   69420000
+         USING GET_MEMLIST_DSECT,R13 * Establish addressing of workarea 69430000
+         USING GLOBAL_DATA_DSECT,R9                                     69440000
+*                                                                       69450000
+*        Trace record to start section                                  69460000
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX69470000
+               KE_GET_MEMLIST'                                          69480000
+*                                                                       69490000
+         L     R3,G_SCAN_TOKEN2A                                        69500000
+         L     R4,G_SCAN_TOKEN2_LEN                                     69510000
+         XR    R6,R6                                                    69520000
+         XR    R7,R7                                                    69530000
+*                                                                       69540000
+GET_MEMLIST_TEST_QUAL1 EQU *                                            69550000
+         LTR   R4,R4                                                    69560000
+         BZ    GET_MEMLIST_NOT_MVSDS                                    69570000
+         TRT   0(1,R3),TRT_ALPHANAT_MEMLIST                             69580000
+         BNZ   GET_MEMLIST_NOT_MVSDS                                    69590000
+         LA    R3,1(,R3)                                                69600000
+         BCT   R4,*+8                                                   69610000
+         B     GET_MEMLIST_MVSDS                                        69620000
+         LR    R5,R4                                                    69630000
+         C     R5,=F'7'                                                 69640000
+         IF (H) THEN                                                    69650000
+            L     R5,=F'7'                                              69660000
+         ENDIF                                                          69670000
+         BCTR  R5,R0                                                    69680000
+         B     *+10                                                     69690000
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH_MEMLIST                      69700000
+         EX    R5,*-6                                                   69710000
+         IF (Z) THEN                                                    69720000
+            LA    R5,1(,R5)                                             69730000
+         ELSE                                                           69740000
+            LR    R5,R1                                                 69750000
+            SR    R5,R3                                                 69760000
+         ENDIF                                                          69770000
+         AR    R3,R5                                                    69780000
+         SR    R4,R5                                                    69790000
+         BZ    GET_MEMLIST_MVSDS                                        69800000
+         IF (CLI,0(R3),EQ,C'.') THEN                                    69810000
+            LA    R3,1(,R3)                                             69820000
+            BCTR  R4,R0                                                 69830000
+            B     GET_MEMLIST_TEST_QUAL1                                69840000
+         ENDIF                                                          69850000
+         B     GET_MEMLIST_NOT_MVSDS                                    69860000
+*                                                                       69870000
+GET_MEMLIST_MVSDS EQU *                                                 69880000
+         BAL   R8,GET_MEMLIST_IGGCSI00                                  69890000
+*                                                                       69900000
+         CLC   G_RETCODE,=A(0)                                          69910000
+         BNE   GET_MEMLIST_RET                                          69920000
+*                                                                       69930000
+         CLI   G_DSFOUND,C'Y'                                           69940000
+         BNE   GET_MEMLIST_RET                                          69950000
 *                                                                       69960000
-         CLC   G_RETCODE,=A(0)                                          69970000
-         BNE   GET_MEMLIST_RET                                          69980000
-*                                                                       69990000
-         BAL   R8,GET_MEMLIST_MEMS                                      70000000
+         BAL   R8,GET_MEMLIST_OBTAIN                                    69970000
+*                                                                       69980000
+         CLC   G_RETCODE,=A(0)                                          69990000
+         BNE   GET_MEMLIST_RET                                          70000000
 *                                                                       70010000
-         B     GET_MEMLIST_RET                                          70020000
+         BAL   R8,GET_MEMLIST_MEMS                                      70020000
 *                                                                       70030000
-GET_MEMLIST_NOT_MVSDS EQU *                                             70040000
-         MLWZMRPT RPTLINE=CL133'0Member list requested for non MVS fileX70050000
-               '                                                        70060000
-         MVC   G_RETCODE,=F'12'                                         70070000
-*                                                                       70080000
-GET_MEMLIST_RET EQU *                                                   70090000
-         L     R3,4(,R13)        * Restore address of callers SA        70100000
-         FREEMAIN RU,LV=GET_MEMLIST_DSECT_SIZ,A=(R13)                   70110000
-         LR    R13,R3                                                   70120000
-         LM    R14,R12,12(R13)                                          70130000
-         BR    R14                    Return to caller                  70140000
-*                                                                       70150000
-* Perform catalog search with IGGCSI00                                  70160000
+         B     GET_MEMLIST_RET                                          70040000
+*                                                                       70050000
+GET_MEMLIST_NOT_MVSDS EQU *                                             70060000
+         MLWZMRPT RPTLINE=CL133'0Member list requested for non MVS fileX70070000
+               '                                                        70080000
+         MVC   G_RETCODE,=F'12'                                         70090000
+*                                                                       70100000
+GET_MEMLIST_RET EQU *                                                   70110000
+         L     R3,4(,R13)        * Restore address of callers SA        70120000
+         FREEMAIN RU,LV=GET_MEMLIST_DSECT_SIZ,A=(R13)                   70130000
+         LR    R13,R3                                                   70140000
+         LM    R14,R12,12(R13)                                          70150000
+         BR    R14                    Return to caller                  70160000
 *                                                                       70170000
-GET_MEMLIST_IGGCSI00 EQU *                                              70180000
-         MVI   G_DSFOUND,C'N'                                           70190000
-*                                                                       70200000
-         LA    R1,DAREA_ML                                              70210000
-         ST    R1,DAREAPTR_ML                                           70220000
-         L     R2,=A(DAREA_ML_SIZ)                                      70230000
-         ST    R2,0(,R1)                                                70240000
-*                                                                       70250000
-         LA    R2,CSIFIELD_ML                                           70260000
-         L     R3,=A(CSIFIELD_ML_LEN)                                   70270000
-         LA    R4,CONST_CSIFIELD_ML                                     70280000
-         L     R5,=A(CONST_CSIFIELD_ML_LEN)                             70290000
-         MVCL  R2,R4                                                    70300000
-*                                                                       70310000
-         LA    R2,CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSECT)                 70320000
-         L     R3,G_SCAN_TOKEN2A                                        70330000
-         L     R4,G_SCAN_TOKEN2_LEN                                     70340000
-         LT    R5,G_MVSDS_MEMBER_PTR                                    70350000
-         IF (NZ) THEN                                                   70360000
-            SR    R5,R3                                                 70370000
-            BCTR  R5,R0                                                 70380000
-            LR    R4,R5                                                 70390000
-         ENDIF                                                          70400000
-         C     R4,=A(L'CSIFILTK)                                        70410000
-         IF (H)                                                         70420000
-            L     R4,=A(L'CSIFILTK)                                     70430000
-         ENDIF                                                          70440000
-         BCTR  R4,R0                                                    70450000
-         B     *+10                                                     70460000
-         MVC   0(1,R2),0(R3)                                            70470000
-         EX    R4,*-6                                                   70480000
-*                                                                       70490000
-         LA    R1,PARMLIST_ML                                           70500000
-         LA    R2,MODRSNRT_ML                                           70510000
-         ST    R2,0(R1)                                                 70520000
-         LA    R2,CSIFIELD_ML                                           70530000
-         ST    R2,4(R1)                                                 70540000
-         L     R2,DAREAPTR_ML                                           70550000
-         O     R2,=X'80000000'                                          70560000
-         ST    R2,8(R1)                                                 70570000
-*                                                                       70580000
-         L     R15,G_IGGCSI00A                                          70590000
-         BASR  R14,R15                                                  70600000
-*                                                                       70610000
-         C     R15,=F'4'                                                70620000
-         IF (H) THEN                                                    70630000
-            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX70640000
-               rror code'                                               70650000
-            MVC   G_RETCODE,=F'12'                                      70660000
-            BR    R8                                                    70670000
-         ENDIF                                                          70680000
-*                                                                       70690000
-         LA    R1,DAREA_ML                                              70700000
-         CLC   8(4,R1),=F'64'                                           70710000
-         IF (H) THEN                                                    70720000
-            MVI   G_DSFOUND,C'Y'                                        70730000
-         ENDIF                                                          70740000
-*                                                                       70750000
-GET_MEMLIST_IGGCSI00_RET EQU *                                          70760000
-         BR    R8                                                       70770000
-*                                                                       70780000
-* Perform CAMLST OBTAIN                                                 70790000
+* Perform catalog search with IGGCSI00                                  70180000
+*                                                                       70190000
+GET_MEMLIST_IGGCSI00 EQU *                                              70200000
+         MVI   G_DSFOUND,C'N'                                           70210000
+*                                                                       70220000
+         LA    R1,DAREA_ML                                              70230000
+         ST    R1,DAREAPTR_ML                                           70240000
+         L     R2,=A(DAREA_ML_SIZ)                                      70250000
+         ST    R2,0(,R1)                                                70260000
+*                                                                       70270000
+         LA    R2,CSIFIELD_ML                                           70280000
+         L     R3,=A(CSIFIELD_ML_LEN)                                   70290000
+         LA    R4,CONST_CSIFIELD_ML                                     70300000
+         L     R5,=A(CONST_CSIFIELD_ML_LEN)                             70310000
+         MVCL  R2,R4                                                    70320000
+*                                                                       70330000
+         LA    R2,CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSECT)                 70340000
+         L     R3,G_SCAN_TOKEN2A                                        70350000
+         L     R4,G_SCAN_TOKEN2_LEN                                     70360000
+         LT    R5,G_MVSDS_MEMBER_PTR                                    70370000
+         IF (NZ) THEN                                                   70380000
+            SR    R5,R3                                                 70390000
+            BCTR  R5,R0                                                 70400000
+            LR    R4,R5                                                 70410000
+         ENDIF                                                          70420000
+         C     R4,=A(L'CSIFILTK)                                        70430000
+         IF (H)                                                         70440000
+            L     R4,=A(L'CSIFILTK)                                     70450000
+         ENDIF                                                          70460000
+         BCTR  R4,R0                                                    70470000
+         B     *+10                                                     70480000
+         MVC   0(1,R2),0(R3)                                            70490000
+         EX    R4,*-6                                                   70500000
+*                                                                       70510000
+         LA    R1,PARMLIST_ML                                           70520000
+         LA    R2,MODRSNRT_ML                                           70530000
+         ST    R2,0(R1)                                                 70540000
+         LA    R2,CSIFIELD_ML                                           70550000
+         ST    R2,4(R1)                                                 70560000
+         L     R2,DAREAPTR_ML                                           70570000
+         O     R2,=X'80000000'                                          70580000
+         ST    R2,8(R1)                                                 70590000
+*                                                                       70600000
+         L     R15,G_IGGCSI00A                                          70610000
+         BASR  R14,R15                                                  70620000
+*                                                                       70630000
+         C     R15,=F'4'                                                70640000
+         IF (H) THEN                                                    70650000
+            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX70660000
+               rror code'                                               70670000
+            MVC   G_RETCODE,=F'12'                                      70680000
+            BR    R8                                                    70690000
+         ENDIF                                                          70700000
+*                                                                       70710000
+         LA    R1,DAREA_ML                                              70720000
+         CLC   8(4,R1),=F'64'                                           70730000
+         IF (H) THEN                                                    70740000
+            MVI   G_DSFOUND,C'Y'                                        70750000
+         ENDIF                                                          70760000
+*                                                                       70770000
+GET_MEMLIST_IGGCSI00_RET EQU *                                          70780000
+         BR    R8                                                       70790000
 *                                                                       70800000
-GET_MEMLIST_OBTAIN EQU *                                                70810000
-         XR    R1,R1                                                    70820000
-         ICM   R1,B'1000',=AL1(193)                                     70830000
-         ST    R1,DSCBPAR_ML                                            70840000
-         MVC   OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_MX70850000
-               L+(CSIFILTK-CSIFIELD_DSECT)                              70860000
-         LA    R1,OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)                     70870000
-         ST    R1,DSCBPAR_ML+4                                          70880000
-         LA    R1,DAREA_ML+110                                          70890000
-         CLC   0(2,R1),=H'12'   * Is volume name present                70900000
-         BL    GET_MEMLIST_OBTAIN_RET                                   70910000
-         LA    R1,6(,R1)                                                70920000
-         ST    R1,DSCBPAR_ML+8                                          70930000
-         LA    R1,OBTAIN_ML+(DS1FMTID-OBTAIN_DSECT)                     70940000
-         ST    R1,DSCBPAR_ML+12                                         70950000
-*                                                                       70960000
-         OBTAIN DSCBPAR_ML                                              70970000
+* Perform CAMLST OBTAIN                                                 70810000
+*                                                                       70820000
+GET_MEMLIST_OBTAIN EQU *                                                70830000
+         XR    R1,R1                                                    70840000
+         ICM   R1,B'1000',=AL1(193)                                     70850000
+         ST    R1,DSCBPAR_ML                                            70860000
+         MVC   OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_MX70870000
+               L+(CSIFILTK-CSIFIELD_DSECT)                              70880000
+         LA    R1,OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)                     70890000
+         ST    R1,DSCBPAR_ML+4                                          70900000
+         LA    R1,DAREA_ML+110                                          70910000
+         CLC   0(2,R1),=H'12'   * Is volume name present                70920000
+         BL    GET_MEMLIST_OBTAIN_RET                                   70930000
+         LA    R1,6(,R1)                                                70940000
+         ST    R1,DSCBPAR_ML+8                                          70950000
+         LA    R1,OBTAIN_ML+(DS1FMTID-OBTAIN_DSECT)                     70960000
+         ST    R1,DSCBPAR_ML+12                                         70970000
 *                                                                       70980000
-         LTR   R15,R15                                                  70990000
-         IF (NZ) THEN                                                   71000000
-            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'  71010000
-            MVC   G_RETCODE,=F'12'                                      71020000
-            BR    R8                                                    71030000
-         ENDIF                                                          71040000
-*                                                                       71050000
-         IF (TM,OBTAIN_ML+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN      71060000
-            MVC   G_LWZMRPT_LINE,=CL133'0Member list requested on non-PX71070000
-               DS dataset'                                              71080000
-            LA    R2,CSIFIELD_ML                                        71090000
-            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFILTK-CSIFIELD_DSECTX71100000
-               (R2)                                                     71110000
-            L     R15,G_LWZMAKE_RPTA                                    71120000
-            BASR  R14,R15                                               71130000
-            MVC   G_RETCODE,=F'8'                                       71140000
-            BR    R8                                                    71150000
-         ENDIF                                                          71160000
-*                                                                       71170000
-GET_MEMLIST_OBTAIN_RET EQU *                                            71180000
-         BR    R8                                                       71190000
-*                                                                       71200000
-* Get the member list                                                   71210000
+         OBTAIN DSCBPAR_ML                                              70990000
+*                                                                       71000000
+         LTR   R15,R15                                                  71010000
+         IF (NZ) THEN                                                   71020000
+            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'  71030000
+            MVC   G_RETCODE,=F'12'                                      71040000
+            BR    R8                                                    71050000
+         ENDIF                                                          71060000
+*                                                                       71070000
+         IF (TM,OBTAIN_ML+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN      71080000
+            MVC   G_LWZMRPT_LINE,=CL133'0Member list requested on non-PX71090000
+               DS dataset'                                              71100000
+            LA    R2,CSIFIELD_ML                                        71110000
+            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFILTK-CSIFIELD_DSECTX71120000
+               (R2)                                                     71130000
+            L     R15,G_LWZMAKE_RPTA                                    71140000
+            BASR  R14,R15                                               71150000
+            MVC   G_RETCODE,=F'8'                                       71160000
+            BR    R8                                                    71170000
+         ENDIF                                                          71180000
+*                                                                       71190000
+GET_MEMLIST_OBTAIN_RET EQU *                                            71200000
+         BR    R8                                                       71210000
 *                                                                       71220000
-GET_MEMLIST_MEMS EQU *                                                  71230000
-         LA    R6,DYNALLOC_AREA_ML                                      71240000
-         USING S99RBP,R6                                                71250000
-         LA    R4,S99RBPTR+4                                            71260000
-         USING S99RB,R4                                                 71270000
-         ST    R4,S99RBPTR                                              71280000
-         OI    S99RBPTR,S99RBPND                                        71290000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              71300000
-         MVI   S99RBLN,S99RBEND-S99RB                                   71310000
-         MVI   S99VERB,S99VRBAL                                         71320000
-         OI    S99FLG11,S99MSGL0                                        71330000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             71340000
-         MVC   0(CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_ML_L,R5),CDSNTU_ML  71350000
-         MVC   6(44,R5),CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSECT)           71360000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                71370000
-         ST    R3,S99TXTPP                                              71380000
-         ST    R5,0(,R3)                                                71390000
-         LA    R5,CDSNTU_ML_L(,R5)                                      71400000
-         ST    R5,4(,R3)                                                71410000
-         LA    R5,CSTATUSTU_ML_L(,R5)                                   71420000
-         O     R5,=X'80000000'                                          71430000
-         ST    R5,8(,R3)                                                71440000
-         LA    R1,DYNALLOC_AREA_ML                                      71450000
-         DYNALLOC                                                       71460000
-*                                                                       71470000
-         DROP  R6                                                       71480000
-         DROP  R4                                                       71490000
-*                                                                       71500000
-         LTR   R15,R15                                                  71510000
-         IF (NZ) THEN                                                   71520000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         71530000
-            MVC   G_RETCODE,=F'8'                                       71540000
-            BR    R8                                                    71550000
-         ENDIF                                                          71560000
-*                                                                       71570000
-         L     R1,G_DCB_MEM_PTR                                         71580000
-         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_ML,R1),CDCBPDS_DIR_MX71590000
-               L                                                        71600000
-         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_ML,R1),CDCBEPDS_DIX71610000
-               R_ML                                                     71620000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             71630000
-         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)                            71640000
-         ST    R3,DCBDCBE-IHADCB(,R2)                                   71650000
-         LA    R4,PDSDIR_IS_EOF_ML                                      71660000
-         ST    R4,DCBEEODA-DCBE(,R3)                                    71670000
-         L     R6,DYNALLOC_AREA_ML                                      71680000
-         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_ML_L+CSTATUSTU_ML_L(,R6)   71690000
-         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              71700000
-*                                                                       71710000
-         MVI   PDSDIR_EOF_ML,C'N'                                       71720000
+* Get the member list                                                   71230000
+*                                                                       71240000
+GET_MEMLIST_MEMS EQU *                                                  71250000
+         LA    R6,DYNALLOC_AREA_ML                                      71260000
+         USING S99RBP,R6                                                71270000
+         LA    R4,S99RBPTR+4                                            71280000
+         USING S99RB,R4                                                 71290000
+         ST    R4,S99RBPTR                                              71300000
+         OI    S99RBPTR,S99RBPND                                        71310000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              71320000
+         MVI   S99RBLN,S99RBEND-S99RB                                   71330000
+         MVI   S99VERB,S99VRBAL                                         71340000
+         OI    S99FLG11,S99MSGL0                                        71350000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             71360000
+         MVC   0(CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_ML_L,R5),CDSNTU_ML  71370000
+         MVC   6(44,R5),CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSECT)           71380000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                71390000
+         ST    R3,S99TXTPP                                              71400000
+         ST    R5,0(,R3)                                                71410000
+         LA    R5,CDSNTU_ML_L(,R5)                                      71420000
+         ST    R5,4(,R3)                                                71430000
+         LA    R5,CSTATUSTU_ML_L(,R5)                                   71440000
+         O     R5,=X'80000000'                                          71450000
+         ST    R5,8(,R3)                                                71460000
+         LA    R1,DYNALLOC_AREA_ML                                      71470000
+         DYNALLOC                                                       71480000
+*                                                                       71490000
+         DROP  R6                                                       71500000
+         DROP  R4                                                       71510000
+*                                                                       71520000
+         LTR   R15,R15                                                  71530000
+         IF (NZ) THEN                                                   71540000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC allocation failed'         71550000
+            MVC   G_RETCODE,=F'8'                                       71560000
+            BR    R8                                                    71570000
+         ENDIF                                                          71580000
+*                                                                       71590000
+         L     R1,G_DCB_MEM_PTR                                         71600000
+         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_ML,R1),CDCBPDS_DIR_MX71610000
+               L                                                        71620000
+         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_ML,R1),CDCBEPDS_DIX71630000
+               R_ML                                                     71640000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             71650000
+         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)                            71660000
+         ST    R3,DCBDCBE-IHADCB(,R2)                                   71670000
+         LA    R4,PDSDIR_IS_EOF_ML                                      71680000
+         ST    R4,DCBEEODA-DCBE(,R3)                                    71690000
+         L     R6,DYNALLOC_AREA_ML                                      71700000
+         LA    R6,(S99RBEND-S99RB)+12+CDSNTU_ML_L+CSTATUSTU_ML_L(,R6)   71710000
+         MVC   DCBDDNAM-IHADCB(8,R2),6(R6)                              71720000
 *                                                                       71730000
-         LA    R6,GET_MEMLIST_OPENPDS                                   71740000
-         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)                      71750000
-GET_MEMLIST_OPENPDS EQU *                                               71760000
-*                                                                       71770000
-         LTR   R15,R15                                                  71780000
-         IF (NZ) THEN                                                   71790000
-            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX71800000
-               ry'                                                      71810000
-            MVC   G_RETCODE,=F'8'                                       71820000
-            B     GET_MEMLIST_DEALLOC                                   71830000
-         ENDIF                                                          71840000
-*                                                                       71850000
-GET_MEMLIST_GET_DIRREC EQU *                                            71860000
-         L     R1,G_DCB_MEM_PTR                                         71870000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             71880000
-         LA    R6,GET_MEMLIST_DIRREC_NOMORE                             71890000
-         GET   (R2),DIRREC_ML                                           71900000
-*                                                                       71910000
-         LA    R3,DIRREC_ML                                             71920000
-         XR    R4,R4                                                    71930000
-         LH    R4,0(,R3)                                                71940000
-         C     R4,=F'14'                                                71950000
-         BL    GET_MEMLIST_DIRREC_END_OF_BLOCK                          71960000
-         LA    R3,2(,R3)                                                71970000
-         S     R4,=F'2'                                                 71980000
-GET_MEMLIST_NEXT_DIRREC_ENTRY EQU *                                     71990000
-         CLC   0(8,R3),=8X'FF'                                          72000000
-         BE    GET_MEMLIST_DIRREC_NOMORE                                72010000
-         L     R5,G_SCAN_TOKEN3A                                        72020000
-         LT    R6,G_SCAN_TOKEN3_LEN                                     72030000
-         IF (NZ) THEN                                                   72040000
-            AR    R5,R6                                                 72050000
-            MVI   0(R5),C' '                                            72060000
-            LA    R5,1(,R5)                                             72070000
-            LA    R6,1(,R6)                                             72080000
-            ST    R6,G_SCAN_TOKEN3_LEN                                  72090000
-         ENDIF                                                          72100000
-         LR    R1,R3                                                    72110000
-         LA    R14,8                                                    72120000
-GET_MEMLIST_MEM_CHAR EQU *                                              72130000
-         CLI   0(R1),C' '                                               72140000
-         BE    GET_MEMLIST_MEM_DONE                                     72150000
-         MVC   0(1,R5),0(R1)                                            72160000
-         LA    R5,1(,R5)                                                72170000
-         LA    R6,1(,R6)                                                72180000
-         LA    R1,1(,R1)                                                72190000
-         BCT   R14,GET_MEMLIST_MEM_CHAR                                 72200000
-GET_MEMLIST_MEM_DONE EQU *                                              72210000
-         ST    R6,G_SCAN_TOKEN3_LEN                                     72220000
-         L     R5,8(,R3)                                                72230000
-         N     R5,=X'0000001F'                                          72240000
-         SLL   R5,1                                                     72250000
-         LA    R3,12(,R3)                                               72260000
-         S     R4,=F'12'                                                72270000
-         AR    R3,R5                                                    72280000
-         SR    R4,R5                                                    72290000
-         BC    B'0010',GET_MEMLIST_NEXT_DIRREC_ENTRY                    72300000
-*                                                                       72310000
-GET_MEMLIST_DIRREC_END_OF_BLOCK EQU *                                   72320000
-         B     GET_MEMLIST_GET_DIRREC                                   72330000
-*                                                                       72340000
-GET_MEMLIST_DIRREC_NOMORE EQU *                                         72350000
+         MVI   PDSDIR_EOF_ML,C'N'                                       71740000
+*                                                                       71750000
+         LA    R6,GET_MEMLIST_OPENPDS                                   71760000
+         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)                      71770000
+GET_MEMLIST_OPENPDS EQU *                                               71780000
+*                                                                       71790000
+         LTR   R15,R15                                                  71800000
+         IF (NZ) THEN                                                   71810000
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX71820000
+               ry'                                                      71830000
+            MVC   G_RETCODE,=F'8'                                       71840000
+            B     GET_MEMLIST_DEALLOC                                   71850000
+         ENDIF                                                          71860000
+*                                                                       71870000
+GET_MEMLIST_GET_DIRREC EQU *                                            71880000
+         L     R1,G_DCB_MEM_PTR                                         71890000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             71900000
+         LA    R6,GET_MEMLIST_DIRREC_NOMORE                             71910000
+         GET   (R2),DIRREC_ML                                           71920000
+*                                                                       71930000
+         LA    R3,DIRREC_ML                                             71940000
+         XR    R4,R4                                                    71950000
+         LH    R4,0(,R3)                                                71960000
+         C     R4,=F'14'                                                71970000
+         BL    GET_MEMLIST_DIRREC_END_OF_BLOCK                          71980000
+         LA    R3,2(,R3)                                                71990000
+         S     R4,=F'2'                                                 72000000
+GET_MEMLIST_NEXT_DIRREC_ENTRY EQU *                                     72010000
+         CLC   0(8,R3),=8X'FF'                                          72020000
+         BE    GET_MEMLIST_DIRREC_NOMORE                                72030000
+         L     R5,G_SCAN_TOKEN3A                                        72040000
+         LT    R6,G_SCAN_TOKEN3_LEN                                     72050000
+         IF (NZ) THEN                                                   72060000
+            AR    R5,R6                                                 72070000
+            MVI   0(R5),C' '                                            72080000
+            LA    R5,1(,R5)                                             72090000
+            LA    R6,1(,R6)                                             72100000
+            ST    R6,G_SCAN_TOKEN3_LEN                                  72110000
+         ENDIF                                                          72120000
+         LR    R1,R3                                                    72130000
+         LA    R14,8                                                    72140000
+GET_MEMLIST_MEM_CHAR EQU *                                              72150000
+         CLI   0(R1),C' '                                               72160000
+         BE    GET_MEMLIST_MEM_DONE                                     72170000
+         MVC   0(1,R5),0(R1)                                            72180000
+         LA    R5,1(,R5)                                                72190000
+         LA    R6,1(,R6)                                                72200000
+         LA    R1,1(,R1)                                                72210000
+         BCT   R14,GET_MEMLIST_MEM_CHAR                                 72220000
+GET_MEMLIST_MEM_DONE EQU *                                              72230000
+         ST    R6,G_SCAN_TOKEN3_LEN                                     72240000
+         L     R5,8(,R3)                                                72250000
+         N     R5,=X'0000001F'                                          72260000
+         SLL   R5,1                                                     72270000
+         LA    R3,12(,R3)                                               72280000
+         S     R4,=F'12'                                                72290000
+         AR    R3,R5                                                    72300000
+         SR    R4,R5                                                    72310000
+         BC    B'0010',GET_MEMLIST_NEXT_DIRREC_ENTRY                    72320000
+*                                                                       72330000
+GET_MEMLIST_DIRREC_END_OF_BLOCK EQU *                                   72340000
+         B     GET_MEMLIST_GET_DIRREC                                   72350000
 *                                                                       72360000
-         L     R1,G_DCB_MEM_PTR                                         72370000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             72380000
-         CLOSE ((R2)),MODE=31                                           72390000
-*                                                                       72400000
-GET_MEMLIST_DEALLOC EQU *                                               72410000
-         LA    R6,DYNALLOC_AREA_ML                                      72420000
-         USING S99RBP,R6                                                72430000
-         LA    R4,S99RBPTR+4                                            72440000
-         USING S99RB,R4                                                 72450000
-         ST    R4,S99RBPTR                                              72460000
-         OI    S99RBPTR,S99RBPND                                        72470000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              72480000
-         MVI   S99RBLN,S99RBEND-S99RB                                   72490000
-         MVI   S99VERB,S99VRBUN                                         72500000
-         OI    S99FLG11,S99MSGL0                                        72510000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             72520000
-         MVC   0(CDSNTU_ML_L,R5),CDSNTU_ML                              72530000
-         LA    R2,CSIFIELD_ML                                           72540000
-         MVC   6(44,R5),CSIFILTK-CSIFIELD_DSECT(R2)                     72550000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                72560000
-         ST    R3,S99TXTPP                                              72570000
-         O     R5,=X'80000000'                                          72580000
-         ST    R5,0(,R3)                                                72590000
-         LA    R1,DYNALLOC_AREA_ML                                      72600000
-         DYNALLOC                                                       72610000
-*                                                                       72620000
-         LTR   R15,R15                                                  72630000
-         IF (NZ) THEN                                                   72640000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       72650000
-            MVC   G_RETCODE,=F'8'                                       72660000
-            BR    R8                                                    72670000
-         ENDIF                                                          72680000
-*                                                                       72690000
-GET_MEMLIST_MEMS_RET EQU *                                              72700000
-         BR    R8                                                       72710000
-*                                                                       72720000
-* EODAD for DCBPDS                                                      72730000
+GET_MEMLIST_DIRREC_NOMORE EQU *                                         72370000
+*                                                                       72380000
+         L     R1,G_DCB_MEM_PTR                                         72390000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             72400000
+         CLOSE ((R2)),MODE=31                                           72410000
+*                                                                       72420000
+GET_MEMLIST_DEALLOC EQU *                                               72430000
+         LA    R6,DYNALLOC_AREA_ML                                      72440000
+         USING S99RBP,R6                                                72450000
+         LA    R4,S99RBPTR+4                                            72460000
+         USING S99RB,R4                                                 72470000
+         ST    R4,S99RBPTR                                              72480000
+         OI    S99RBPTR,S99RBPND                                        72490000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              72500000
+         MVI   S99RBLN,S99RBEND-S99RB                                   72510000
+         MVI   S99VERB,S99VRBUN                                         72520000
+         OI    S99FLG11,S99MSGL0                                        72530000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             72540000
+         MVC   0(CDSNTU_ML_L,R5),CDSNTU_ML                              72550000
+         LA    R2,CSIFIELD_ML                                           72560000
+         MVC   6(44,R5),CSIFILTK-CSIFIELD_DSECT(R2)                     72570000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                72580000
+         ST    R3,S99TXTPP                                              72590000
+         O     R5,=X'80000000'                                          72600000
+         ST    R5,0(,R3)                                                72610000
+         LA    R1,DYNALLOC_AREA_ML                                      72620000
+         DYNALLOC                                                       72630000
+*                                                                       72640000
+         LTR   R15,R15                                                  72650000
+         IF (NZ) THEN                                                   72660000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       72670000
+            MVC   G_RETCODE,=F'8'                                       72680000
+            BR    R8                                                    72690000
+         ENDIF                                                          72700000
+*                                                                       72710000
+GET_MEMLIST_MEMS_RET EQU *                                              72720000
+         BR    R8                                                       72730000
 *                                                                       72740000
-PDSDIR_IS_EOF_ML EQU *                                                  72750000
-         MVI   PDSDIR_EOF_ML,C'Y'                                       72760000
-         BR    R6                                                       72770000
-*                                                                       72780000
-         LTORG                                                          72790000
+* EODAD for DCBPDS                                                      72750000
+*                                                                       72760000
+PDSDIR_IS_EOF_ML EQU *                                                  72770000
+         MVI   PDSDIR_EOF_ML,C'Y'                                       72780000
+         BR    R6                                                       72790000
 *                                                                       72800000
-TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @                                 72810000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        72820000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    72830000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    72840000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    72850000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    72860000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    72870000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    72880000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    72890000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    72900000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    72910000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    72920000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    72930000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    72940000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    72950000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    72960000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    72970000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    72980000
-*                                                                       72990000
-TRT_ALPHANUMNATDASH_MEMLIST DS    0F A-Z 0-9 $ # @ -                    73000000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        73010000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    73020000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    73030000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    73040000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    73050000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    73060000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    73070000
-         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    73080000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    73090000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    73100000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    73110000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    73120000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    73130000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    73140000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    73150000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    73160000
-         DC    X'00000000000000000000FFFFFFFFFFFF' F                    73170000
-*                                                                       73180000
-CONST_CSIFIELD_ML DS 0F                                                 73190000
-         DC    CL44' '        CSIFILTK FILTER   KEY                     73200000
-         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           73210000
-         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            73220000
-         DS    0CL16          CSIDTYPD ENTRY TYPES                      73230000
-         DC    CL16'                ' CSIDTYPS                          73240000
-         DS    0CL4           CSIOPTS  CSI OPTIONS                      73250000
-         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 73260000
-         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 73270000
-         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 73280000
-         DC    XL1'00'        CSIRESRV RESERVED                         73290000
-         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      73300000
-         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       73310000
-         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       73320000
-CONST_CSIFIELD_ML_LEN EQU *-CONST_CSIFIELD_ML                           73330000
-*                                                                       73340000
-CDSNTU_ML                   DC    AL2(DALDSNAM)                         73350000
-                            DC    X'0001'                               73360000
-                            DC    X'002C'                               73370000
-                            DC    CL44' '                               73380000
-CDSNTU_ML_L                 EQU   *-CDSNTU_ML                           73390000
-*                                                                       73400000
-CSTATUSTU_ML                DC    AL2(DALSTATS)                         73410000
-                            DC    X'0001'                               73420000
-                            DC    X'0001'                               73430000
-                            DC    X'08'                                 73440000
-CSTATUSTU_ML_L              EQU   *-CSTATUSTU_ML                        73450000
-*                                                                       73460000
-CRETDDN_ML                  DC    AL2(DALRTDDN)                         73470000
-                            DC    X'0001'                               73480000
-                            DC    X'0008'                               73490000
-                            DC    CL8' '                                73500000
-CRETDDN_ML_L                EQU   *-CRETDDN_ML                          73510000
-*                                                                       73520000
-CDCBPDS_DIR_ML              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX73530000
-               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_ML                73540000
-LEN_DCBPDS_DIR_ML           EQU   *-CDCBPDS_DIR_ML                      73550000
-CDCBEPDS_DIR_ML             DCBE  EODAD=0,RMODE31=BUFF                  73560000
-LEN_DCBEPDS_DIR_ML          EQU   *-CDCBEPDS_DIR_ML                     73570000
-*                                                                       73580000
-GET_MEMLIST_DSECT           DSECT                                       73590000
-                            DS    18F * My savearea                     73600000
-*                                                                       73610000
-DAREAPTR_ML                 DS    A      DATA AREA POINTER (64K)        73620000
+         LTORG                                                          72810000
+*                                                                       72820000
+TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @                                 72830000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        72840000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    72850000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    72860000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    72870000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    72880000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    72890000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    72900000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    72910000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    72920000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    72930000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    72940000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    72950000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    72960000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    72970000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    72980000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    72990000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    73000000
+*                                                                       73010000
+TRT_ALPHANUMNATDASH_MEMLIST DS    0F A-Z 0-9 $ # @ -                    73020000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        73030000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    73040000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    73050000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    73060000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    73070000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    73080000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    73090000
+         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    73100000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    73110000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    73120000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    73130000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    73140000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    73150000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    73160000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    73170000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    73180000
+         DC    X'00000000000000000000FFFFFFFFFFFF' F                    73190000
+*                                                                       73200000
+CONST_CSIFIELD_ML DS 0F                                                 73210000
+         DC    CL44' '        CSIFILTK FILTER   KEY                     73220000
+         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           73230000
+         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            73240000
+         DS    0CL16          CSIDTYPD ENTRY TYPES                      73250000
+         DC    CL16'                ' CSIDTYPS                          73260000
+         DS    0CL4           CSIOPTS  CSI OPTIONS                      73270000
+         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 73280000
+         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 73290000
+         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 73300000
+         DC    XL1'00'        CSIRESRV RESERVED                         73310000
+         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      73320000
+         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       73330000
+         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       73340000
+CONST_CSIFIELD_ML_LEN EQU *-CONST_CSIFIELD_ML                           73350000
+*                                                                       73360000
+CDSNTU_ML                   DC    AL2(DALDSNAM)                         73370000
+                            DC    X'0001'                               73380000
+                            DC    X'002C'                               73390000
+                            DC    CL44' '                               73400000
+CDSNTU_ML_L                 EQU   *-CDSNTU_ML                           73410000
+*                                                                       73420000
+CSTATUSTU_ML                DC    AL2(DALSTATS)                         73430000
+                            DC    X'0001'                               73440000
+                            DC    X'0001'                               73450000
+                            DC    X'08'                                 73460000
+CSTATUSTU_ML_L              EQU   *-CSTATUSTU_ML                        73470000
+*                                                                       73480000
+CRETDDN_ML                  DC    AL2(DALRTDDN)                         73490000
+                            DC    X'0001'                               73500000
+                            DC    X'0008'                               73510000
+                            DC    CL8' '                                73520000
+CRETDDN_ML_L                EQU   *-CRETDDN_ML                          73530000
+*                                                                       73540000
+CDCBPDS_DIR_ML              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX73550000
+               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_ML                73560000
+LEN_DCBPDS_DIR_ML           EQU   *-CDCBPDS_DIR_ML                      73570000
+CDCBEPDS_DIR_ML             DCBE  EODAD=0,RMODE31=BUFF                  73580000
+LEN_DCBEPDS_DIR_ML          EQU   *-CDCBEPDS_DIR_ML                     73590000
+*                                                                       73600000
+GET_MEMLIST_DSECT           DSECT                                       73610000
+                            DS    18F * My savearea                     73620000
 *                                                                       73630000
-MODRSNRT_ML                 DS    0F                                    73640000
-PARMRC_ML                   DS    0CL4                                  73650000
-MODID_ML                    DS    CL2    MODULE ID                      73660000
-RSNCODE_ML                  DS    CL1    REASON CODE                    73670000
-RTNCODE_ML                  DS    CL1    RETURN CODE                    73680000
-*                                                                       73690000
-CSIFIELD_ML                 DS    0F                                    73700000
-                            ORG   *+CSIFIELD_DSECT_SIZ                  73710000
-CSIFIELD_ML_LEN             EQU   *-CSIFIELD_ML                         73720000
-*                                                                       73730000
-PARMLIST_ML                 DS    0F                                    73740000
-                            DS    A                                     73750000
-                            DS    A                                     73760000
+DAREAPTR_ML                 DS    A      DATA AREA POINTER (64K)        73640000
+*                                                                       73650000
+MODRSNRT_ML                 DS    0F                                    73660000
+PARMRC_ML                   DS    0CL4                                  73670000
+MODID_ML                    DS    CL2    MODULE ID                      73680000
+RSNCODE_ML                  DS    CL1    REASON CODE                    73690000
+RTNCODE_ML                  DS    CL1    RETURN CODE                    73700000
+*                                                                       73710000
+CSIFIELD_ML                 DS    0F                                    73720000
+                            ORG   *+CSIFIELD_DSECT_SIZ                  73730000
+CSIFIELD_ML_LEN             EQU   *-CSIFIELD_ML                         73740000
+*                                                                       73750000
+PARMLIST_ML                 DS    0F                                    73760000
                             DS    A                                     73770000
-*                                                                       73780000
-                            DS    0F                                    73790000
-PDSDIR_EOF_ML               DS    C                                     73800000
-*                                                                       73810000
-                            DS    0F                                    73820000
-DSCBPAR_ML                  DS    4F                                    73830000
-OBTAIN_ML                   DS    0F                                    73840000
-                            ORG   *+OBTAIN_DSECT_SIZ                    73850000
-*                                                                       73860000
-DYNALLOC_AREA_ML            DS    0F                                    73870000
-                            ORG   *+4                                   73880000
-                            ORG   *+(S99RBEND-S99RB)                    73890000
-                            ORG   *+12                                  73900000
-                            ORG   *+CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_X73910000
-               ML_L                                                     73920000
-*                                                                       73930000
-                            DS    0F                                    73940000
-DIRREC_ML                   DS    CL256                                 73950000
-*                                                                       73960000
-MEM8_ML                     DS    CL8                                   73970000
+                            DS    A                                     73780000
+                            DS    A                                     73790000
+*                                                                       73800000
+                            DS    0F                                    73810000
+PDSDIR_EOF_ML               DS    C                                     73820000
+*                                                                       73830000
+                            DS    0F                                    73840000
+DSCBPAR_ML                  DS    4F                                    73850000
+OBTAIN_ML                   DS    0F                                    73860000
+                            ORG   *+OBTAIN_DSECT_SIZ                    73870000
+*                                                                       73880000
+DYNALLOC_AREA_ML            DS    0F                                    73890000
+                            ORG   *+4                                   73900000
+                            ORG   *+(S99RBEND-S99RB)                    73910000
+                            ORG   *+12                                  73920000
+                            ORG   *+CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_X73930000
+               ML_L                                                     73940000
+*                                                                       73950000
+                            DS    0F                                    73960000
+DIRREC_ML                   DS    CL256                                 73970000
 *                                                                       73980000
-DAREA_ML                    DS    C                                     73990000
-                            ORG   *+1023                                74000000
-DAREA_ML_SIZ                EQU   *-DAREA_ML                            74010000
-*                                                                       74020000
-GET_MEMLIST_DSECT_SIZ       EQU   *-GET_MEMLIST_DSECT                   74030000
+MEM8_ML                     DS    CL8                                   73990000
+*                                                                       74000000
+DAREA_ML                    DS    C                                     74010000
+                            ORG   *+1023                                74020000
+DAREA_ML_SIZ                EQU   *-DAREA_ML                            74030000
 *                                                                       74040000
-R0       EQU   0                                                        74050000
-R1       EQU   1                                                        74060000
-R2       EQU   2                                                        74070000
-R3       EQU   3                                                        74080000
-R4       EQU   4                                                        74090000
-R5       EQU   5                                                        74100000
-R6       EQU   6                                                        74110000
-R7       EQU   7                                                        74120000
-R8       EQU   8                                                        74130000
-R9       EQU   9                                                        74140000
-R10      EQU   10                                                       74150000
-R11      EQU   11                                                       74160000
-R12      EQU   12                                                       74170000
-R13      EQU   13                                                       74180000
-R14      EQU   14                                                       74190000
-R15      EQU   15                                                       74200000
-*                                                                       74210000
-         END   LWZMAKE                                                  74220000
+GET_MEMLIST_DSECT_SIZ       EQU   *-GET_MEMLIST_DSECT                   74050000
+*                                                                       74060000
+R0       EQU   0                                                        74070000
+R1       EQU   1                                                        74080000
+R2       EQU   2                                                        74090000
+R3       EQU   3                                                        74100000
+R4       EQU   4                                                        74110000
+R5       EQU   5                                                        74120000
+R6       EQU   6                                                        74130000
+R7       EQU   7                                                        74140000
+R8       EQU   8                                                        74150000
+R9       EQU   9                                                        74160000
+R10      EQU   10                                                       74170000
+R11      EQU   11                                                       74180000
+R12      EQU   12                                                       74190000
+R13      EQU   13                                                       74200000
+R14      EQU   14                                                       74210000
+R15      EQU   15                                                       74220000
+*                                                                       74230000
+         END   LWZMAKE                                                  74240000

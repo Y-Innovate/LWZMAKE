@@ -70,7 +70,7 @@ g.SYSUT15.allocated = 0
 RETURN
 
 /**********************************************************************/
-/* Allocate DD's for invoking IEWBLINK                                */
+/* Allocate DD's for invoking IGYCRCTL                                */
 /**********************************************************************/
 allocDDs: PROCEDURE EXPOSE g. SIGL
 
@@ -484,7 +484,7 @@ END
 RETURN
 
 /**********************************************************************/
-/* Free DD's after invoking ASMA90                                    */
+/* Free DD's after invoking IGYCRCTL                                  */
 /**********************************************************************/
 freeDDs: PROCEDURE EXPOSE g. SIGL
 
