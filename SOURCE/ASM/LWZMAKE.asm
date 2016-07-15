@@ -3391,6 +3391,11 @@ MEMBERLIST_FINISH EQU *
 *           Get the member list
             L     R15,LWZMAKE_GET_MEMLISTA_VAR * Get addr GET_MEMLIST
             BASR  R14,R15         * Link to GET_MEMLIST section
+            MVC   G_WTOLEN,=H'84'
+            MVC   G_WTOFIL,=H'0'
+            L     R5,G_SCAN_TOKENA
+            MVC   G_WTOTEXT(80),0(R5)
+            WTO   MF=(E,G_WTOBLOCK)
          ENDIF
 *
          BAL   R7,SCAN_VAR_RESTORE
@@ -3470,7 +3475,7 @@ SCAN_VAR_RESTORE EQU *
             USING INPUT_DSECT,R2  * Address with INPUT DSECT
 *
             MVI   INPUTTYPE,X'01' * Set type of input to ptr to string
-            MVC   INPUTLEAD,G_SCAN_SPACE_COUNT+2
+            MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
             MVC   INPUTLEN,G_SCAN_TOKEN3_LEN+2 * Copy value length
             MVC   INPUTPTR,G_SCAN_TOKEN3A * Copy value pointer
             MVC   INPUTPOS,=H'0'  * Set initial scan position to start
