@@ -240,7 +240,7 @@ RET      EQU   *                                                        02250000
 *                                                                       02400000
 INIT     EQU   *                                                        02410000
 *        Set trace level, for a different trace level change here       02420000
-         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_WARNING                    02430004
+         MVI   G_LWZMAKE_TRACE,LWZMAKE_TRACE_WARNING                    02430000
 *                                                                       02440000
          MVC   G_RETCODE,=F'0'    * Initial return code 0               02450000
 *                                                                       02460000
@@ -3802,19 +3802,19 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
                      TM    G_SCAN_STATE,SCAN_STATE_IN_EXPAND            38020000
                   ENDIF                                                 38030000
 *                 If either of the tests above gives CC ones            38040000
-                  IF (NO) THEN                                          38050007
-                     MVI   G_SCAN_TOKENTYPE,X'00'                       38060007
-                  ENDIF                                                 38070007
-                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38080007
-                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN                    38090007
-                  BASR  R14,R15             * Link to SCAN_CHAR         38100007
-                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38110007
-                  B     SCAN_TOKEN_VALID    * Skip to finish token      38120007
-               ELSE                                                     38130007
-                  MLWZMRPT RPTLINE=CL133'0Unexpected target member variX38140007
-               able',APND_LC=C'Y'                                       38150007
-                  MVC   G_RETCODE,=F'8' * Set return code 8             38160007
-                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer        38170007
+                  IF (NO) THEN                                          38050000
+                     MVI   G_SCAN_TOKENTYPE,X'00'                       38060000
+                  ENDIF                                                 38070000
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38080000
+                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN                    38090000
+                  BASR  R14,R15             * Link to SCAN_CHAR         38100000
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1       38110000
+                  B     SCAN_TOKEN_VALID    * Skip to finish token      38120000
+               ELSE                                                     38130000
+                  MLWZMRPT RPTLINE=CL133'0Unexpected target member variX38140000
+               able',APND_LC=C'Y'                                       38150000
+                  MVC   G_RETCODE,=F'8' * Set return code 8             38160000
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer        38170000
                ENDIF                                                    38180000
             ENDIF                                                       38190000
 *                                                                       38200000
@@ -3824,7 +3824,7 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
             L     R6,G_SCAN_CURRCOL * Get current column                38240000
             C     R6,=F'70'         * Check for pos 71 or above         38250000
             IF (NL) THEN            * If so write error and stop        38260000
-               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'       38270003
+               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'       38270000
                MVC   G_RETCODE,=F'8' * Set return code 8                38280000
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer           38290000
             ENDIF                                                       38300000
@@ -3839,7 +3839,7 @@ UNEXPECTED_RECIPE EQU *                                                 36610000
                   MVI   G_SCAN_CLOSE_BRACKET,C'}'                       38390000
                ELSE                                                     38400000
 *                 Neither ( nor { is a syntax error                     38410000
-                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'    38420005
+                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'    38420000
                   MVC   G_RETCODE,=F'8' * Set return code 8             38430000
                   B     SCAN_TOKEN_RET  * Skip rest of tokenizer        38440000
                ENDIF                                                    38450000
@@ -7204,221 +7204,243 @@ GET_MEMLIST_NEXT_DIRREC_ENTRY EQU *                                     72010000
          L     R5,G_SCAN_TOKEN3A                                        72040000
          LT    R6,G_SCAN_TOKEN3_LEN                                     72050000
          IF (NZ) THEN                                                   72060000
-            AR    R5,R6                                                 72070000
-            MVI   0(R5),C' '                                            72080000
-            LA    R5,1(,R5)                                             72090000
-            LA    R6,1(,R6)                                             72100000
-            ST    R6,G_SCAN_TOKEN3_LEN                                  72110000
-         ENDIF                                                          72120000
-         LR    R1,R3                                                    72130000
-         LA    R14,8                                                    72140000
-GET_MEMLIST_MEM_CHAR EQU *                                              72150000
-         CLI   0(R1),C' '                                               72160000
-         BE    GET_MEMLIST_MEM_DONE                                     72170000
-         MVC   0(1,R5),0(R1)                                            72180000
-         LA    R5,1(,R5)                                                72190000
-         LA    R6,1(,R6)                                                72200000
-         LA    R1,1(,R1)                                                72210000
-         BCT   R14,GET_MEMLIST_MEM_CHAR                                 72220000
-GET_MEMLIST_MEM_DONE EQU *                                              72230000
-         ST    R6,G_SCAN_TOKEN3_LEN                                     72240000
-         L     R5,8(,R3)                                                72250000
-         N     R5,=X'0000001F'                                          72260000
-         SLL   R5,1                                                     72270000
-         LA    R3,12(,R3)                                               72280000
-         S     R4,=F'12'                                                72290000
-         AR    R3,R5                                                    72300000
-         SR    R4,R5                                                    72310000
-         BC    B'0010',GET_MEMLIST_NEXT_DIRREC_ENTRY                    72320000
-*                                                                       72330000
-GET_MEMLIST_DIRREC_END_OF_BLOCK EQU *                                   72340000
-         B     GET_MEMLIST_GET_DIRREC                                   72350000
-*                                                                       72360000
-GET_MEMLIST_DIRREC_NOMORE EQU *                                         72370000
-*                                                                       72380000
-         L     R1,G_DCB_MEM_PTR                                         72390000
-         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             72400000
-         CLOSE ((R2)),MODE=31                                           72410000
-*                                                                       72420000
-GET_MEMLIST_DEALLOC EQU *                                               72430000
-         LA    R6,DYNALLOC_AREA_ML                                      72440000
-         USING S99RBP,R6                                                72450000
-         LA    R4,S99RBPTR+4                                            72460000
-         USING S99RB,R4                                                 72470000
-         ST    R4,S99RBPTR                                              72480000
-         OI    S99RBPTR,S99RBPND                                        72490000
-         XC    S99RB(S99RBEND-S99RB),S99RB                              72500000
-         MVI   S99RBLN,S99RBEND-S99RB                                   72510000
-         MVI   S99VERB,S99VRBUN                                         72520000
-         OI    S99FLG11,S99MSGL0                                        72530000
-         LA    R5,S99RB+(S99RBEND-S99RB)+12                             72540000
-         MVC   0(CDSNTU_ML_L,R5),CDSNTU_ML                              72550000
-         LA    R2,CSIFIELD_ML                                           72560000
-         MVC   6(44,R5),CSIFILTK-CSIFIELD_DSECT(R2)                     72570000
-         LA    R3,S99RB+(S99RBEND-S99RB)                                72580000
-         ST    R3,S99TXTPP                                              72590000
-         O     R5,=X'80000000'                                          72600000
-         ST    R5,0(,R3)                                                72610000
-         LA    R1,DYNALLOC_AREA_ML                                      72620000
-         DYNALLOC                                                       72630000
-*                                                                       72640000
-         LTR   R15,R15                                                  72650000
-         IF (NZ) THEN                                                   72660000
-            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       72670000
-            MVC   G_RETCODE,=F'8'                                       72680000
-            BR    R8                                                    72690000
-         ENDIF                                                          72700000
-*                                                                       72710000
-GET_MEMLIST_MEMS_RET EQU *                                              72720000
-         BR    R8                                                       72730000
-*                                                                       72740000
-* EODAD for DCBPDS                                                      72750000
-*                                                                       72760000
-PDSDIR_IS_EOF_ML EQU *                                                  72770000
-         MVI   PDSDIR_EOF_ML,C'Y'                                       72780000
-         BR    R6                                                       72790000
-*                                                                       72800000
-         LTORG                                                          72810000
-*                                                                       72820000
-TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @                                 72830000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        72840000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    72850000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    72860000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    72870000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    72880000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    72890000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    72900000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    72910000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    72920000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    72930000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    72940000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    72950000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    72960000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    72970000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    72980000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    72990000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    73000000
+            LA    R6,9(,R6)                                             72070000
+            C     R6,G_SCAN_TOKEN3_MAXLEN                               72080000
+            IF (H) THEN                                                 72090000
+               STM   R14,R12,GET_MEMLIST_SAVEAREA2+12                   72100000
+               L     R3,G_SCAN_TOKEN3_MAXLEN * Get current max len      72110000
+               LR    R6,R3         * Save it for storage release        72120000
+               SLL   R3,1          * Multiply max length by 2           72130000
+               ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len      72140000
+               STORAGE OBTAIN,LENGTH=(R3) * Allocate a memory block     72150000
+               LR    R0,R1         * Have R0 point to new block         72160000
+               L     R1,G_SCAN_TOKEN3_LEN * Get length of token 3       72170000
+               L     R2,G_SCAN_TOKEN3A * Have R2 point to old block     72180000
+               LR    R5,R2         * Save it for storage release        72190000
+               LR    R3,R1         * Make sure no cropping/filling      72200000
+               ST    R0,G_SCAN_TOKEN3A * Save ptr to new block          72210000
+               MVCL  R0,R2            * Copy old to new block           72220000
+               STORAGE RELEASE,LENGTH=(R6),ADDR=(R5)                    72230000
+               LM    R14,R12,GET_MEMLIST_SAVEAREA2+12                   72240000
+               L     R5,G_SCAN_TOKEN3A                                  72250000
+            ENDIF                                                       72260000
+            L     R6,G_SCAN_TOKEN3_LEN                                  72270001
+            AR    R5,R6                                                 72280000
+            MVI   0(R5),C' '                                            72290000
+            LA    R5,1(,R5)                                             72300000
+            LA    R6,1(,R6)                                             72310000
+            ST    R6,G_SCAN_TOKEN3_LEN                                  72320000
+         ENDIF                                                          72330000
+         LR    R1,R3                                                    72340000
+         LA    R14,8                                                    72350000
+GET_MEMLIST_MEM_CHAR EQU *                                              72360000
+         CLI   0(R1),C' '                                               72370000
+         BE    GET_MEMLIST_MEM_DONE                                     72380000
+         MVC   0(1,R5),0(R1)                                            72390000
+         LA    R5,1(,R5)                                                72400000
+         LA    R6,1(,R6)                                                72410000
+         LA    R1,1(,R1)                                                72420000
+         BCT   R14,GET_MEMLIST_MEM_CHAR                                 72430000
+GET_MEMLIST_MEM_DONE EQU *                                              72440000
+         ST    R6,G_SCAN_TOKEN3_LEN                                     72450000
+         L     R5,8(,R3)                                                72460000
+         N     R5,=X'0000001F'                                          72470000
+         SLL   R5,1                                                     72480000
+         LA    R3,12(,R3)                                               72490000
+         S     R4,=F'12'                                                72500000
+         AR    R3,R5                                                    72510000
+         SR    R4,R5                                                    72520000
+         BC    B'0010',GET_MEMLIST_NEXT_DIRREC_ENTRY                    72530000
+*                                                                       72540000
+GET_MEMLIST_DIRREC_END_OF_BLOCK EQU *                                   72550000
+         B     GET_MEMLIST_GET_DIRREC                                   72560000
+*                                                                       72570000
+GET_MEMLIST_DIRREC_NOMORE EQU *                                         72580000
+*                                                                       72590000
+         L     R1,G_DCB_MEM_PTR                                         72600000
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)                             72610000
+         CLOSE ((R2)),MODE=31                                           72620000
+*                                                                       72630000
+GET_MEMLIST_DEALLOC EQU *                                               72640000
+         LA    R6,DYNALLOC_AREA_ML                                      72650000
+         USING S99RBP,R6                                                72660000
+         LA    R4,S99RBPTR+4                                            72670000
+         USING S99RB,R4                                                 72680000
+         ST    R4,S99RBPTR                                              72690000
+         OI    S99RBPTR,S99RBPND                                        72700000
+         XC    S99RB(S99RBEND-S99RB),S99RB                              72710000
+         MVI   S99RBLN,S99RBEND-S99RB                                   72720000
+         MVI   S99VERB,S99VRBUN                                         72730000
+         OI    S99FLG11,S99MSGL0                                        72740000
+         LA    R5,S99RB+(S99RBEND-S99RB)+12                             72750000
+         MVC   0(CDSNTU_ML_L,R5),CDSNTU_ML                              72760000
+         LA    R2,CSIFIELD_ML                                           72770000
+         MVC   6(44,R5),CSIFILTK-CSIFIELD_DSECT(R2)                     72780000
+         LA    R3,S99RB+(S99RBEND-S99RB)                                72790000
+         ST    R3,S99TXTPP                                              72800000
+         O     R5,=X'80000000'                                          72810000
+         ST    R5,0(,R3)                                                72820000
+         LA    R1,DYNALLOC_AREA_ML                                      72830000
+         DYNALLOC                                                       72840000
+*                                                                       72850000
+         LTR   R15,R15                                                  72860000
+         IF (NZ) THEN                                                   72870000
+            MLWZMRPT RPTLINE=CL133'0DYNALLOC deallocation failed'       72880000
+            MVC   G_RETCODE,=F'8'                                       72890000
+            BR    R8                                                    72900000
+         ENDIF                                                          72910000
+*                                                                       72920000
+GET_MEMLIST_MEMS_RET EQU *                                              72930000
+         BR    R8                                                       72940000
+*                                                                       72950000
+* EODAD for DCBPDS                                                      72960000
+*                                                                       72970000
+PDSDIR_IS_EOF_ML EQU *                                                  72980000
+         MVI   PDSDIR_EOF_ML,C'Y'                                       72990000
+         BR    R6                                                       73000000
 *                                                                       73010000
-TRT_ALPHANUMNATDASH_MEMLIST DS    0F A-Z 0-9 $ # @ -                    73020000
-*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        73030000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    73040000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    73050000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    73060000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    73070000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    73080000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    73090000
-         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    73100000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    73110000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    73120000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    73130000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    73140000
-         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    73150000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    73160000
-         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    73170000
-         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    73180000
-         DC    X'00000000000000000000FFFFFFFFFFFF' F                    73190000
-*                                                                       73200000
-CONST_CSIFIELD_ML DS 0F                                                 73210000
-         DC    CL44' '        CSIFILTK FILTER   KEY                     73220000
-         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           73230000
-         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            73240000
-         DS    0CL16          CSIDTYPD ENTRY TYPES                      73250000
-         DC    CL16'                ' CSIDTYPS                          73260000
-         DS    0CL4           CSIOPTS  CSI OPTIONS                      73270000
-         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 73280000
-         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 73290000
-         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 73300000
-         DC    XL1'00'        CSIRESRV RESERVED                         73310000
-         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      73320000
-         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       73330000
-         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       73340000
-CONST_CSIFIELD_ML_LEN EQU *-CONST_CSIFIELD_ML                           73350000
-*                                                                       73360000
-CDSNTU_ML                   DC    AL2(DALDSNAM)                         73370000
-                            DC    X'0001'                               73380000
-                            DC    X'002C'                               73390000
-                            DC    CL44' '                               73400000
-CDSNTU_ML_L                 EQU   *-CDSNTU_ML                           73410000
-*                                                                       73420000
-CSTATUSTU_ML                DC    AL2(DALSTATS)                         73430000
-                            DC    X'0001'                               73440000
-                            DC    X'0001'                               73450000
-                            DC    X'08'                                 73460000
-CSTATUSTU_ML_L              EQU   *-CSTATUSTU_ML                        73470000
-*                                                                       73480000
-CRETDDN_ML                  DC    AL2(DALRTDDN)                         73490000
-                            DC    X'0001'                               73500000
-                            DC    X'0008'                               73510000
-                            DC    CL8' '                                73520000
-CRETDDN_ML_L                EQU   *-CRETDDN_ML                          73530000
-*                                                                       73540000
-CDCBPDS_DIR_ML              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX73550000
-               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_ML                73560000
-LEN_DCBPDS_DIR_ML           EQU   *-CDCBPDS_DIR_ML                      73570000
-CDCBEPDS_DIR_ML             DCBE  EODAD=0,RMODE31=BUFF                  73580000
-LEN_DCBEPDS_DIR_ML          EQU   *-CDCBEPDS_DIR_ML                     73590000
-*                                                                       73600000
-GET_MEMLIST_DSECT           DSECT                                       73610000
-                            DS    18F * My savearea                     73620000
+         LTORG                                                          73020000
+*                                                                       73030000
+TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @                                 73040000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        73050000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    73060000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    73070000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    73080000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    73090000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    73100000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    73110000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    73120000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    73130000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    73140000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    73150000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    73160000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    73170000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    73180000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    73190000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    73200000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F                    73210000
+*                                                                       73220000
+TRT_ALPHANUMNATDASH_MEMLIST DS    0F A-Z 0-9 $ # @ -                    73230000
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F                        73240000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0                    73250000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1                    73260000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2                    73270000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3                    73280000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4                    73290000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5                    73300000
+         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6                    73310000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7                    73320000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8                    73330000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9                    73340000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A                    73350000
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B                    73360000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C                    73370000
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D                    73380000
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E                    73390000
+         DC    X'00000000000000000000FFFFFFFFFFFF' F                    73400000
+*                                                                       73410000
+CONST_CSIFIELD_ML DS 0F                                                 73420000
+         DC    CL44' '        CSIFILTK FILTER   KEY                     73430000
+         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS           73440000
+         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS            73450000
+         DS    0CL16          CSIDTYPD ENTRY TYPES                      73460000
+         DC    CL16'                ' CSIDTYPS                          73470000
+         DS    0CL4           CSIOPTS  CSI OPTIONS                      73480000
+         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' ' 73490000
+         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' ' 73500000
+         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' ' 73510000
+         DC    XL1'00'        CSIRESRV RESERVED                         73520000
+         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING      73530000
+         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES       73540000
+         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME                       73550000
+CONST_CSIFIELD_ML_LEN EQU *-CONST_CSIFIELD_ML                           73560000
+*                                                                       73570000
+CDSNTU_ML                   DC    AL2(DALDSNAM)                         73580000
+                            DC    X'0001'                               73590000
+                            DC    X'002C'                               73600000
+                            DC    CL44' '                               73610000
+CDSNTU_ML_L                 EQU   *-CDSNTU_ML                           73620000
 *                                                                       73630000
-DAREAPTR_ML                 DS    A      DATA AREA POINTER (64K)        73640000
-*                                                                       73650000
-MODRSNRT_ML                 DS    0F                                    73660000
-PARMRC_ML                   DS    0CL4                                  73670000
-MODID_ML                    DS    CL2    MODULE ID                      73680000
-RSNCODE_ML                  DS    CL1    REASON CODE                    73690000
-RTNCODE_ML                  DS    CL1    RETURN CODE                    73700000
-*                                                                       73710000
-CSIFIELD_ML                 DS    0F                                    73720000
-                            ORG   *+CSIFIELD_DSECT_SIZ                  73730000
-CSIFIELD_ML_LEN             EQU   *-CSIFIELD_ML                         73740000
+CSTATUSTU_ML                DC    AL2(DALSTATS)                         73640000
+                            DC    X'0001'                               73650000
+                            DC    X'0001'                               73660000
+                            DC    X'08'                                 73670000
+CSTATUSTU_ML_L              EQU   *-CSTATUSTU_ML                        73680000
+*                                                                       73690000
+CRETDDN_ML                  DC    AL2(DALRTDDN)                         73700000
+                            DC    X'0001'                               73710000
+                            DC    X'0008'                               73720000
+                            DC    CL8' '                                73730000
+CRETDDN_ML_L                EQU   *-CRETDDN_ML                          73740000
 *                                                                       73750000
-PARMLIST_ML                 DS    0F                                    73760000
-                            DS    A                                     73770000
-                            DS    A                                     73780000
-                            DS    A                                     73790000
-*                                                                       73800000
-                            DS    0F                                    73810000
-PDSDIR_EOF_ML               DS    C                                     73820000
-*                                                                       73830000
-                            DS    0F                                    73840000
-DSCBPAR_ML                  DS    4F                                    73850000
-OBTAIN_ML                   DS    0F                                    73860000
-                            ORG   *+OBTAIN_DSECT_SIZ                    73870000
-*                                                                       73880000
-DYNALLOC_AREA_ML            DS    0F                                    73890000
-                            ORG   *+4                                   73900000
-                            ORG   *+(S99RBEND-S99RB)                    73910000
-                            ORG   *+12                                  73920000
-                            ORG   *+CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_X73930000
-               ML_L                                                     73940000
-*                                                                       73950000
-                            DS    0F                                    73960000
-DIRREC_ML                   DS    CL256                                 73970000
-*                                                                       73980000
-MEM8_ML                     DS    CL8                                   73990000
-*                                                                       74000000
-DAREA_ML                    DS    C                                     74010000
-                            ORG   *+1023                                74020000
-DAREA_ML_SIZ                EQU   *-DAREA_ML                            74030000
-*                                                                       74040000
-GET_MEMLIST_DSECT_SIZ       EQU   *-GET_MEMLIST_DSECT                   74050000
-*                                                                       74060000
-R0       EQU   0                                                        74070000
-R1       EQU   1                                                        74080000
-R2       EQU   2                                                        74090000
-R3       EQU   3                                                        74100000
-R4       EQU   4                                                        74110000
-R5       EQU   5                                                        74120000
-R6       EQU   6                                                        74130000
-R7       EQU   7                                                        74140000
-R8       EQU   8                                                        74150000
-R9       EQU   9                                                        74160000
-R10      EQU   10                                                       74170000
-R11      EQU   11                                                       74180000
-R12      EQU   12                                                       74190000
-R13      EQU   13                                                       74200000
-R14      EQU   14                                                       74210000
-R15      EQU   15                                                       74220000
-*                                                                       74230000
-         END   LWZMAKE                                                  74240000
+CDCBPDS_DIR_ML              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX73760000
+               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_ML                73770000
+LEN_DCBPDS_DIR_ML           EQU   *-CDCBPDS_DIR_ML                      73780000
+CDCBEPDS_DIR_ML             DCBE  EODAD=0,RMODE31=BUFF                  73790000
+LEN_DCBEPDS_DIR_ML          EQU   *-CDCBEPDS_DIR_ML                     73800000
+*                                                                       73810000
+GET_MEMLIST_DSECT           DSECT                                       73820000
+                            DS    18F * My savearea                     73830000
+GET_MEMLIST_SAVEAREA2       DS    18F                                   73840000
+*                                                                       73850000
+DAREAPTR_ML                 DS    A      DATA AREA POINTER (64K)        73860000
+*                                                                       73870000
+MODRSNRT_ML                 DS    0F                                    73880000
+PARMRC_ML                   DS    0CL4                                  73890000
+MODID_ML                    DS    CL2    MODULE ID                      73900000
+RSNCODE_ML                  DS    CL1    REASON CODE                    73910000
+RTNCODE_ML                  DS    CL1    RETURN CODE                    73920000
+*                                                                       73930000
+CSIFIELD_ML                 DS    0F                                    73940000
+                            ORG   *+CSIFIELD_DSECT_SIZ                  73950000
+CSIFIELD_ML_LEN             EQU   *-CSIFIELD_ML                         73960000
+*                                                                       73970000
+PARMLIST_ML                 DS    0F                                    73980000
+                            DS    A                                     73990000
+                            DS    A                                     74000000
+                            DS    A                                     74010000
+*                                                                       74020000
+                            DS    0F                                    74030000
+PDSDIR_EOF_ML               DS    C                                     74040000
+*                                                                       74050000
+                            DS    0F                                    74060000
+DSCBPAR_ML                  DS    4F                                    74070000
+OBTAIN_ML                   DS    0F                                    74080000
+                            ORG   *+OBTAIN_DSECT_SIZ                    74090000
+*                                                                       74100000
+DYNALLOC_AREA_ML            DS    0F                                    74110000
+                            ORG   *+4                                   74120000
+                            ORG   *+(S99RBEND-S99RB)                    74130000
+                            ORG   *+12                                  74140000
+                            ORG   *+CDSNTU_ML_L+CSTATUSTU_ML_L+CRETDDN_X74150000
+               ML_L                                                     74160000
+*                                                                       74170000
+                            DS    0F                                    74180000
+DIRREC_ML                   DS    CL256                                 74190000
+*                                                                       74200000
+MEM8_ML                     DS    CL8                                   74210000
+*                                                                       74220000
+DAREA_ML                    DS    C                                     74230000
+                            ORG   *+1023                                74240000
+DAREA_ML_SIZ                EQU   *-DAREA_ML                            74250000
+*                                                                       74260000
+GET_MEMLIST_DSECT_SIZ       EQU   *-GET_MEMLIST_DSECT                   74270000
+*                                                                       74280000
+R0       EQU   0                                                        74290000
+R1       EQU   1                                                        74300000
+R2       EQU   2                                                        74310000
+R3       EQU   3                                                        74320000
+R4       EQU   4                                                        74330000
+R5       EQU   5                                                        74340000
+R6       EQU   6                                                        74350000
+R7       EQU   7                                                        74360000
+R8       EQU   8                                                        74370000
+R9       EQU   9                                                        74380000
+R10      EQU   10                                                       74390000
+R11      EQU   11                                                       74400000
+R12      EQU   12                                                       74410000
+R13      EQU   13                                                       74420000
+R14      EQU   14                                                       74430000
+R15      EQU   15                                                       74440000
+*                                                                       74450000
+         END   LWZMAKE                                                  74460000
