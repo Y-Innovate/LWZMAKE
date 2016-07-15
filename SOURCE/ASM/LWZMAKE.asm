@@ -3391,11 +3391,6 @@ MEMBERLIST_FINISH EQU *
 *           Get the member list
             L     R15,LWZMAKE_GET_MEMLISTA_VAR * Get addr GET_MEMLIST
             BASR  R14,R15         * Link to GET_MEMLIST section
-            MVC   G_WTOLEN,=H'84'
-            MVC   G_WTOFIL,=H'0'
-            L     R5,G_SCAN_TOKENA
-            MVC   G_WTOTEXT(80),0(R5)
-            WTO   MF=(E,G_WTOBLOCK)
          ENDIF
 *
          BAL   R7,SCAN_VAR_RESTORE
