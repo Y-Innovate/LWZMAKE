@@ -250,6 +250,8 @@ INIT     EQU   *
 *
          MVI   G_MKFEOF,C'N'      * Preset EOF for makefile to N
 *
+         MVI   G_USE_ISPEXEC,C' ' * Preset use ISPEXEC to undetermined
+*
          MVI   G_RECIPEPREFIX,X'05' * Default recipe prefix is tab
 *
          MVI   G_PREV_STMT_TYPE,X'00' * Initial no prev statement type
@@ -825,12 +827,14 @@ G_IRXINIT_ENVBLOCK_PTR      DS    CL4
 G_IRXINIT_REASON            DS    CL4
 *
 * REXX maintain entries host command env table IRXSUBCM parameters
-G_IRXSUBCM_PAR5A            DS    5A
+G_IRXSUBCM_PAR6A            DS    5A
 G_IRXSUBCM_FUNCTION         DS    CL8
 G_IRXSUBCM_STRING           DS    CL32
+G_IRXSUBCM_STRING_PTR       DS    CL4
 G_IRXSUBCM_STRING_LEN       DS    CL4
 G_IRXSUBCM_HOSTENV_NAME     DS    CL8
 G_IRXSUBCM_ENVBLOCK_PTR     DS    CL4
+G_IRXSUBCM_REASON           DS    CL4
 *
 * REXX execute ISPEXEC parameters
 G_USE_ISPEXEC               DS    C
@@ -5804,41 +5808,21 @@ IRXINIT_OK     EQU   *
 *
                C     R15,=A(28)
                IF (NE) THEN
-                  MVC   G_IRXSUBCM_FUNCTION,=CL8'QUERY'
-                  MVC   G_IRXSUBCM_STRING,=CL32' '
-                  MVC   G_IRXSUBCM_STRING(8),=CL8'ISPEXEC'
-                  MVC   G_IRXSUBCM_STRING_LEN,=A(32)
-                  MVC   G_IRXSUBCM_HOSTENV_NAME,=CL8' '
-                  MVC   G_IRXSUBCM_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR
-*
-                  XR    R0,R0
-                  LA    R1,G_IRXSUBCM_FUNCTION
-                  ST    R1,G_IRXSUBCM_PAR5A
-                  LA    R1,G_IRXSUBCM_STRING
-                  ST    R1,G_IRXSUBCM_PAR5A+4
-                  LA    R1,G_IRXSUBCM_STRING_LEN
-                  ST    R1,G_IRXSUBCM_PAR5A+8
-                  LA    R1,G_IRXSUBCM_HOSTENV_NAME
-                  ST    R1,G_IRXSUBCM_PAR5A+12
-                  LA    R1,G_IRXSUBCM_ENVBLOCK_PTR
-                  O     R1,=X'80000000'
-                  ST    R1,G_IRXSUBCM_PAR5A+16
-                  LA    R1,G_IRXSUBCM_PAR5A
-*
-                  LINK  EP=IRXSUBCM,SF=(E,G_LINKD)
-*
-                  LTR   R15,R15
-                  IF (Z) THEN
-                     MVI   G_USE_ISPEXEC,C'Y'
-                  ELSE
-                     C     R15,=A(8)
-                     IF (NE) THEN
-                        MLWZMRPT RPTLINE=CL133'0Error checking ISPEXEC X
-               availability'
-                        MVC   G_RETCODE,=F'12'
-                        BR    R8
-                     ENDIF
-                  ENDIF
+                  L     R2,G_IRXINIT_ENVBLOCK_PTR
+                  L     R2,16(,R2)
+                  L     R2,20(,R2)
+                  L     R3,8(,R2)
+                  L     R4,12(,R2)
+                  L     R2,0(,R2)
+FIND_ISPEXEC      EQU   *
+                  CLC   0(8,R2),=CL8'ISPEXEC'
+                  BE    ISPEXEC_FOUND
+                  AR    R2,R4
+                  BCT   R3,FIND_ISPEXEC
+                  B     ISPEXEC_NOT_FOUND
+ISPEXEC_FOUND     EQU   *
+                  MVI   G_USE_ISPEXEC,C'Y'
+ISPEXEC_NOT_FOUND EQU   *
                ENDIF
             ENDIF
 *

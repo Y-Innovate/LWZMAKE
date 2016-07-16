@@ -5,7 +5,7 @@ _rc = BPXWDYN("ALLOC NEW DA('"_dsname"') RECFM(F,B) DSORG(PS) LRECL(80)" || ,
 IF _rc == 0 THEN DO
    "EXECIO 0 DISKW "_ddn" (FINIS"
    _rc = BPXWDYN("FREE FI("_ddn")")
-   IF _rc ¬= 0 THEN DO
+   IF _rc Â¬= 0 THEN DO
       SAY "Free file failed with "_rc
    END
 END
