@@ -795,6 +795,12 @@ G_CALL4                     DS    CL4
 * EOF flag for MAKEFILE
 G_MKFEOF                    DS    C
 *
+* Flag to indicate whether to expand or not
+G_DO_EXPAND                 DS    C
+*
+* Flag to indicate whether to assign variable value or not
+G_DO_ASSIGN                 DS    C
+*
 * RECIPEPREFIX, initialized to X'05', can be set in MAKEFILE script
 G_RECIPEPREFIX              DS    C
 *
@@ -906,7 +912,7 @@ G_STMT_LIST_PTR             DS    A
 * Pointer to previous statement used to chain stmts in linked list
 G_STMT_SAVE_PTR             DS    A
 *
-* Statement operator ('=' or ':=' in assigment, ':' in rule)
+* Statement operator ('=', ':=' or '?=' in assigment, ':' in rule)
 G_STMT_SAVE_OP              DS    CL2
 *
 * Previous statement type ('A'ssignment, 'R'ule or 'C'all)
@@ -937,7 +943,7 @@ SCAN_TOKENTYPE_IGNORE       EQU   C'I' * Anything beyond pos 72
 SCAN_TOKENTYPE_COMMENT      EQU   C'#' * Anything after #
 SCAN_TOKENTYPE_NORMAL       EQU   C'A' * Any word pos 1 A-Z a-z
 SCAN_TOKENTYPE_NUMBER       EQU   C'N' * Any work containing only 0-9
-SCAN_TOKENTYPE_OPERATOR     EQU   C'=' * Any operator (:= =)
+SCAN_TOKENTYPE_OPERATOR     EQU   C'=' * Any operator (:= ?= =)
 SCAN_TOKENTYPE_CONTINUATION EQU   C'\' * Line continuation char \
 SCAN_TOKENTYPE_RULE         EQU   C':' * Rule separator :
 SCAN_TOKENTYPE_SPECIAL      EQU   C'.' * Any special variable
@@ -1236,7 +1242,7 @@ STMT_A_DSECT                DSECT
 *
 STMT_A_DESTLEN              DS    H    * length of variable name
 STMT_A_DEST                 DS    CL72 * variable name (destination)
-STMT_A_OPERATOR             DS    CL2  * type of assignment (= or :=)
+STMT_A_OPERATOR             DS    CL2  * type of assignment
 STMT_A_SRCLEN               DS    H    * length of value
 STMT_A_SRC                  DS    0C   * value (source) starts here
 *                                      * length can vary
@@ -2173,6 +2179,51 @@ STMT_ASSIGNMENT EQU *
             MVI   G_STMT_SAVE_OP+1,X'00'  * and add a null char
          ENDIF
 *
+         L     R6,G_SCAN_TOKEN2_LEN * Get length of variable name
+         C     R6,=A(L'STMT_A_DEST) * Check if it fits
+         IF (H) THEN                * If not, write error and stop
+            MLWZMRPT RPTLINE=CL133'0Internal error, variable name longeX
+               r than 72',APND_LC=C'Y'
+            MVC   G_RETCODE,=F'12'  * Set return code 12
+            BR    R8                * and return
+         ENDIF
+*
+         MVI   G_DO_EXPAND,C'Y'
+         MVI   G_DO_ASSIGN,C'Y'
+*
+         IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,O) THEN
+            MVI   G_DO_EXPAND,C'N'
+            MVI   G_DO_ASSIGN,C'N'
+            B     STMT_A_START
+         ENDIF
+*
+         IF (CLI,G_STMT_SAVE_OP,EQ,C'=') THEN
+            MVI   G_DO_EXPAND,C'N'
+            B     STMT_A_START
+         ENDIF
+*
+         IF (CLC,G_STMT_SAVE_OP,EQ,=C'?=') THEN
+*           Copy variable name to FINDVAR name
+            L     R1,G_SCAN_TOKEN2_LEN * Get length of variable name
+            STH   R1,G_SRCH_VAR_LEN * Put length in FINDVAR search len
+            LA    R0,G_SRCH_VAR   * Point R0 to FINDVAR search name
+            L     R2,G_SCAN_TOKEN2A * Point R2 to token 2
+            LR    R3,R1           * Make sure no cropping/filling
+            MVCL  R0,R2           * Copy variable name to FINDVAR name
+*
+            L     R15,LWZMAKE_FINDVARA_STMT * Get address to FINDVAR
+            BASR  R14,R15         * Link to FINDVAR section
+*
+            LT    R4,G_FOUND_VAR_PTR * Check if a pointer was returned
+            IF (NZ) THEN
+               MVI   G_DO_EXPAND,C'N'
+               MVI   G_DO_ASSIGN,C'N'
+               B     STMT_A_START
+            ENDIF
+         ENDIF
+*
+STMT_A_START EQU *
+*
 *        Clear scan state except for left most bit indicating in recipe
          NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
 *        Set scan state bits to IN_ASSIGN
@@ -2210,11 +2261,8 @@ STMT_A_NEXT_TOKEN EQU *
             C     R14,=A(SCAN_STATE_IN_VARIABLER)
          ENDIF
          IF (EQ) THEN             * If so...
-            CLC   G_STMT_SAVE_OP,=C':=' * Check for simply expanded
-            IF (EQ) THEN          * If so...
-               IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,Z) THEN
-                  MVI   G_SCAN_APPEND_TO,X'00' * Set append to token 1
-               ENDIF
+            IF (CLI,G_DO_EXPAND,EQ,C'Y') THEN
+               MVI   G_SCAN_APPEND_TO,X'00' * Set append to token 1
             ENDIF
             MVI   G_SCAN_VAR_PRESERVE_SPACES,C'A' * Preserve spaces
             L     R15,LWZMAKE_SCAN_VARA_STMT * Get address SCAN_VAR
@@ -2271,13 +2319,6 @@ STMT_A_FINISH EQU *
 *
 *        Fill in destination variable name (token 2) in assignment blk
          L     R6,G_SCAN_TOKEN2_LEN * Get length of variable name
-         C     R6,=A(L'STMT_A_DEST) * Check if it fits
-         IF (H) THEN                * If not, write error and stop
-            MLWZMRPT RPTLINE=CL133'0Internal error, variable name longeX
-               r than 72',APND_LC=C'Y'
-            MVC   G_RETCODE,=F'12'  * Set return code 12
-            BR    R8                * and return
-         ENDIF
          STH   R6,STMT_A_DESTLEN  * Put variable name length in block
          L     R5,G_SCAN_TOKEN2A  * Point R5 to token 2
          LA    R4,STMT_A_DEST     * Point R4 to var name in block
@@ -2311,9 +2352,8 @@ STMT_A_FINISH EQU *
             ENDIF
          ENDIF
 *
-*        Add/update the variable to binary search tree for vars, but
-*        not if we're in a recipe
-         IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,Z) THEN
+*        Add/update the variable to binary search tree for vars
+         IF (CLI,G_DO_ASSIGN,EQ,C'Y') THEN
 *           R7 points to the assignment statement
             L     R15,LWZMAKE_STORE_VARA_STMT * Get address STORE_VAR
             BASR  R14,R15              * Link to STORE_VAR section
@@ -2863,6 +2903,7 @@ LWZMAKE_STORE_VARA_STMT    DC    A(LWZMAKE_STORE_VAR)
 LWZMAKE_STORE_TGTA_STMT    DC    A(LWZMAKE_STORE_TGT)
 LWZMAKE_STORE_PNYA_STMT    DC    A(LWZMAKE_STORE_PNY)
 LWZMAKE_CALL_REXXA_STMT    DC    A(LWZMAKE_CALL_REXX)
+LWZMAKE_FINDVARA_STMT      DC    A(LWZMAKE_FINDVAR)
 *
          DROP
 *
@@ -4089,6 +4130,37 @@ UNEXPECTED_RECIPE EQU *
             ENDIF
             BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
             B     SCAN_TOKEN_VALID   * Skip to finishing valid token
+         ENDIF
+*
+*        Check for conditional assignment operator
+         IF (CLI,0(R5),EQ,C'?') THEN
+*           If the next char will return =
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
+*              Check for ?= on pos 71 (making = an ignore char)
+               L     R6,G_SCAN_CURRCOL * Get current column
+               C     R6,=F'71'         * Check for pos 72
+               IF (L) THEN
+*                 Set token type to operator
+                  MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
+*                 Was it expected? If not, write error and stop
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
+                     MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_X
+               LC=C'Y'
+                     MVC   G_RETCODE,=F'8' * Set return code 8
+                     B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+                  ENDIF
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN
+                  BASR  R14,R15            * Link to SCAN_CHAR section
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  B     SCAN_TOKEN_VALID   * Skip to finishing
+               ELSE
+                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=X
+               C'Y'
+                  MVC   G_RETCODE,=F'8'    * Set return code 8
+                  B     SCAN_TOKEN_RET     * Skip rest of tokenizer
+               ENDIF
+            ENDIF
          ENDIF
 *
 *        Check for colon, which could be a rule or byte 1 of :=
@@ -5970,7 +6042,37 @@ NEXT_RECIPE_STMT EQU *
             DROP  R7
             USING STMT_A_DSECT,R7
 *
-            CLC   STMT_A_OPERATOR,=C':='
+            MVI   G_DO_EXPAND,C'Y'
+            MVI   G_DO_ASSIGN,C'Y'
+*
+            IF (CLI,STMT_A_OPERATOR,EQ,C'=') THEN
+               MVI   G_DO_EXPAND,C'N'
+               B     EXEC_ASSIGN_START
+            ENDIF
+*
+            IF (CLC,STMT_A_OPERATOR,EQ,=C'?=') THEN
+*              Copy variable name to FINDVAR name
+               XR    R1,R1
+               LH    R1,STMT_A_DESTLEN * Get length of variable name
+               STH   R1,G_SRCH_VAR_LEN * Put length in FINDVAR len
+               LA    R0,G_SRCH_VAR   * Point R0 to FINDVAR search name
+               LA    R2,STMT_A_DEST  * Point R2 to variable name
+               LR    R3,R1        * Make sure no cropping/filling
+               MVCL  R0,R2        * Copy variable name to FINDVAR name
+*
+               L     R15,LWZMAKE_FINDVARA_EXEC * Get address to FINDVAR
+               BASR  R14,R15         * Link to FINDVAR section
+*
+               LT    R4,G_FOUND_VAR_PTR * Check if a pointer returned
+               IF (NZ) THEN
+                  MVI   G_DO_EXPAND,C'N'
+                  MVI   G_DO_ASSIGN,C'N'
+                  B     EXEC_ASSIGN_START
+               ENDIF
+            ENDIF
+*
+EXEC_ASSIGN_START EQU *
+            CLI   G_DO_EXPAND,C'Y'
             BNE   SKIP_EXEC_EXPAND_ASSIGN
 *
             XR    R2,R2
@@ -6091,6 +6193,9 @@ EXEC_ASSIGN_EXPANDED EQU *
             STC   R15,G_SCAN_STATE      * And save it as current state
             STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
 *
+            CLI   G_DO_ASSIGN,C'Y'
+            BNE   SKIP_EXEC_ASSIGN
+*
 *           Allocate a new memory block for this assignment
             L     R4,=A(STMT_A_DSECT_LEN) * Size of block without token
             A     R4,G_SCAN_TOKEN3_LEN    * Add token length
@@ -6109,9 +6214,13 @@ EXEC_ASSIGN_EXPANDED EQU *
             MVCL  R0,R2              * Copy source text
 *
 SKIP_EXEC_EXPAND_ASSIGN EQU *
+            CLI   G_DO_ASSIGN,C'Y'
+            BNE   SKIP_EXEC_ASSIGN
 *
             L     R15,LWZMAKE_STORE_VARA_EXEC * Get address STORE_VAR
             BASR  R14,R15            * Link to STORE_VAR section
+*
+SKIP_EXEC_ASSIGN EQU *
 *
             DROP  R7
             USING STMT_DSECT,R7
@@ -6143,7 +6252,7 @@ LWZMAKE_GET_DATEA_EXEC      DC    A(LWZMAKE_GET_DATE)
 LWZMAKE_APPEND_TOKENA_EXEC  DC    A(LWZMAKE_APPEND_TOKEN)
 LWZMAKE_CALL_REXXA_EXEC     DC    A(LWZMAKE_CALL_REXX)
 LWZMAKE_STORE_VARA_EXEC     DC    A(LWZMAKE_STORE_VAR)
-LWZMAKE_ALLOC_STMTA_EXEC    DC    A(LWZMAKE_ALLOC_STMT)
+LWZMAKE_FINDVARA_EXEC       DC    A(LWZMAKE_FINDVAR)
 *
 WORKAREA_EXEC_TGT           DSECT
 EXEC_TGT_SA                 DS    18F
