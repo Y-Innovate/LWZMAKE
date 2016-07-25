@@ -6,8 +6,8 @@ srclib      := $(hlq).ASM
 lkedlib     := $(hlq).LKED
 objlib      := $(hlq).OBJECT
 loadlib     := $(hlq).LOAD
-syslib_asma := SYS1.MACLIB HLA.SASMMAC2   <=== CHECK
-syslib_lked := CEE.SCEELKED $(objlib)     <=== CHECK
+syslib_asma := SYS1.MACLIB HLA.SASMMAC2   # <=== CHECK
+syslib_lked := CEE.SCEELKED $(objlib)     # <=== CHECK
 mods        := $(loadlib)(SHA1) $(loadlib)(TSHA1)
 
 .PHONY ALL

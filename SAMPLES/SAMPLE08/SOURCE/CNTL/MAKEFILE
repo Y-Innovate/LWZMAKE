@@ -6,8 +6,8 @@ srclib      := $(hlq).COB
 lkedlib     := $(hlq).LKED
 objlib      := $(hlq).OBJECT
 loadlib     := $(hlq).LOAD
-syslib_cob  := CEE.SCEESAMP               <=== CHECK
-syslib_lked := CEE.SCEELKED $(objlib)     <=== CHECK
+syslib_cob  := CEE.SCEESAMP               # <=== CHECK
+syslib_lked := CEE.SCEELKED $(objlib)     # <=== CHECK
 mods        := $(memberlist $(srclib))
 objects     := $(addpdsname $(objlib),  $(mods))
 loads       := $(addpdsname $(loadlib), $(mods))
