@@ -981,6 +981,7 @@ G_SCAN_APPEND_TO            DS    C    * Which G_SCAN_TOKEN* to append
 G_SCAN_CLOSE_BRACKET        DS    C    * Save ) or } to check matching
 *                                      * with ( or {
 G_SCAN_VAR_PRESERVE_SPACES  DS    C    * Preserve all spaces or just 1
+G_SCAN_TOKEN_72             DS    C    * Check for 72 bounds
 *
 * Stack of scan state bytes, highest entry is the last state before
 * the one in G_SCAN_STATE
@@ -4241,7 +4242,7 @@ SCAN_FOR_WHITESPACE EQU *
             B     SCAN_FOR_WHITESPACE   * Loop for next char
          ENDIF
 *
-*        Don't test for ignore when not in INPUTTYPE 00
+*        Don't test for ignore when not in INPUTTYPE 00 or 03
          XR    R2,R2              * Clear R2
          XR    R3,R3              *   and R3
          IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack index
@@ -4249,6 +4250,8 @@ SCAN_FOR_WHITESPACE EQU *
          M     R2,=A(INPUT_DSECT_SIZ) * Calculate offset to entry
          LA    R2,G_SCAN_INPUT_STACK * Point R2 to input stack
          AR    R2,R3              * Add calculated offset
+*
+         MVI   G_SCAN_TOKEN_72,C'N'
 *
          USING INPUT_DSECT,R2  * Address with INPUT DSECT
          CLI   INPUTTYPE,X'00'
@@ -4258,6 +4261,7 @@ SCAN_FOR_WHITESPACE EQU *
          B     SKIP_IGNORE
          DROP  R2
 CHECK_IGNORE EQU *
+         MVI   G_SCAN_TOKEN_72,C'Y'
 *
 *        Anything beyond column 72 is ignored and considered the end
 *        of a line
@@ -4400,6 +4404,8 @@ CHECK_NEXT_COMMENT_CHAR EQU *
          ENDIF
 *
 *        Only on column 1 check for recipe prefix
+         CLI   G_SCAN_TOKEN_72,C'Y'
+         BNE   SKIP_RECIPE_PREFIX
          L     R6,G_SCAN_CURRCOL  * Get current column
          C     R6,=F'0'           * Check for column 1
          IF (EQ) THEN             * If so...
@@ -4436,6 +4442,7 @@ UNEXPECTED_RECIPE EQU *
                B     SCAN_FOR_WHITESPACE
             ENDIF
          ENDIF
+SKIP_RECIPE_PREFIX EQU *
 *
 *        Check for assignment operator
          IF (CLI,0(R5),EQ,C'=') THEN
@@ -4456,10 +4463,13 @@ UNEXPECTED_RECIPE EQU *
          IF (CLI,0(R5),EQ,C'?') THEN
 *           If the next char will return =
             IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
+               CLI   G_SCAN_TOKEN_72,C'Y'
+               BNE   SET_CONDITIONAL_OPERATOR
 *              Check for ?= on pos 71 (making = an ignore char)
                L     R6,G_SCAN_CURRCOL * Get current column
                C     R6,=F'71'         * Check for pos 72
                IF (L) THEN
+SET_CONDITIONAL_OPERATOR EQU *
 *                 Set token type to operator
                   MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
 *                 Was it expected? If not, write error and stop
@@ -4508,10 +4518,14 @@ UNEXPECTED_RECIPE EQU *
             ENDIF
 *           If we end up here the rule or operator was valid
             BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_UNCONDITIONAL_OPERATOR
 *           Check for := on pos 71 (making = an ignore char)
             L     R6,G_SCAN_CURRCOL * Get current column
             C     R6,=F'71'         * Check for pos 72
             BNL   SCAN_TOKEN_VALID  * Skip to finishing valid token
+CHECK_UNCONDITIONAL_OPERATOR EQU *
 *           Check again for next char =
             IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
 *              Set token type to operator
@@ -4603,6 +4617,8 @@ UNEXPECTED_RECIPE EQU *
 *           So it's not $@ or $%, continue checking normal variable
 *           If we're at pos 71 or more, no sense checking the rest
 *           because there's not enough room for a variable
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_VAR_BRACKET
             L     R6,G_SCAN_CURRCOL * Get current column
             C     R6,=F'70'         * Check for pos 71 or above
             IF (NL) THEN            * If so write error and stop
@@ -4611,6 +4627,7 @@ UNEXPECTED_RECIPE EQU *
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
 *
+CHECK_VAR_BRACKET EQU *
 *           Check if next char will be either ( or {
             IF (CLI,G_SCAN_PEEKCHAR,EQ,C'(') THEN
 *              Save matching close bracket to check later
@@ -4771,6 +4788,9 @@ UNEXPECTED_CLOSE_BRACKET EQU *
 STORE_NEXT_SPECIAL_TOKEN_CHAR EQU *
             BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
 *
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_SPECIAL_PEEKCHAR
+*
 *           Positions up to 72 count as part of the special var name
 *           We check peek char so when the next token is parsed,
 *           scanning continues with the char directly after the special
@@ -4779,6 +4799,7 @@ STORE_NEXT_SPECIAL_TOKEN_CHAR EQU *
             C     R6,=F'71'         * Check pos 72 and if we're there
             BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
 *
+CHECK_SPECIAL_PEEKCHAR EQU *
             LA    R2,G_SCAN_PEEKCHAR * Point R2 to peek char
             TRT   0(1,R2),SPECIAL_TOKEN_NEXTCHAR * Check for valid char
             BNZ   SCAN_TOKEN_VALID  * If not, skip to finish token
@@ -4806,6 +4827,9 @@ SKIP_SCAN_SPECIAL EQU *
 STORE_NEXT_NORMAL_TOKEN_CHAR EQU *
             BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
 *
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_NORMAL_PEEKCHAR
+*
 *           Positions up to 72 count as part of the normal token name
 *           We check peek char so when the next token is parsed,
 *           scanning continues with the char directly after the normal
@@ -4814,6 +4838,7 @@ STORE_NEXT_NORMAL_TOKEN_CHAR EQU *
             C     R6,=F'71'         * Check pos 72 and if we're there
             BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
 *
+CHECK_NORMAL_PEEKCHAR EQU *
             LA    R2,G_SCAN_PEEKCHAR * Point R2 to peek char
             CLI   0(R2),C'$'
             BE    SCAN_TOKEN_VALID
@@ -4841,6 +4866,9 @@ STORE_NEXT_NORMAL_TOKEN_CHAR EQU *
 STORE_NEXT_NUMBER_TOKEN_CHAR EQU *
             BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
 *
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_NUMBER_PEEKCHAR
+*
 *           Positions up to 72 count as part of the number token name
 *           We check peek char so when the next token is parsed,
 *           scanning continues with the char directly after the number
@@ -4849,6 +4877,7 @@ STORE_NEXT_NUMBER_TOKEN_CHAR EQU *
             C     R6,=F'71'         * Check pos 72 and if we're there
             BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
 *
+CHECK_NUMBER_PEEKCHAR EQU *
             LA    R5,G_SCAN_PEEKCHAR * Point R2 to peek char
             TRT   0(1,R5),NUMBER_TOKEN_CHAR * Check for valid char
             BNZ   SCAN_TOKEN_VALID   * If not, skip to finish token
