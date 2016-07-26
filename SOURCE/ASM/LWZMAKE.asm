@@ -3425,8 +3425,6 @@ LWZMAKE_SCAN_VAR DS    0F
          ENDIF
 *
 SCAN_VAR_RET EQU *
-         MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
-*
          L     R3,4(,R13)        * Restore address of callers SA
          FREEMAIN RU,LV=SCAN_VAR_DSECT_SIZ,A=(R13)
          LR    R13,R3
