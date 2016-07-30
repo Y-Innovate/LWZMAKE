@@ -311,23 +311,6 @@ INIT     EQU   *
 *        Clear REXX environment block pointer
          MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)
 *
-*        Allocate multi-purpose tokens
-         GETMAIN RU,LV=SCAN_TOKEN_MAXLEN
-         ST    R1,G_SCAN_TOKENA
-         MVC   G_SCAN_TOKEN_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
-         GETMAIN RU,LV=SCAN_TOKEN_MAXLEN
-         ST    R1,G_SCAN_TOKEN2A
-         MVC   G_SCAN_TOKEN2_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
-         GETMAIN RU,LV=SCAN_TOKEN_MAXLEN
-         ST    R1,G_SCAN_TOKEN3A
-         MVC   G_SCAN_TOKEN3_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
-*
-*        Allocate evaluation block
-         LA    R3,272
-         ST    R3,G_EVALBLOCK_MAXLEN
-         STORAGE OBTAIN,LENGTH=(R3)
-         ST    R1,G_EVALBLOCK_PTR
-*
 *                                 * GM DCB storage below the line
          GETMAIN RU,LV=DCB_DSECT_SIZ,LOC=24
          ST    R1,G_DCB_MEM_PTR   * and save in global var
@@ -442,6 +425,37 @@ INIT     EQU   *
 *        Retrieve submitter user id
          IAZXJSAB READ,USERID=G_USERID
 *
+*        Allocate multi-purpose tokens
+         MVC   G_SCAN_TOKEN_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_OBTAINA
+         BASR  R14,R15
+         MVC   G_SCAN_TOKENA,G_STGOR_PTR
+*
+         MVC   G_SCAN_TOKEN2_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_OBTAINA
+         BASR  R14,R15
+         MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
+*
+         MVC   G_SCAN_TOKEN3_MAXLEN,=A(SCAN_TOKEN_MAXLEN)
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_OBTAINA
+         BASR  R14,R15
+         MVC   G_SCAN_TOKEN3A,G_STGOR_PTR
+*
+*        Allocate evaluation block
+         LA    R3,272
+         ST    R3,G_EVALBLOCK_MAXLEN
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+         L     R15,LWZMAKE_STG_OBTAINA
+         BASR  R14,R15
+         MVC   G_EVALBLOCK_PTR,G_STGOR_PTR
+*
 INIT_RET EQU   *                  * INIT done
          BR    R8                 * Return
 *
@@ -464,19 +478,21 @@ NO_PARAMETER EQU *
          BZ    NO_PARAMETER       * Zero length parameter
          LA    R2,2(,R1)          * Point R2 to parameter
 *
-         LR    R4,R3
-         C     R4,=A(L'G_HELPER_DATA)
-         IF (H) THEN
-            L     R4,=A(L'G_HELPER_DATA)
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_INFO) THEN
+            LR    R4,R3
+            C     R4,=A(L'G_HELPER_DATA)
+            IF (H) THEN
+               L     R4,=A(L'G_HELPER_DATA)
+            ENDIF
+            BCTR  R4,R0
+            B     *+10
+            MVC   G_HELPER_DATA(1),0(R2)
+            EX    R4,*-6
+            LA    R4,1(,R4)
+            ST    R2,G_LWZMTRC_DATA_PTR
+            STH   R4,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'606',DATA
          ENDIF
-         BCTR  R4,R0
-         B     *+10
-         MVC   G_HELPER_DATA(1),0(R2)
-         EX    R4,*-6
-         LA    R4,1(,R4)
-         ST    R2,G_LWZMTRC_DATA_PTR
-         STH   R4,G_LWZMTRC_DATA_SIZ
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'606',DATA
 *
 *        Split up parts of the parameter
 *
@@ -502,7 +518,7 @@ NO_PARAMETER EQU *
          USING INPUT_DSECT,R4     * Address with INPUT DSECT
 *
          MVC   INPUTLEAD,=H'0'    * Clear leading spaces
-         MVI   INPUTTYPE,X'02'    * Set type of input to ptr to string
+         MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF * Set type of input
          STH   R3,INPUTLEN        * Copy value length
          ST    R2,INPUTPTR        * Copy value pointer
          MVC   INPUTPOS,=H'0'     * Set initial scan position to start
@@ -588,20 +604,65 @@ PARMS_ERROR EQU *
 WRAPUP   EQU   *
          LT    R3,G_STMT_LIST_PTR * Get first stmt in list
          DO WHILE=(NZ)
-            ST    R3,G_DEC8       * Put ptr in area of at least 5 bytes
-            UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
-            TR    G_ZONED8,MAIN_HEXTAB       * Turn into hex
-            MVC   G_HELPER_DATA(8),G_ZONED8  * Copy hex to helper data
-            LA    R14,G_HELPER_DATA          * Get ptr to helper data
-            ST    R14,G_LWZMTRC_DATA_PTR     * Save it for trace data
-            MVC   G_LWZMTRC_DATA_SIZ,=AL2(8) * Trace data length 8
-            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEBUG,MSGNR=C'641',DATA
             L     R4,STMT_NEXT_PTR-STMT_DSECT(,R3) * Save ptr next stmt
-            L     R2,STMT_LEN-STMT_DSECT(,R3)     * Get length of block
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * and free it
+            ST    R3,G_STGOR_PTR
+            MVC   G_STGOR_LEN,STMT_LEN-STMT_DSECT(R3)
+            MVI   G_STGOR_TYPE,STGOR_TYPE_STMT
+            L     R15,LWZMAKE_STG_RELEASEA
+            BASR  R14,R15
             LTR   R3,R4           * Test pointer to next statement
          ENDDO
          MVC   G_STMT_LIST_PTR,=A(0) * Clear first block ptr
+*
+         LT    R1,G_FIRST_VAR_PTR
+         IF (NZ) THEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VAR
+            L     R15,LWZMAKE_FREEBSTA
+            BASR  R14,R15
+         ENDIF
+         MVC   G_FIRST_VAR_PTR,=A(0)
+*
+         LT    R1,G_FIRST_TGT_PTR
+         IF (NZ) THEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TGT
+            L     R15,LWZMAKE_FREEBSTA
+            BASR  R14,R15
+         ENDIF
+         MVC   G_FIRST_TGT_PTR,=A(0)
+*
+         LT    R1,G_FIRST_PNY_PTR
+         IF (NZ) THEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_PNY
+            L     R15,LWZMAKE_FREEBSTA
+            BASR  R14,R15
+         ENDIF
+         MVC   G_FIRST_PNY_PTR,=A(0)
+*
+*        Free multi-purpose tokens
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+         MVC   G_STGOR_PTR,G_SCAN_TOKENA
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_RELEASEA
+         BASR  R14,R15
+*
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+         MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_RELEASEA
+         BASR  R14,R15
+*
+         MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+         MVC   G_STGOR_PTR,G_SCAN_TOKEN3A
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+         L     R15,LWZMAKE_STG_RELEASEA
+         BASR  R14,R15
+*
+*        Free evaluation block
+         MVC   G_STGOR_LEN,G_EVALBLOCK_MAXLEN
+         MVC   G_STGOR_PTR,G_EVALBLOCK_PTR
+         MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+         L     R15,LWZMAKE_STG_RELEASEA
+         BASR  R14,R15
 *
          IF (CLI,MKFOPEN,EQ,C'Y') THEN      * Was MAKEFILE opened?
             L     R14,G_DCB_MEM_PTR         * Get DCB memory pointer
@@ -707,9 +768,12 @@ SCAN_STATE_TABLE            DS    0F
 * Local constant pointers to section addresses
 LWZMAKE_TRACEA              DC    A(LWZMAKE_TRACE)
 LWZMAKE_RPTA                DC    A(LWZMAKE_RPT)
+LWZMAKE_STG_OBTAINA         DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA        DC    A(LWZMAKE_STG_RELEASE)
 LWZMAKE_SCAN_TOKENA         DC    A(LWZMAKE_SCAN_TOKEN)
 LWZMAKE_PHASE1A             DC    A(LWZMAKE_PHASE1)
 LWZMAKE_PHASE2A             DC    A(LWZMAKE_PHASE2)
+LWZMAKE_FREEBSTA            DC    A(LWZMAKE_FREEBST)
 *
 * Constant list form of LOAD macro
                             DS    0F
@@ -832,6 +896,19 @@ G_LWZMTRC_RECORD            DS    CL133
                             DS    0F
 G_LWZMTRC_DATA_PTR          DS    A
 G_LWZMTRC_DATA_SIZ          DS    H
+*
+* STORAGE OBTAIN / RELEASE vars
+                            DS    0F
+G_STGOR_LEN                 DS    F
+G_STGOR_PTR                 DS    A
+G_STGOR_TYPE                DS    C
+STGOR_TYPE_TOKEN            EQU   C'N'
+STGOR_TYPE_STMT             EQU   C'S'
+STGOR_TYPE_VAR              EQU   C'V'
+STGOR_TYPE_VARVAL           EQU   C'='
+STGOR_TYPE_TGT              EQU   C'T'
+STGOR_TYPE_PNY              EQU   C'P'
+STGOR_TYPE_EVAL             EQU   C'E'
 *
 * Catalog search interface IGGCSI00 external function address
                             DS    0F
@@ -976,6 +1053,7 @@ SCAN_TOKENTYPE_ACRO         EQU   C'@' * The word $@
 SCAN_TOKENTYPE_PERCENT      EQU   C'%' * The word $%
 SCAN_TOKENTYPE_RECIPEPREFIX EQU   X'05' * Pos 1 if it's equal to RPREF
 SCAN_TOKENTYPE_COMMA        EQU   C',' * Comma character ,
+SCAN_TOKENTYPE_SLASH        EQU   C'/' * Slash character /
 G_SCAN_APPEND_TO            DS    C    * Which G_SCAN_TOKEN* to append
 *                                      * to when scanning $() variable
 G_SCAN_CLOSE_BRACKET        DS    C    * Save ) or } to check matching
@@ -1032,39 +1110,42 @@ G_SCAN_STATE_STACK_IDX      DS    C    3
 G_SCAN_EXPECTED             DS    CL4
 *
 * Flags for using TM byte by byte in G_SCAN_EXPECTED
-SCAN_EXPECTED1_EOF          EQU   X'80'
-SCAN_EXPECTED1_NEWLINE      EQU   X'40'
-SCAN_EXPECTED1_COMMENT      EQU   X'20'
-SCAN_EXPECTED1_IGNORE       EQU   X'10'
-SCAN_EXPECTED1_NORMAL       EQU   X'08'
-SCAN_EXPECTED1_OPENVAR      EQU   X'04'
-SCAN_EXPECTED1_OPENBRC      EQU   X'02'
-SCAN_EXPECTED1_CLOSEBRC     EQU   X'01'
-SCAN_EXPECTED2_NUMBER       EQU   X'80'
-SCAN_EXPECTED2_OPERATOR     EQU   X'40'
-SCAN_EXPECTED2_RULE         EQU   X'20'
-SCAN_EXPECTED2_SPECIAL      EQU   X'10'
-SCAN_EXPECTED2_CONTINUA     EQU   X'08'
-SCAN_EXPECTED2_CALL         EQU   X'04'
-SCAN_EXPECTED2_ACRO         EQU   X'02'
-SCAN_EXPECTED2_PERCENT      EQU   X'01'
-SCAN_EXPECTED3_RECIPREF     EQU   X'80'
-SCAN_EXPECTED3_COMMA        EQU   X'40'
+SCAN_EXPECTED1_EOF          EQU   X'80'  1
+SCAN_EXPECTED1_NEWLINE      EQU   X'40'  2
+SCAN_EXPECTED1_COMMENT      EQU   X'20'  3
+SCAN_EXPECTED1_IGNORE       EQU   X'10'  4
+SCAN_EXPECTED1_NORMAL       EQU   X'08'  5
+SCAN_EXPECTED1_OPENVAR      EQU   X'04'  6
+SCAN_EXPECTED1_OPENBRC      EQU   X'02'  7
+SCAN_EXPECTED1_CLOSEBRC     EQU   X'01'  8
+SCAN_EXPECTED2_NUMBER       EQU   X'80'  9
+SCAN_EXPECTED2_OPERATOR     EQU   X'40' 10
+SCAN_EXPECTED2_RULE         EQU   X'20' 11
+SCAN_EXPECTED2_SPECIAL      EQU   X'10' 12
+SCAN_EXPECTED2_CONTINUA     EQU   X'08' 13
+SCAN_EXPECTED2_CALL         EQU   X'04' 14
+SCAN_EXPECTED2_ACRO         EQU   X'02' 15
+SCAN_EXPECTED2_PERCENT      EQU   X'01' 16
+SCAN_EXPECTED3_RECIPREF     EQU   X'80' 17
+SCAN_EXPECTED3_COMMA        EQU   X'40' 18
+SCAN_EXPECTED3_SLASH        EQU   X'20' 19
 *
 * Combinations of the flags above, used in SCAN_STATE_TABLE
-SCAN_EXPECTED_NEWSTMT       EQU   B'11111100000101001000000000000000'
-SCAN_EXPECTED_NEWSTMT2      EQU   B'00001100011010001000000000000000'
-SCAN_EXPECTED_ASSIGN        EQU   B'01111111100010111100000000000000'
-SCAN_EXPECTED_ASSIGN2       EQU   B'01111111100010111100000000000000'
+*                                            1         2         3
+*                                   12345678901234567890123456789012
+SCAN_EXPECTED_NEWSTMT       EQU   B'11111100000101001010000000000000'
+SCAN_EXPECTED_NEWSTMT2      EQU   B'00001100011010001010000000000000'
+SCAN_EXPECTED_ASSIGN        EQU   B'01111111100010111110000000000000'
+SCAN_EXPECTED_ASSIGN2       EQU   B'01111111100010111110000000000000'
 SCAN_EXPECTED_VARIABLE      EQU   B'00001000000010111000000000000000'
 SCAN_EXPECTED_VARIABLER     EQU   B'00001001000010111000000000000000'
 SCAN_EXPECTED_VARIABLE2     EQU   B'00000001000010111000000000000000'
-SCAN_EXPECTED_RULE          EQU   B'00001111001010001000000000000000'
-SCAN_EXPECTED_RULE2         EQU   B'01111111000010111000000000000000'
-SCAN_EXPECTED_RULE3         EQU   B'01111111000010111000000000000000'
+SCAN_EXPECTED_RULE          EQU   B'00001111001010001010000000000000'
+SCAN_EXPECTED_RULE2         EQU   B'01111111100010111010000000000000'
+SCAN_EXPECTED_RULE3         EQU   B'01111111100010111010000000000000'
 SCAN_EXPECTED_CALL          EQU   B'00001100000010111000000000000000'
-SCAN_EXPECTED_CALL2         EQU   B'01111111100010111100000000000000'
-SCAN_EXPECTED_EXPAND        EQU   B'10001111100000110100000000000000'
+SCAN_EXPECTED_CALL2         EQU   B'01111111100010111110000000000000'
+SCAN_EXPECTED_EXPAND        EQU   B'10001111100000110110000000000000'
 SCAN_EXPECTED_PHONY         EQU   B'00001000000010000000000000000000'
 SCAN_EXPECTED_PHONY2        EQU   B'01110000000010000000000000000000'
 SCAN_EXPECTED_ADDPDSNAME    EQU   B'00001100000010110000000000000000'
@@ -1078,7 +1159,7 @@ SCAN_EXPECTED_MEMBERLIST4   EQU   B'00001101100010110100000000000000'
 SCAN_EXPECTED_FUNCTION      EQU   B'00001100000010100000000000000000'
 SCAN_EXPECTED_FUNCTION2     EQU   B'00001101000010100100000000000000'
 SCAN_EXPECTED_FUNCTION3     EQU   B'00001100000010110000000000000000'
-SCAN_EXPECTED_FUNCTION4     EQU   B'00001101100010110100000000000000'
+SCAN_EXPECTED_FUNCTION4     EQU   B'00001101100010110110000000000000'
 SCAN_EXPECTED_INCLUDE       EQU   B'00001110100010000000000000000000'
 SCAN_EXPECTED_INCLUDE2      EQU   B'01111111100010000000000000000000'
 SCAN_EXPECTED_IGNORE        EQU   B'01010000000000000000000000000000'
@@ -1349,14 +1430,15 @@ STMT_I_DSECT_LEN            EQU   *-STMT_I_DSECT
 * and VARHIGH (possibly) point to variables with a name lower or higher
 *
 VAR_DSECT                   DSECT
-VARLEN                      DS    H    * length of variable name
-VARNAME                     DS    CL72 * variable name
-VALLEN                      DS    H    * length of variable value
-VALPTR                      DS    A    * pointer to value (getmain'd)
+VARLEN                      DS    F    * length of the whole block
 VARLOW                      DS    A    * pointer to variable with name
 *                                      * lower than this one
 VARHIGH                     DS    A    * pointer to variable with name
 *                                      * higher than this one
+VARNAMELEN                  DS    H    * length of variable name
+VARNAME                     DS    CL72 * variable name
+VALLEN                      DS    H    * length of variable value
+VALPTR                      DS    A    * pointer to value (getmain'd)
 VAR_DSECT_LEN               EQU   *-VAR_DSECT
 *
 * Target area, first one pointed to by G_FIRST_TGT_PTR, each TGTLOW
@@ -1397,6 +1479,11 @@ PHONY_DSECT_LEN             EQU   *-PHONY_DSECT
 INPUT_DSECT                 DSECT
 INPUTTYPE                   DS    C    * type of input, X'00' means
 *                                      * input from MAKEFILE DD
+INPUTTYPE_MAKEFILE          EQU   X'00'
+INPUTTYPE_STRPTR_NEOF       EQU   X'01'
+INPUTTYPE_STRPTR_EOF        EQU   X'02'
+INPUTTYPE_MAKEFILE_INC      EQU   X'03'
+INPUTTYPE_STRPTR_NEOF_FREE  EQU   X'04'
                             DS    C    * reserved
 *
 INPUTLEAD                   DS    H    * leading spaces count
@@ -1440,7 +1527,7 @@ OBTAIN_DSECT_SIZ            EQU   *-OBTAIN_DSECT
 *
 * The following macro's are all needed to use IAZXJSAB for determining
 * the submitter user id.
-                            IHAPSA   DSECT=YES,LIST=YES
+                            IHAPSA   DSECT=YES,LIST=NO
                             IAZJSAB  DSECT=YES,LIST=NO
                             IHAASCB  DSECT=YES,LIST=NO
                             IHAASSB  LIST=NO
@@ -1454,6 +1541,8 @@ OBTAIN_DSECT_SIZ            EQU   *-OBTAIN_DSECT
                             IRXEVALB
 *
                             IKJTSVT
+*
+                            CVT      DSECT=YES,LIST=NO
 *
 * Continue with code
 LWZMAKE  CSECT
@@ -1697,6 +1786,7 @@ LWZ001E  DC    C'LWZMRPT OPEN FAILED'
 LWZ002E  DC    C'MAKEFILE OPEN FAILED'
 LWZ003E  DC    C'PARSE ERROR'
 LWZ010E  DC    C'BINDER ERROR'
+LWZ011E  DC    C'BPX1STA ERROR'
 *
 * Generate LWZ000T and LWZ000X
 *
@@ -1716,10 +1806,24 @@ LWZ609I  DC    C'FINISH PARSE STATEMENT'
 LWZ610I  DC    C'PARSED TOKEN'
 LWZ611I  DC    C'PARSED CHAR '
 LWZ612I  DC    C'START PARSE TOKEN TYPE'
+LWZ620I  DC    C'STATEMENT BLOCK CONTENTS'
+LWZ622I  DC    C'VARIABLE BLOCK CONTENTS'
+LWZ638I  DC    C'TOKEN BLOCK ALLOCATE'
+LWZ639I  DC    C'TOKEN BLOCK FREE'
 LWZ640I  DC    C'STATEMENT BLOCK ALLOCATE'
 LWZ641I  DC    C'STATEMENT BLOCK FREE'
 LWZ642I  DC    C'VARIABLE BLOCK ALLOCATE'
 LWZ643I  DC    C'VARIABLE BLOCK FREE'
+LWZ644I  DC    C'TARGET BLOCK ALLOCATE'
+LWZ645I  DC    C'TARGET BLOCK FREE'
+LWZ646I  DC    C'PHONY BLOCK ALLOCATE'
+LWZ647I  DC    C'PHONY BLOCK FREE'
+LWZ648I  DC    C'EVAL BLOCK ALLOCATE'
+LWZ649I  DC    C'EVAL BLOCK FREE'
+LWZ650I  DC    C'VARIABLE VALUE ALLOCATE'
+LWZ651I  DC    C'VARIABLE VALUE FREE'
+LWZ660I  DC    C'DYNAMIC ALLOCATION'
+LWZ661I  DC    C'DYNAMIC DEALLOCATION'
 LWZ699I  DC    C'LWZMAKE TRACE ENDED'
 *
 * Generate LWZ600T and LWZ600X
@@ -1922,15 +2026,22 @@ LWZMAKE_APPEND_TOKEN MLWZSAVE
                LR    R6,R3            * Save it for storage release
                SLL   R3,1             * Multiply max length by 2
                ST    R3,G_SCAN_TOKEN2_MAXLEN * Make it new max length
-               STORAGE OBTAIN,LENGTH=(R3) * Allocate a memory block
-               LR    R0,R1            * Have R0 point to new block
+               MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_OBTAINA_APPEND
+               BASR  R14,R15
+               L     R0,G_STGOR_PTR   * Have R0 point to new block
                L     R1,G_SCAN_TOKEN2_LEN * Get length of token 2
                L     R2,G_SCAN_TOKEN2A * Have R2 point to old block
                LR    R5,R2            * Save it for storage release
                LR    R3,R1            * Make sure no cropping/filling
                ST    R0,G_SCAN_TOKEN2A * Save ptr to new block
                MVCL  R0,R2            * Copy old to new block
-               STORAGE RELEASE,LENGTH=(R6),ADDR=(R5)
+               ST    R6,G_STGOR_LEN
+               ST    R5,G_STGOR_PTR
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_RELEASEA_APPEND
+               BASR  R14,R15
             ENDIF
             L     R2,G_SCAN_TOKEN2A    * Point R2 to token 2
             A     R2,G_SCAN_TOKEN2_LEN * Add length of token 2
@@ -1949,15 +2060,22 @@ LWZMAKE_APPEND_TOKEN MLWZSAVE
                   LR    R6,R3         * Save it for storage release
                   SLL   R3,1          * Multiply max length by 2
                   ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len
-                  STORAGE OBTAIN,LENGTH=(R3) * Allocate a memory block
-                  LR    R0,R1         * Have R0 point to new block
+                  MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_OBTAINA_APPEND
+                  BASR  R14,R15
+                  L     R0,G_STGOR_PTR * Have R0 point to new block
                   L     R1,G_SCAN_TOKEN3_LEN * Get length of token 3
                   L     R2,G_SCAN_TOKEN3A * Have R2 point to old block
                   LR    R5,R2         * Save it for storage release
                   LR    R3,R1         * Make sure no cropping/filling
                   ST    R0,G_SCAN_TOKEN3A * Save ptr to new block
                   MVCL  R0,R2            * Copy old to new block
-                  STORAGE RELEASE,LENGTH=(R6),ADDR=(R5)
+                  ST    R6,G_STGOR_LEN
+                  ST    R5,G_STGOR_PTR
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_RELEASEA_APPEND
+                  BASR  R14,R15
                ENDIF
                L     R2,G_SCAN_TOKEN3A    * Point R0 to token 3
                A     R2,G_SCAN_TOKEN3_LEN * Add length of token 3
@@ -1989,6 +2107,114 @@ APPEND_RET EQU   *
          MLWZTERM                 * Return back to caller
 *
          LTORG
+*
+LWZMAKE_STG_OBTAINA_APPEND  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_APPEND DC    A(LWZMAKE_STG_RELEASE)
+*
+***********************************************************************
+* Section: LWZMAKE_STG_OBTAIN                                         *
+* Purpose: This section does a STORAGE OBTAIN and optionally writes a *
+*          trace record.                                              *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_STG_OBTAIN MLWZSAVE
+*
+         L     R2,G_STGOR_LEN
+         STORAGE OBTAIN,LENGTH=(R2)
+         ST    R1,G_STGOR_PTR
+*
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            ST    R1,G_DEC8    * Put ptr in area of at least 5 bytes
+            UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
+            TR    G_ZONED8,STG_OBTAIN_HEXTAB * Turn into hex
+            MVC   G_HELPER_DATA(8),G_ZONED8 * Copy hex to helper dat
+            LA    R14,G_HELPER_DATA       * Get ptr to helper data
+            ST    R14,G_LWZMTRC_DATA_PTR  * Save it for trace data
+            MVC   G_LWZMTRC_DATA_SIZ,=AL2(8) * Trace data length 8
+            SELECT CLI,G_STGOR_TYPE,EQ
+            WHEN STGOR_TYPE_TOKEN
+               MVC   G_LWZMTRC_MSGNR,=C'638'
+            WHEN STGOR_TYPE_STMT
+               MVC   G_LWZMTRC_MSGNR,=C'640'
+            WHEN STGOR_TYPE_VAR
+               MVC   G_LWZMTRC_MSGNR,=C'642'
+            WHEN STGOR_TYPE_TGT
+               MVC   G_LWZMTRC_MSGNR,=C'644'
+            WHEN STGOR_TYPE_PNY
+               MVC   G_LWZMTRC_MSGNR,=C'646'
+            WHEN STGOR_TYPE_EVAL
+               MVC   G_LWZMTRC_MSGNR,=C'648'
+            WHEN STGOR_TYPE_VARVAL
+               MVC   G_LWZMTRC_MSGNR,=C'650'
+            ENDSEL
+*
+            L     R15,G_LWZMAKE_TRACEA  * Get address of trace section
+            BASR  R14,R15               * Link to trace section
+*
+            L     R1,G_STGOR_PTR
+         ENDIF
+*
+STG_OBTAIN_RET EQU   *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+* Translate table for conversion to hex
+                            DS    0F
+STG_OBTAIN_HEXTAB           EQU   *-C'0'
+                            DC    C'0123456789ABCDEF'
+*
+***********************************************************************
+* Section: LWZMAKE_STG_RELEASE                                        *
+* Purpose: This section does a STORAGE RELEASE and optionally writes  *
+*          a trace record.                                            *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_STG_RELEASE MLWZSAVE
+*
+         L     R3,G_STGOR_PTR
+*
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            ST    R3,G_DEC8    * Put ptr in area of at least 5 bytes
+            UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
+            TR    G_ZONED8,STG_RELEASE_HEXTAB * Turn into hex
+            MVC   G_HELPER_DATA(8),G_ZONED8 * Copy hex to helper dat
+            LA    R14,G_HELPER_DATA       * Get ptr to helper data
+            ST    R14,G_LWZMTRC_DATA_PTR  * Save it for trace data
+            MVC   G_LWZMTRC_DATA_SIZ,=AL2(8) * Trace data length 8
+            SELECT CLI,G_STGOR_TYPE,EQ
+            WHEN STGOR_TYPE_TOKEN
+               MVC   G_LWZMTRC_MSGNR,=C'639'
+            WHEN STGOR_TYPE_STMT
+               MVC   G_LWZMTRC_MSGNR,=C'641'
+            WHEN STGOR_TYPE_VAR
+               MVC   G_LWZMTRC_MSGNR,=C'643'
+            WHEN STGOR_TYPE_TGT
+               MVC   G_LWZMTRC_MSGNR,=C'645'
+            WHEN STGOR_TYPE_PNY
+               MVC   G_LWZMTRC_MSGNR,=C'647'
+            WHEN STGOR_TYPE_EVAL
+               MVC   G_LWZMTRC_MSGNR,=C'649'
+            WHEN STGOR_TYPE_VARVAL
+               MVC   G_LWZMTRC_MSGNR,=C'651'
+            ENDSEL
+*
+            L     R15,G_LWZMAKE_TRACEA  * Get address of trace section
+            BASR  R14,R15               * Link to trace section
+         ENDIF
+*
+         L     R2,G_STGOR_LEN
+         STORAGE RELEASE,LENGTH=(R2),ADDR=(R3)
+*
+STG_RELEASE_RET EQU   *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+* Translate table for conversion to hex
+                            DS    0F
+STG_RELEASE_HEXTAB          EQU   *-C'0'
+                            DC    C'0123456789ABCDEF'
 *
 ***********************************************************************
 * Section: LWZMAKE_PHASE1                                             *
@@ -2134,8 +2360,12 @@ LWZMAKE_SCAN_STMT MLWZSAVE
          BE    SCAN_STMT_RET      * If so, stop parsing statement
 *
 *        Only a rule type statement can start with a $ variable
-         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_VARIABLE) THEN
+*        Only a rule type statement can start with a /
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_VARIABLE),OR,      X
+               (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_SLASH) THEN
 *           So the second token is not needed
+            OI    G_SCAN_STATE,SCAN_STATE_IN_RULE
+*                                 * so stop parsing
             BAL   R8,STMT_RULE    * Perform parsing of rule statement
             B     SCAN_STMT_RET   * Statement parsed in subroutine
 *                                 * so stop parsing
@@ -2414,6 +2644,13 @@ STMT_A_FINISH EQU *
          LR    R3,R1                * Make sure no cropping/filling
          MVCL  R0,R2                * Copy source text
 *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            ST    R7,G_LWZMTRC_DATA_PTR
+            L     R14,0(,R7)
+            STH   R14,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'620',DATA
+         ENDIF
+*
 *        Check for assignment of special var
          L     R14,G_SCAN_TOKEN2A * Point R14 to token 2
          IF (CLI,0(R14),EQ,C'.') THEN * If token 2 starts with .
@@ -2493,6 +2730,8 @@ STMT_RULE EQU  *
 *           the keyword scanning loop below to expand this variable
             CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_VARIABLE
             BE    STMT_R_SCAN_VAR
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SLASH
+            BE    STMT_R_TGT_TOKEN_APPEND
          ENDIF
 *
 STMT_R_NEXT_TOKEN EQU *
@@ -2530,6 +2769,7 @@ STMT_R_SCAN_VAR EQU *
             B     STMT_R_NEXT_TOKEN * Loop around to get next token
          ENDIF
 *
+STMT_R_TGT_TOKEN_APPEND EQU *
 *        Append token 1 to token 2
          MVI   G_SCAN_APPEND_TO,X'01'
          LT    R1,G_SCAN_TOKEN2_LEN  * Get current length token 2
@@ -2657,6 +2897,13 @@ STMT_R_FINISH EQU *
          L     R2,G_SCAN_TOKEN3A  * Point R2 to token 3
          LR    R3,R1              * Make sure no cropping/filling
          MVCL  R0,R2              * Copy requisite name(s) to block
+*
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            ST    R7,G_LWZMTRC_DATA_PTR
+            L     R14,0(,R7)
+            STH   R14,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'620',DATA
+         ENDIF
 *
 *        Split up space delimited target name(s) and for each name link
 *        to STORE_TGT to allocate a target block and add it to the
@@ -2851,6 +3098,13 @@ STMT_C_FINISH EQU *
          LR    R3,R1              * Make sure no cropping/filling
          MVCL  R0,R2              * Copy REXX exec parm to block
 *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            ST    R7,G_LWZMTRC_DATA_PTR
+            L     R14,0(,R7)
+            STH   R14,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'620',DATA
+         ENDIF
+*
 *        Call the REXX, but not if we're in a recipe
          IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,Z) THEN
             MVC   G_CALL_REXX_PAR2A(4),=A(0)
@@ -2963,6 +3217,13 @@ STMT_P_FINISH EQU *
          L     R2,G_SCAN_TOKEN2A  * Point R2 to token 2
          LR    R3,R1              * Make sure no cropping/filling
          MVCL  R0,R2              * Copy PHONY name to block
+*
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            ST    R7,G_LWZMTRC_DATA_PTR
+            L     R14,0(,R7)
+            STH   R14,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'620',DATA
+         ENDIF
 *
 *        R7 points to the PHONY statement
          L     R15,LWZMAKE_STORE_PNYA_STMT * Get address STORE_PNY
@@ -3091,6 +3352,13 @@ STMT_I_FINISH EQU *
          MVC   0(1,R2),0(R3)
          EX    R4,*-6
 *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            ST    R7,G_LWZMTRC_DATA_PTR
+            L     R14,0(,R7)
+            STH   R14,G_LWZMTRC_DATA_SIZ
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'620',DATA
+         ENDIF
+*
          MVI   G_DYNALLOC_DSNAME,C' '
          MVC   G_DYNALLOC_DSNAME+1(L'G_DYNALLOC_DSNAME-1),G_DYNALLOC_DSX
                NAME
@@ -3150,7 +3418,7 @@ STMT_I_NEXT_DSNAME_CHAR EQU *
          USING INPUT_DSECT,R4     * Address with INPUT DSECT
 *
          MVC   INPUTLEAD,=H'0'    * Clear leading spaces
-         MVI   INPUTTYPE,X'03'    * Set type of input to included mkf
+         MVI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC * Set type of input
          MVC   INPUTLEN,=H'0'     * Clear value length
          MVC   INPUTPOS,=H'999'   * Force a read of next record
 *
@@ -3414,7 +3682,7 @@ LWZMAKE_SCAN_VAR DS    0F
 *
             USING INPUT_DSECT,R2  * Address with INPUT DSECT
 *
-            MVI   INPUTTYPE,X'01' * Set type of input to ptr to string
+            MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF * Set type of input
             MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
             MVC   INPUTLEN,VALLEN * Copy value length
             MVC   INPUTPTR,VALPTR * Copy value pointer
@@ -4043,25 +4311,31 @@ SCAN_VAR_SAVE EQU *
             MVC   SCAN_VAR_SAVE_TOKENA,G_SCAN_TOKENA
             MVC   SCAN_VAR_SAVE_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
             MVC   SCAN_VAR_SAVE_TOKEN_LEN,G_SCAN_TOKEN_LEN
-            L     R4,G_SCAN_TOKEN_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKENA
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
             MVC   G_SCAN_TOKEN_LEN,=A(0)
 *
             MVC   SCAN_VAR_SAVE_TOKEN2A,G_SCAN_TOKEN2A
             MVC   SCAN_VAR_SAVE_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
             MVC   SCAN_VAR_SAVE_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
-            L     R4,G_SCAN_TOKEN2_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKEN2A
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
             MVC   G_SCAN_TOKEN2_LEN,=A(0)
 *
             MVC   SCAN_VAR_SAVE_TOKEN3A,G_SCAN_TOKEN3A
             MVC   SCAN_VAR_SAVE_TOKEN3_MAXLEN,G_SCAN_TOKEN3_MAXLEN
             MVC   SCAN_VAR_SAVE_TOKEN3_LEN,G_SCAN_TOKEN3_LEN
-            L     R4,G_SCAN_TOKEN3_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKEN3A
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKEN3A,G_STGOR_PTR
             MVC   G_SCAN_TOKEN3_LEN,=A(0)
          ENDIF
 *
@@ -4071,17 +4345,21 @@ SCAN_VAR_SAVE EQU *
 *
 SCAN_VAR_RESTORE EQU *
          IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
-            L     R2,G_SCAN_TOKEN_MAXLEN
-            L     R3,G_SCAN_TOKENA
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_VAR
+            BASR  R14,R15
 *
             MVC   G_SCAN_TOKENA,SCAN_VAR_SAVE_TOKENA
             MVC   G_SCAN_TOKEN_MAXLEN,SCAN_VAR_SAVE_TOKEN_MAXLEN
             MVC   G_SCAN_TOKEN_LEN,SCAN_VAR_SAVE_TOKEN_LEN
 *
-            L     R2,G_SCAN_TOKEN2_MAXLEN
-            L     R3,G_SCAN_TOKEN2A
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_VAR
+            BASR  R14,R15
             MVC   G_SCAN_TOKEN2A,SCAN_VAR_SAVE_TOKEN2A
             MVC   G_SCAN_TOKEN2_MAXLEN,SCAN_VAR_SAVE_TOKEN2_MAXLEN
             MVC   G_SCAN_TOKEN2_LEN,SCAN_VAR_SAVE_TOKEN2_LEN
@@ -4107,7 +4385,7 @@ SCAN_VAR_RESTORE EQU *
 *
             USING INPUT_DSECT,R2  * Address with INPUT DSECT
 *
-            MVI   INPUTTYPE,X'01' * Set type of input to ptr to string
+            MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF_FREE * Set inp type
             MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
             MVC   INPUTLEN,G_SCAN_TOKEN3_LEN+2 * Copy value length
             MVC   INPUTPTR,G_SCAN_TOKEN3A * Copy value pointer
@@ -4126,6 +4404,8 @@ SCAN_VAR_RESTORE EQU *
 *
 * Local constant pointers to section addresses
 LWZMAKE_APPEND_TOKENA_VAR DC    A(LWZMAKE_APPEND_TOKEN)
+LWZMAKE_STG_OBTAINA_VAR   DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_VAR  DC    A(LWZMAKE_STG_RELEASE)
 LWZMAKE_SCAN_TOKENA_VAR   DC    A(LWZMAKE_SCAN_TOKEN)
 LWZMAKE_FINDVARA_VAR      DC    A(LWZMAKE_FINDVAR)
 LWZMAKE_SCAN_VARA_VAR     DC    A(LWZMAKE_SCAN_VAR)
@@ -4240,7 +4520,7 @@ SCAN_FOR_WHITESPACE EQU *
             B     SCAN_FOR_WHITESPACE   * Loop for next char
          ENDIF
 *
-*        Don't test for ignore when not in INPUTTYPE 00 or 03
+*        Don't test for ignore when not in INPUTTYPE MAKEFILE (_INC)
          XR    R2,R2              * Clear R2
          XR    R3,R3              *   and R3
          IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack index
@@ -4252,9 +4532,9 @@ SCAN_FOR_WHITESPACE EQU *
          MVI   G_SCAN_TOKEN_72,C'N'
 *
          USING INPUT_DSECT,R2  * Address with INPUT DSECT
-         CLI   INPUTTYPE,X'00'
+         CLI   INPUTTYPE,INPUTTYPE_MAKEFILE
          BE    CHECK_IGNORE
-         CLI   INPUTTYPE,X'03'
+         CLI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC
          BE    CHECK_IGNORE
          B     SKIP_IGNORE
          DROP  R2
@@ -4745,12 +5025,28 @@ UNEXPECTED_CLOSE_BRACKET EQU *
 *
 *        Check for a comma
          CLI   0(R5),C','          * Is it a ,
-         IF (EQ) THEN              * If it was ) or }
+         IF (EQ) THEN
 *           Set token type to comma
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMA
 *           Was if expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_COMMA,Z) THEN
                MLWZMRPT RPTLINE=CL133'0Unexpected comma',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            B     SCAN_TOKEN_VALID      * Skip to finishing valid token
+         ENDIF
+*
+*        Check for a slash
+         CLI   0(R5),C'/'          * Is it a /
+         IF (EQ) THEN
+*           Set token type to slash
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SLASH
+*           Was if expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_SLASH,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected slash',APND_LC=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -4911,24 +5207,26 @@ SCAN_TOKEN_VALID EQU *
 *
 *        Write a trace record for the token we just scanned
 *        Put token type char and scanned token in helper data
-         MVC   G_HELPER_DATA(1),G_SCAN_TOKENTYPE * Store token type
-         MVI   G_HELPER_DATA+1,C' '  * followed by space
-         LA    R2,G_HELPER_DATA+2    * Point R2 to where token comes
-         L     R3,G_SCAN_TOKENA      * Point R3 to scanned token
-         L     R4,G_SCAN_TOKEN_LEN   * Get length of scanned token
-         C     R4,=A(L'G_HELPER_DATA-2) * Compare it to leftover space
-         IF (H) THEN                 * If too long
-            L     R4,=A(L'G_HELPER_DATA-2) * Replace len with what fits
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            MVC   G_HELPER_DATA(1),G_SCAN_TOKENTYPE * Store token type
+            MVI   G_HELPER_DATA+1,C' '  * followed by space
+            LA    R2,G_HELPER_DATA+2    * Point R2 to where token comes
+            L     R3,G_SCAN_TOKENA      * Point R3 to scanned token
+            L     R4,G_SCAN_TOKEN_LEN   * Get length of scanned token
+            C     R4,=A(L'G_HELPER_DATA-2) * Compare it to leftover
+            IF (H) THEN                 * space, if too long
+               L     R4,=A(L'G_HELPER_DATA-2) * Replace with what fits
+            ENDIF
+            LA    R5,2(,R4)             * Put the correct length in R5
+            BCTR  R4,R0                 * R4 = R4 - 1 for EX
+            B     *+10                  * Skip MVC constant for EX
+            MVC   0(1,R2),0(R3)         * MVC constant for EX
+            EX    R4,*-6                * EX previous MVC stmt with R4
+            LA    R2,G_HELPER_DATA      * Get address of helper data
+            ST    R2,G_LWZMTRC_DATA_PTR * And store as trace data ptr
+            STH   R5,G_LWZMTRC_DATA_SIZ * And store as data length
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'610',DATA
          ENDIF
-         LA    R5,2(,R4)             * Put the correct length in R5
-         BCTR  R4,R0                 * R4 = R4 - 1 for EX
-         B     *+10                  * Skip MVC constant for EX
-         MVC   0(1,R2),0(R3)         * MVC constant for EX
-         EX    R4,*-6                * EX previous MVC stmt with R4
-         LA    R2,G_HELPER_DATA      * Get address of helper data
-         ST    R2,G_LWZMTRC_DATA_PTR * And store it as trace data ptr
-         STH   R5,G_LWZMTRC_DATA_SIZ * And store length as data length
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'610',DATA
 *
 SCAN_TOKEN_RET EQU *
          MLWZTERM                 * Return back to caller
@@ -5068,9 +5366,9 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
             LH    R1,INPUTPOS
             ST    R1,G_SCAN_CURRCOL
 *
-            CLI   INPUTTYPE,X'00' * Check for input from makefile
+            CLI   INPUTTYPE,INPUTTYPE_MAKEFILE
             BE    SCAN_CHAR_READ_FROM_MAKEFILE * If so jump ahead
-            CLI   INPUTTYPE,X'03' * Check for input from makefile
+            CLI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC
             BE    SCAN_CHAR_READ_FROM_MAKEFILE * If so jump ahead
 *
             XR    R3,R3
@@ -5099,12 +5397,22 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
                ENDIF
                B     SCAN_CHAR_RET * Skip rest of scanner
             ELSE                  * Else, input exhausted
+               IF (CLI,INPUTTYPE,EQ,INPUTTYPE_STRPTR_NEOF_FREE) THEN
+                  XR    R3,R3
+                  LH    R3,INPUTLEN
+                  ST    R3,G_STGOR_LEN
+                  MVC   G_STGOR_PTR,INPUTPTR
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_RELEASEA_SCAN_CHAR
+                  BASR  R14,R15
+               ENDIF
                XR    R3,R3        * Clear R3
                IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack idx
                BCTR  R3,R0        * Subtract 1
                STC   R3,G_SCAN_INPUT_STACK_IDX * and put back in stack
 *              Input type that continues with popped stack entry?
-               IF (CLI,INPUTTYPE,NE,X'01') THEN If not...
+               IF (CLI,INPUTTYPE,NE,INPUTTYPE_STRPTR_NEOF),AND,        X
+               (CLI,INPUTTYPE,NE,INPUTTYPE_STRPTR_NEOF_FREE) THEN
                   MVI   G_MKFEOF,C'Y'
                   B     SCAN_CHAR_RET * Skip rest of scan char
                ENDIF
@@ -5214,7 +5522,8 @@ READNEXT_10 EQU *
             LA    R4,1(,R4)          * Advance 1 line count
             ST    R4,G_SCAN_CURRLINE * And put it back as current line
          ELSE
-            IF (CLI,INPUTTYPE-INPUT_DSECT(R3),EQ,X'03') THEN
+            IF (CLI,INPUTTYPE-INPUT_DSECT(R3),EQ,INPUTTYPE_MAKEFILE_INCX
+               ) THEN
                CLOSE ((R4)),MODE=31
 *
                L     R7,INPUTXPTR-INPUT_DSECT(,R3)
@@ -5247,7 +5556,7 @@ READNEXT_MEMBER_CHAR EQU *
                   IF (CLI,0(R3),NE,C')') THEN
                      MVC   0(1,R2),0(R3)
                      LA    R2,1(,R2)
-                     LA    R3,1(,R2)
+                     LA    R3,1(,R3)
                      BCT   R4,READNEXT_MEMBER_CHAR
                   ENDIF
                ENDIF
@@ -5267,7 +5576,8 @@ READNEXT_RET EQU *
 *
          LTORG
 *
-LWZMAKE_DYNALLOCA_SCAN_CHAR DC    A(LWZMAKE_DYNALLOC)
+LWZMAKE_STG_RELEASEA_SCAN_CHAR DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_DYNALLOCA_SCAN_CHAR    DC    A(LWZMAKE_DYNALLOC)
 *
 ***********************************************************************
 * Section: LWZMAKE_ALLOC_STMT                                         *
@@ -5298,20 +5608,13 @@ FIND_STMT_SLOT EQU *
          ENDIF
 *
 *        Allocate a statement block
-         L     R4,G_STMT_ALLOC_LEN  * Get length to allocate
-         STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
+         MVC   G_STGOR_LEN,G_STMT_ALLOC_LEN * Set length to allocate
+         MVI   G_STGOR_TYPE,STGOR_TYPE_STMT * Set block type
+         L     R15,LWZMAKE_STG_OBTAINA_STMT
+         BASR  R14,R15              * Allocate a memory block
+         L     R1,G_STGOR_PTR
          ST    R1,0(,R7)            * Save it at forward chain address
          ST    R1,G_STMT_ALLOC_RETURN_PTR * Also save it as return ptr
-*
-*        Write a trace record for allocated block
-         ST    R1,G_DEC8             * Put in var with at least 5 bytes
-         UNPK  G_ZONED8(9),G_DEC8(5) * Turn into almost hex
-         TR    G_ZONED8,STMT_HEXTAB  * Turn into hex
-         MVC   G_HELPER_DATA(8),G_ZONED8 * Copy 8 hex chars to helper
-         LA    R2,G_HELPER_DATA      * Get address of helper data
-         ST    R2,G_LWZMTRC_DATA_PTR * put it in trace record data ptr
-         MVC   G_LWZMTRC_DATA_SIZ,=AL2(8) * Trace record data length 8
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEBUG,MSGNR=C'640',DATA
 *
 *        Initialize block
          L     R2,G_STMT_ALLOC_RETURN_PTR * Point R2 to memory block
@@ -5338,6 +5641,8 @@ ALLOC_STMT_RET EQU *
          MLWZTERM                 * Return back to caller
 *
          LTORG
+*
+LWZMAKE_STG_OBTAINA_STMT DC    A(LWZMAKE_STG_OBTAIN)
 *
 * Translate table for hex conversion
 STMT_HEXTAB EQU   *-C'0'
@@ -5369,9 +5674,9 @@ LWZMAKE_STORE_VAR MLWZSAVE
 TEST_VARS   EQU   *               * Test this var for matching name
             XR    R3,R3           * Clear R3
             LH    R3,STMT_A_DESTLEN * and get length of stmt var name
-            CH    R3,VARLEN       * Compare it to current var name len
+            CH    R3,VARNAMELEN   * Compare it to current var name len
             IF (H) THEN           * Compare length of shortest of the 2
-               LH    R3,VARLEN    * If current var name len is less
+               LH    R3,VARNAMELEN * If current var name len is less
             ENDIF                 * then use that
             BCTR  R3,R0           * Subtract 1 for EX
             LA    R2,STMT_A_DEST  * Point R2 to statement var name
@@ -5392,8 +5697,8 @@ TEST_VARS   EQU   *               * Test this var for matching name
                ENDIF
             ELSE                  * Else, statement var name is >=
                IF (EQ) THEN       * If the compared part is equal
-                  CLC   STMT_A_DESTLEN,VARLEN * Check if they're also
-                  IF (EQ) THEN    * of equal length
+                  CLC   STMT_A_DESTLEN,VARNAMELEN * Check if they're
+                  IF (EQ) THEN    * also of equal length
                      B     FILL_VAR * because then no alloc needed,
                   ENDIF           * just replacing the value
                ENDIF
@@ -5418,13 +5723,20 @@ FILL_VAR EQU   *
          IF (NE) THEN             * If so...
             XR    R2,R2           * Clear R2
             LH    R2,VALLEN       * and put old value length in
-            L     R3,VALPTR       * Get old value pointer
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            ST    R2,G_STGOR_LEN
+            MVC   G_STGOR_PTR,VALPTR * Get old value pointer
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+            L     R15,LWZMAKE_STG_RELEASEA_STORE_VAR
+            BASR  R14,R15
          ENDIF
          XR    R2,R2              * Clear R2
          LH    R2,STMT_A_SRCLEN   * Get new value length
          STH   R2,VALLEN          * Put it in variable block
-         STORAGE OBTAIN,LENGTH=(R2) * Allocate value storage
+         ST    R2,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+         L     R15,LWZMAKE_STG_OBTAINA_STORE_VAR
+         BASR  R14,R15              * Allocate value storage
+         L     R1,G_STGOR_PTR
          ST    R1,VALPTR          * Put new memory ptr in var block
          LR    R0,R1              * Copy new value ptr to R0
          LR    R1,R2              * Copy new value length to R1
@@ -5438,9 +5750,9 @@ FILL_VAR EQU   *
          LA    R3,21
          LA    R4,VARNAME
          LR    R5,R3
-         CH    R5,VARLEN
+         CH    R5,VARNAMELEN
          IF (H) THEN
-            LH    R5,VARLEN
+            LH    R5,VARNAMELEN
          ENDIF
          BCTR  R5,R0
          B     *+10
@@ -5474,36 +5786,36 @@ STORE_VAR_RET EQU *
 * of the assignment statement possible.
 *
 ALLOC_VAR EQU  *
-         GETMAIN RU,LV=VAR_DSECT_LEN * Allocate memory for var block
+         L     R3,=A(VAR_DSECT_LEN) * Get size of VAR_DSECT
 *
-         LR    R5,R1              * Copy allocated memory ptr to R5
-         USING VAR_DSECT,R5       * Addressing of new variable block
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_VAR
+         L     R15,LWZMAKE_STG_OBTAINA_STORE_VAR
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
 *
-         MVC   VARLEN,STMT_A_DESTLEN * Copy variable name length
+*        Clear memory block
+         LR    R2,R1              * Copy ptr to target block to R2
+         XR    R4,R4              * Clear R4
+         XR    R5,R5              *   and R5
+         MVCL  R2,R4              * Zero out memory
+*
+         USING VAR_DSECT,R1       * Addressing of new variable block
+*
+         MVC   VARLEN,=A(VAR_DSECT_LEN)
+         MVC   VARNAMELEN,STMT_A_DESTLEN * Copy variable name length
          MVC   VARNAME,STMT_A_DEST * Copy variable name (both 72 long)
-*        Set the rest of the variable block to zero's
-         MVI   VALLEN,X'00'
-         MVC   VALLEN+1(VAR_DSECT_LEN-L'VARLEN-L'VARNAME-1),VALLEN
 *
-*        Write a trace record for allocated block
-         ST    R5,G_DEC8             * Put in var with at least 5 bytes
-         UNPK  G_ZONED8(9),G_DEC8(5) * Turn into almost hex
-         TR    G_ZONED8,VAR_HEXTAB   * Turn into hex
-         MVC   G_HELPER_DATA(8),G_ZONED8 * Copy 8 hex chars to helper
-         LA    R2,G_HELPER_DATA      * Get address of helper data
-         ST    R2,G_LWZMTRC_DATA_PTR * put it in trace record data ptr
-         MVC   G_LWZMTRC_DATA_SIZ,=AL2(8) * Trace record data length 8
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEBUG,MSGNR=C'642',DATA
-*
-         LR    R1,R5              * Put ptr of allocated block in R1
-*
-         DROP  R5
+         DROP  R1
 *
          BR    R8                 * Return
 *
          DROP  R7
 *
          LTORG
+*
+LWZMAKE_STG_OBTAINA_STORE_VAR  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_STORE_VAR DC    A(LWZMAKE_STG_RELEASE)
 *
 * Translate table for hex conversion
 VAR_HEXTAB EQU   *-C'0'
@@ -5582,7 +5894,11 @@ ALLOC_TGT EQU  *
          A     R3,G_SCAN_TOKEN_LEN  * Add target name length
          A     R3,=A(8)           * Add length for optional member name
 *
-         STORAGE OBTAIN,LENGTH=(R3) *Allocate memory for tgt block
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TGT
+         L     R15,LWZMAKE_STG_OBTAINA_TGT
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
 *
          USING TARGET_DSECT,R1    * Addressing of new target block
 *
@@ -5609,6 +5925,14 @@ ALLOC_TGT EQU  *
          DROP  R1
 *
          BR    R8                 * Return
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_TGT DC    A(LWZMAKE_STG_OBTAIN)
+*
+* Translate table for hex conversion
+TGT_HEXTAB EQU   *-C'0'
+           DC    C'0123456789ABCDEF'
 *
 ***********************************************************************
 * Section: LWZMAKE_STORE_PNY                                          *
@@ -5710,7 +6034,11 @@ ALLOC_PNY EQU  *
          L     R3,=A(PHONY_DSECT_LEN) * Get size of fixed part of PHONY
          AH    R3,STMT_P_PNYLEN   * Add PHONY name length
 *
-         STORAGE OBTAIN,LENGTH=(R3) * Allocate memory for PHONY block
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_PNY
+         L     R15,LWZMAKE_STG_OBTAINA_PNY
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
 *
          USING PHONY_DSECT,R1     * Addressing of new PHONY block
 *
@@ -5737,6 +6065,14 @@ ALLOC_PNY EQU  *
 *
          BR    R8                 * Return
 *
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_PNY DC    A(LWZMAKE_STG_OBTAIN)
+*
+* Translate table for hex conversion
+PNY_HEXTAB EQU   *-C'0'
+           DC    C'0123456789ABCDEF'
+*
 ***********************************************************************
 * Section: LWZMAKE_FINDVAR                                            *
 * Purpose: Find a variable in variable binary search tree             *
@@ -5758,9 +6094,9 @@ LWZMAKE_FINDVAR MLWZSAVE
 TEST_VARF   EQU   *
          XR    R3,R3              * Clear R3
          LH    R3,G_SRCH_VAR_LEN  * Get var to find's name length
-         CH    R3,VARLEN          * Compare it to current var name len
+         CH    R3,VARNAMELEN      * Compare it to current var name len
          IF (H) THEN              * Compare length of shortest of the 2
-            LH    R3,VARLEN       * If current var name len is less
+            LH    R3,VARNAMELEN   * If current var name len is less
          ENDIF                    * then use that
          BCTR  R3,R0              * Subtract 1 for EX
          LA    R2,G_SRCH_VAR      * Point R2 to var to find's name
@@ -5778,8 +6114,8 @@ TEST_VARF   EQU   *
             ENDIF
          ELSE                     * Else, find var name is >=
             IF (EQ) THEN          * If the compared part is equal
-               CLC   G_SRCH_VAR_LEN,VARLEN * Check if they're also of
-               IF (EQ) THEN       * equal length
+               CLC   G_SRCH_VAR_LEN,VARNAMELEN * Check if they're also
+               IF (EQ) THEN       * of equal length
                   ST    R6,G_FOUND_VAR_PTR * Return this var's ptr
                   B     FINDVAR_RET * Skip rest of find var
                ENDIF
@@ -5953,6 +6289,71 @@ FINDPNY_RET EQU *
          LTORG
 *
 ***********************************************************************
+* Section: LWZMAKE_FREEBST                                            *
+* Purpose: Recursively free an entry in a binary search tree.         *
+*          G_STGOR_TYPE is set to the storage block type              *
+*          R1 points to the current entry.                            *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_FREEBST MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_FREEBST'
+*
+         LT    R2,4(,R1)
+         IF (NZ) THEN
+            LR    R3,R1
+            LR    R1,R2
+            L     R15,LWZMAKE_FREEBSTA_FREEBST
+            BASR  R14,R15
+            LR    R1,R3
+            MVC   4(4,R1),=A(0)
+         ENDIF
+*
+         LT    R2,8(,R1)
+         IF (NZ) THEN
+            LR    R3,R1
+            LR    R1,R2
+            L     R15,LWZMAKE_FREEBSTA_FREEBST
+            BASR  R14,R15
+            LR    R1,R3
+            MVC   8(4,R1),=A(0)
+         ENDIF
+*
+         IF (CLI,G_STGOR_TYPE,EQ,STGOR_TYPE_VAR) THEN
+            XR    R2,R2
+            LH    R2,VALLEN-VAR_DSECT(,R1)
+            LTR   R2,R2
+            BZ    SKIP_FREEBST_RELEASE_VARVAL
+            LT    R3,VALPTR-VAR_DSECT(,R1)
+            BZ    SKIP_FREEBST_RELEASE_VARVAL
+            ST    R2,G_STGOR_LEN
+            ST    R3,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+            L     R15,LWZMAKE_STG_RELEASEA_FREEBST
+            BASR  R14,R15
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VAR
+SKIP_FREEBST_RELEASE_VARVAL EQU *
+         ENDIF
+*
+         ST    R1,G_STGOR_PTR
+         MVC   G_STGOR_LEN,0(R1)
+         L     R15,LWZMAKE_STG_RELEASEA_FREEBST
+         BASR  R14,R15
+*
+FREEBST_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+* Translate table for hex conversion
+FREEBST_HEXTAB EQU   *-C'0'
+               DC    C'0123456789ABCDEF'
+*
+LWZMAKE_FREEBSTA_FREEBST     DC    A(LWZMAKE_FREEBST)
+LWZMAKE_STG_RELEASEA_FREEBST DC    A(LWZMAKE_STG_RELEASE)
+*
+***********************************************************************
 * Section: LWZMAKE_EXEC_TGT                                           *
 * Purpose: Execute a target. This is a recursive section, in other    *
 *          words, it calls itself.                                    *
@@ -6093,7 +6494,7 @@ EXEC_TGT_PREREQ EQU *
          LA    R2,G_SCAN_INPUT_STACK
          AR    R2,R3
          USING INPUT_DSECT,R2
-         MVI   INPUTTYPE,X'01'
+         MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF
          MVC   INPUTLEN,STMT_R_REQLEN
          LA    R4,STMT_R_TGT
          AH    R4,STMT_R_TGTLEN
@@ -6237,6 +6638,19 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
          L     R15,G_LWZMAKE_RPTA
          BASR  R14,R15
 *
+         IF (CLC,G_SCAN_TOKEN_LEN,EQ,=F'1') THEN
+            L     R14,G_SCAN_TOKENA
+            SELECT CLI,0(R14),EQ
+            WHEN C'0'
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            WHEN C'1'
+               MLWZMRPT RPTLINE=CL133' ..................... Force builX
+               d unconditionally'
+               MVC   TARGET_ALTER_DATE,=16X'FF'
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            ENDSEL
+         ENDIF
+*
          L     R15,LWZMAKE_FINDTGTA_EXEC
          BASR  R14,R15
 *
@@ -6248,17 +6662,21 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
             MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
             MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
             MVC   EXEC_SAVE_SCAN_TOKEN_LEN,G_SCAN_TOKEN_LEN
-            L     R4,G_SCAN_TOKEN_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKENA
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
             MVC   G_SCAN_TOKEN_LEN,=A(0)
 *
             MVC   EXEC_SAVE_SCAN_TOKEN2A,G_SCAN_TOKEN2A
             MVC   EXEC_SAVE_SCAN_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
             MVC   EXEC_SAVE_SCAN_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
-            L     R4,G_SCAN_TOKEN2_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKEN2A
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
             MVC   G_SCAN_TOKEN2_LEN,=A(0)
 *
             LA    R1,EXEC_NEXTTGT_PAR
@@ -6271,16 +6689,20 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
             CLC   G_RETCODE,=F'0'
             BNE   EXEC_TGT_RET
 *
-            L     R2,G_SCAN_TOKEN_MAXLEN
-            L     R3,G_SCAN_TOKENA
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
             MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA
             MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN
             MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN
 *
-            L     R2,G_SCAN_TOKEN2_MAXLEN
-            L     R3,G_SCAN_TOKEN2A
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
             MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A
             MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN
             MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN
@@ -6416,17 +6838,21 @@ NEXT_RECIPE_STMT EQU *
             MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
             MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
             MVC   EXEC_SAVE_SCAN_TOKEN_LEN,G_SCAN_TOKEN_LEN
-            L     R4,G_SCAN_TOKEN_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKENA
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
             MVC   G_SCAN_TOKEN_LEN,=A(0)
 *
             MVC   EXEC_SAVE_SCAN_TOKEN2A,G_SCAN_TOKEN2A
             MVC   EXEC_SAVE_SCAN_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
             MVC   EXEC_SAVE_SCAN_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
-            L     R4,G_SCAN_TOKEN2_MAXLEN
-            STORAGE OBTAIN,LENGTH=(R4) * Allocate a memory block
-            ST    R1,G_SCAN_TOKEN2A
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
             MVC   G_SCAN_TOKEN2_LEN,=A(0)
 *
             ST    R6,G_CALL_REXX_PAR2A
@@ -6436,16 +6862,20 @@ NEXT_RECIPE_STMT EQU *
             L     R15,LWZMAKE_CALL_REXXA_EXEC
             BASR  R14,R15
 *
-            L     R2,G_SCAN_TOKEN_MAXLEN
-            L     R3,G_SCAN_TOKENA
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
             MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA
             MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN
             MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN
 *
-            L     R2,G_SCAN_TOKEN2_MAXLEN
-            L     R3,G_SCAN_TOKEN2A
-            STORAGE RELEASE,LENGTH=(R2),ADDR=(R3) * Free value storage
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
             MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A
             MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN
             MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN
@@ -6504,7 +6934,7 @@ EXEC_ASSIGN_START EQU *
             LA    R2,G_SCAN_INPUT_STACK
             AR    R2,R3
             USING INPUT_DSECT,R2
-            MVI   INPUTTYPE,X'02'
+            MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF
             MVC   INPUTLEN,STMT_A_SRCLEN
             LA    R14,STMT_A_SRC
             ST    R14,INPUTPTR
@@ -6611,8 +7041,11 @@ EXEC_ASSIGN_EXPANDED EQU *
 *           Allocate a new memory block for this assignment
             L     R4,=A(STMT_A_DSECT_LEN) * Size of block without token
             A     R4,G_SCAN_TOKEN3_LEN    * Add token length
-            STORAGE OBTAIN,LENGTH=(R4)
-            LR    R5,R1
+            ST    R4,G_STGOR_LEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_STMT
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            L     R5,G_STGOR_PTR
 *
             MVC   0(STMT_A_DSECT_LEN,R5),0(R7)
             LR    R7,R5
@@ -6631,6 +7064,19 @@ SKIP_EXEC_EXPAND_ASSIGN EQU *
 *
             L     R15,LWZMAKE_STORE_VARA_EXEC * Get address STORE_VAR
             BASR  R14,R15            * Link to STORE_VAR section
+*
+            L     R1,EXEC_TGT_PARA
+            L     R6,EXEC_TGT_PTR-EXEC_TGT_PAR(,R1)
+            C     R7,TGTSTMT-TARGET_DSECT(,R6)
+            IF (NE) THEN
+               ST    R7,G_STGOR_PTR
+               MVC   G_STGOR_LEN,0(R7)
+               MVI   G_STGOR_TYPE,STGOR_TYPE_STMT
+               L     R15,LWZMAKE_STG_RELEASEA_EXEC
+               BASR  R14,R15
+*
+               L     R7,TGTSTMT-TARGET_DSECT(,R6)
+            ENDIF
 *
 SKIP_EXEC_ASSIGN EQU *
 *
@@ -6665,6 +7111,8 @@ LWZMAKE_APPEND_TOKENA_EXEC  DC    A(LWZMAKE_APPEND_TOKEN)
 LWZMAKE_CALL_REXXA_EXEC     DC    A(LWZMAKE_CALL_REXX)
 LWZMAKE_STORE_VARA_EXEC     DC    A(LWZMAKE_STORE_VAR)
 LWZMAKE_FINDVARA_EXEC       DC    A(LWZMAKE_FINDVAR)
+LWZMAKE_STG_OBTAINA_EXEC    DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_EXEC   DC    A(LWZMAKE_STG_RELEASE)
 *
 WORKAREA_EXEC_TGT           DSECT
 EXEC_TGT_SA                 DS    18F
@@ -6770,6 +7218,8 @@ GET_DATE_NOT_MVSDS EQU *
          MLWZMRPT RPTLINE=CL133' ..................... Name is not MVS X
                data set name'
          MVC   G_SAVE_ALTER_DATE,=16X'FF'
+*
+         BAL   R8,GET_DATE_BPX1STA
 *
 GET_DATE_RET EQU *
          L     R3,4(,R13)        * Restore address of callers SA
@@ -7297,10 +7747,126 @@ PDSDIR_IS_EOF_GD EQU *
          MVI   PDSDIR_EOF_GD,C'Y'
          BR    R6
 *
+*
+*
+GET_DATE_BPX1STA EQU *
+         MVI   G_DSFOUND,C'N'
+*
+         MVC   BPX1STA_PATH_LEN,G_SCAN_TOKEN_LEN
+         MVC   BPX1STA_PATH_PTR,G_SCAN_TOKENA
+         MVC   BPX1STA_STAT_LEN,=A(ST#LEN)
+         LA    R1,BPX1STA_STATAREA
+         ST    R1,BPX1STA_STAT_PTR
+*
+         LA    R1,BPX1STA_PATH_LEN
+         ST    R1,BPX1STA_PAR7A
+         L     R1,BPX1STA_PATH_PTR
+         ST    R1,BPX1STA_PAR7A+4
+         LA    R1,BPX1STA_STAT_LEN
+         ST    R1,BPX1STA_PAR7A+8
+         L     R1,BPX1STA_STAT_PTR
+         ST    R1,BPX1STA_PAR7A+12
+         LA    R1,BPX1STA_RETVAL
+         ST    R1,BPX1STA_PAR7A+16
+         LA    R1,BPX1STA_RETCODE
+         ST    R1,BPX1STA_PAR7A+20
+         LA    R1,BPX1STA_REASON
+         O     R1,=X'80000000'
+         ST    R1,BPX1STA_PAR7A+24
+         LA    R1,BPX1STA_PAR7A
+*
+         LINK  EP=BPX1STA,SF=(E,G_LINKD)
+*
+         IF (CLC,BPX1STA_RETVAL,EQ,=F'0') THEN
+            MVI   G_DSFOUND,C'Y'
+*
+            L     R15,BPX1STA_STATAREA+(ST_MTIME-STAT)
+*
+            USING PSA,0
+*
+HFSFMTTM    M     R14,=F'1000000'     Convert to microseconds
+            LA    R0,1                Get one
+            AL    R15,SEC70YRS+4      Change origin from 1970 to 1900
+            BC    12,HFSFMTL1
+            ALR   R14,R0              Carry one from overflow
+HFSFMTL1    AL    R14,SEC70YRS
+            SLDL  R14,12              Convert to STCK format
+            L     R1,FLCCVT           CVT
+            L     R1,CVTEXT2-CVT(,R1) OS/VS2 common extension
+            USING CVTXTNT2,R1
+            AL    R15,CVTLDTOR        Add CVTLDTO right word
+            BC    12,HFSFMTL2         CVTLDTO = Local Date/Time Offset
+            ALR   R14,R0              Carry one from overflow
+HFSFMTL2    AL    R14,CVTLDTOL        Add CVTLDTO left word
+            SL    R15,CVTLSOL         Subtract CVTLSO low word
+            BC    3,HFSFMTL3          CVTLSO = Leap Second Offset
+            SR    R14,R0              Borrow one from overflow
+HFSFMTL3    SL    R14,CVTLSOH         Subtract CVTLSO high word
+            DROP  R1                  CVTXTNT2
+            STM   R14,R15,CONVTOD_OUTAREA Save the STCK value
+            STCKCONV STCKVAL=CONVTOD_OUTAREA, Point to input STCK value+
+               CONVVAL=STCKCONV_OUTAREA, Point to output four words    +
+               TIMETYPE=DEC,         Get time decimal digits (default) +
+               DATETYPE=YYYYMMDD,    Specify date format               +
+               MF=(E,STCKCONV_PLIST) Specify parameter list
+*
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Unix filX
+               e found, last altered on'
+            MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8
+            MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA
+            MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)
+            MVN   DATEWORK_DEC_2+7(1),=X'0F'
+            UNPK  DATEWORK_ZON,DATEWORK_DEC_2
+            MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON
+            MVC   G_LWZMRPT_LINE+56(19),=C'0000-00-00 00:00:00'
+            MVC   G_LWZMRPT_LINE+56(4),DATEWORK_ZON+2
+            MVC   G_LWZMRPT_LINE+61(2),DATEWORK_ZON+6
+            MVC   G_LWZMRPT_LINE+64(2),DATEWORK_ZON+8
+            MVC   G_LWZMRPT_LINE+67(2),DATEWORK_ZON+10
+            MVC   G_LWZMRPT_LINE+70(2),DATEWORK_ZON+12
+            MVC   G_LWZMRPT_LINE+73(2),DATEWORK_ZON+14
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+         ELSE
+            IF (CLC,BPX1STA_RETCODE,EQ,=F'129') THEN
+               MLWZMRPT RPTLINE=CL133' ..................... Unix file X
+               not found'
+            ELSE
+               MVC   G_DEC8(4),BPX1STA_RETCODE
+               UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
+               TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex
+               MVC   G_HELPER_DATA(8),G_ZONED8
+               MVI   G_HELPER_DATA+8,C' '
+               MVC   G_DEC8(4),BPX1STA_REASON
+               UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
+               TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex
+               MVC   G_HELPER_DATA+9(8),G_ZONED8
+               LA    R14,G_HELPER_DATA
+               ST    R14,G_LWZMTRC_DATA_PTR
+               MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
+               MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'011',DATA
+               MLWZMRPT RPTLINE=CL133'0Error getting unix file informatX
+               ion'
+               MVC   G_RETCODE,=F'12'
+               B     BPX1STA_RET
+            ENDIF
+         ENDIF
+*
+         IF (CLI,G_DSFOUND,NE,C'Y') THEN
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'
+         ENDIF
+*
+BPX1STA_RET EQU *
+         BR    R8
+*
          LTORG
 *
 LWZMAKE_CHECK_MVSDSA_GET_DATE DC    A(LWZMAKE_CHECK_MVSDS)
 LWZMAKE_DYNALLOCA_GET_DATE    DC    A(LWZMAKE_DYNALLOC)
+*
+*        MICROSECONDS FROM THE START OF 1900 TO THE START OF 1970
+*        =  ((70*365)+17)*24*3600*1000000  =  2208988800 * 1000000
+SEC70YRS DC    0D'0',FL8'2208988800E6'
 *
 * Translate table for conversion to hex
                             DS    0F
@@ -7407,10 +7973,25 @@ IEWBFDAT_EN_PAR2A           DS    2A
 IEWBFDAT_EN_EN              DS    CL4
 IEWBFDAT_EN_MTOKEN          DS    CL4
 *
+                            DS    0F
+BPX1STA_STATAREA            DS    CL(ST#LEN)
+*
+                            DS    0F
+BPX1STA_PAR7A               DS    7A
+BPX1STA_PATH_LEN            DS    F
+BPX1STA_PATH_PTR            DS    A
+BPX1STA_STAT_LEN            DS    F
+BPX1STA_STAT_PTR            DS    A
+BPX1STA_RETVAL              DS    F
+BPX1STA_RETCODE             DS    F
+BPX1STA_REASON              DS    F
+*
 GET_DATE_DSECT_SIZ          EQU   *-GET_DATE_DSECT
 *
          IEFZB4D0
          IEFZB4D2
+*
+         BPXYSTAT
 *
 LWZMAKE  CSECT
 *
@@ -7707,15 +8288,22 @@ GET_MEMLIST_NEXT_DIRREC_ENTRY EQU *
                LR    R6,R3         * Save it for storage release
                SLL   R3,1          * Multiply max length by 2
                ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len
-               STORAGE OBTAIN,LENGTH=(R3) * Allocate a memory block
-               LR    R0,R1         * Have R0 point to new block
+               MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_OBTAINA_GET_MEMLIST
+               BASR  R14,R15
+               L     R0,G_STGOR_PTR * Have R0 point to new block
                L     R1,G_SCAN_TOKEN3_LEN * Get length of token 3
                L     R2,G_SCAN_TOKEN3A * Have R2 point to old block
                LR    R5,R2         * Save it for storage release
                LR    R3,R1         * Make sure no cropping/filling
                ST    R0,G_SCAN_TOKEN3A * Save ptr to new block
                MVCL  R0,R2            * Copy old to new block
-               STORAGE RELEASE,LENGTH=(R6),ADDR=(R5)
+               ST    R6,G_STGOR_LEN
+               ST    R5,G_STGOR_PTR
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_RELEASEA_GET_MEMLIST
+               BASR  R14,R15
                LM    R14,R12,GET_MEMLIST_SAVEAREA2+12
                L     R5,G_SCAN_TOKEN3A
             ENDIF
@@ -7777,7 +8365,9 @@ PDSDIR_IS_EOF_ML EQU *
 *
          LTORG
 *
-LWZMAKE_DYNALLOCA_GET_MEMLIST DC    A(LWZMAKE_DYNALLOC)
+LWZMAKE_STG_OBTAINA_GET_MEMLIST  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_GET_MEMLIST DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_DYNALLOCA_GET_MEMLIST    DC    A(LWZMAKE_DYNALLOC)
 *
 TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @
 *                0 1 2 3 4 5 6 7 8 9 A B C D E F
@@ -8021,7 +8611,11 @@ LWZMAKE_CALL_FUNC MLWZSAVE
          IF (L) THEN
             X     R2,=X'FFFFFFFF'
             LA    R2,25(,R2)      * Add 1 plus room for 4A + 8
-            STORAGE OBTAIN,LENGTH=(R2) * Allocate a mem block
+            ST    R2,G_STGOR_LEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+            L     R15,LWZMAKE_STG_OBTAINA_CALL_FUNC
+            BASR  R14,R15
+            L     R1,G_STGOR_PTR
             XR    R5,R5
             ST    R5,EVALBLOCK_EVPAD1-EVALBLOCK(,R1)
             ST    R5,EVALBLOCK_EVPAD2-EVALBLOCK(,R1)
@@ -8030,7 +8624,11 @@ LWZMAKE_CALL_FUNC MLWZSAVE
             ST    R5,EVALBLOCK_EVSIZE-EVALBLOCK(,R1)
             LR    R3,R1
             L     R5,G_EVALBLOCK_MAXLEN
-            STORAGE RELEASE,LENGTH=(R5),ADDR=(R6)
+            ST    R5,G_STGOR_LEN
+            ST    R6,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+            L     R15,LWZMAKE_STG_RELEASEA_CALL_FUNC
+            BASR  R14,R15
             ST    R3,G_EVALBLOCK_PTR
             ST    R2,G_EVALBLOCK_MAXLEN
             L     R6,G_EVALBLOCK_PTR
@@ -8081,15 +8679,22 @@ CALL_FUNC_ENLARGE_TOKEN EQU *
             CR    R1,R3
             BH    CALL_FUNC_ENLARGE_TOKEN
             ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len
-            STORAGE OBTAIN,LENGTH=(R3) * Allocate a mem block
-            LR    R0,R1           * Have R0 point to new block
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_CALL_FUNC
+            BASR  R14,R15
+            L     R0,G_STGOR_PTR  * Have R0 point to new block
             L     R1,G_SCAN_TOKEN3_LEN * Get length of token
             L     R2,G_SCAN_TOKEN3A * Have R2 point to old blk
             LR    R5,R2           * Save it for storage release
             LR    R3,R1           * Make sure no cropping/filling
             ST    R0,G_SCAN_TOKEN3A * Save ptr to new block
             MVCL  R0,R2      * Copy old to new block
-            STORAGE RELEASE,LENGTH=(R4),ADDR=(R5)
+            ST    R4,G_STGOR_LEN
+            ST    R5,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_CALL_FUNC
+            BASR  R14,R15
          ENDIF
          L     R0,G_SCAN_TOKEN3A
          L     R1,EVALBLOCK_EVLEN
@@ -8110,7 +8715,9 @@ CALL_FUNC_RET EQU *
 *
          LTORG
 *
-LWZMAKE_IRXINITA_CALL_FUNC  DC    A(LWZMAKE_IRXINIT)
+LWZMAKE_IRXINITA_CALL_FUNC     DC    A(LWZMAKE_IRXINIT)
+LWZMAKE_STG_OBTAINA_CALL_FUNC  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_CALL_FUNC DC    A(LWZMAKE_STG_RELEASE)
 *
 *CALL_FUNC_DSECT             DSECT
 *CALL_FUNC_SA                DS    18F
@@ -8147,7 +8754,7 @@ LWZMAKE_CALL_REXX MLWZSAVE
          LA    R2,G_SCAN_INPUT_STACK
          AR    R2,R3
          USING INPUT_DSECT,R2
-         MVI   INPUTTYPE,X'02'
+         MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF
          MVC   INPUTLEN,STMT_C_PARMLEN
          LA    R6,STMT_C_EXEC
          AH    R6,STMT_C_EXECLEN
@@ -8312,8 +8919,11 @@ ISPEXEC_ENLARGE_TOKEN EQU *
                   CR    R1,R3
                   BH    ISPEXEC_ENLARGE_TOKEN
                   ST    R3,G_SCAN_TOKEN_MAXLEN * Make it new max len
-                  STORAGE OBTAIN,LENGTH=(R3) * Allocate a mem block
-                  LR    R0,R1      * Have R0 point to new block
+                  MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_OBTAINA_CALL_REXX
+                  BASR  R14,R15
+                  L     R0,G_STGOR_PTR * Have R0 point to new block
                   L     R1,G_SCAN_TOKEN_LEN * Get length of token
                   L     R2,G_SCAN_TOKENA * Have R2 point to old blk
                   LR    R14,R2     * Save it for storage release
@@ -8321,7 +8931,11 @@ ISPEXEC_ENLARGE_TOKEN EQU *
                   ST    R0,G_SCAN_TOKENA * Save ptr to new block
                   MVCL  R0,R2      * Copy old to new block
                   LR    R2,R14
-                  STORAGE RELEASE,LENGTH=(R4),ADDR=(R2)
+                  ST    R4,G_STGOR_LEN
+                  ST    R2,G_STGOR_PTR
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_RELEASEA_CALL_REXX
+                  BASR  R14,R15
                   L     R6,G_SCAN_TOKENA
                   AR    R6,R5
                ENDIF
@@ -8495,6 +9109,8 @@ LWZMAKE_SCAN_TOKENA_CALL_REXX   DC    A(LWZMAKE_SCAN_TOKEN)
 LWZMAKE_SCAN_VARA_CALL_REXX     DC    A(LWZMAKE_SCAN_VAR)
 LWZMAKE_APPEND_TOKENA_CALL_REXX DC    A(LWZMAKE_APPEND_TOKEN)
 LWZMAKE_IRXINITA_CALL_REXX      DC    A(LWZMAKE_IRXINIT)
+LWZMAKE_STG_OBTAINA_CALL_REXX   DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_CALL_REXX  DC    A(LWZMAKE_STG_RELEASE)
 *
 *
 *
@@ -8748,6 +9364,12 @@ DYNALLOC_RET EQU *
 DYNALLOC_ALLOC EQU *
          MVC   G_DYNALLOC_DDNAME,=8X'00'
 *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            BAL   R7,DYNALLOC_FILL_TRACE_DATA
+*
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'660',DATA
+         ENDIF
+*
          LA    R6,DYNALLOC_AREA
          USING S99RBP,R6
          LA    R4,S99RBPTR+4
@@ -8815,6 +9437,12 @@ DYNALLOC_ALLOC_RET EQU *
 *
 *
 DYNALLOC_UNALLOC EQU *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            BAL   R7,DYNALLOC_FILL_TRACE_DATA
+*
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'661',DATA
+         ENDIF
+*
          LA    R6,DYNALLOC_AREA
          USING S99RBP,R6
          LA    R4,S99RBPTR+4
@@ -8826,10 +9454,16 @@ DYNALLOC_UNALLOC EQU *
          MVI   S99VERB,S99VRBUN
          OI    S99FLG11,S99MSGL0
          LA    R5,S99RB+(S99RBEND-S99RB)+16
-         MVC   0(CDSNTU_L,R5),CDSNTU
+         MVC   0(CDSNTU_L+CMEMBERTU_L,R5),CDSNTU
          MVC   6(44,R5),G_DYNALLOC_DSNAME
          LA    R3,S99RB+(S99RBEND-S99RB)
          ST    R3,S99TXTPP
+         IF (CLC,G_DYNALLOC_MEMBER,NE,=CL8' ') THEN
+            ST    R5,0(,R3)
+            LA    R3,4(,R3)
+            LA    R5,CDSNTU_L(,R5)
+            MVC   6(8,R5),G_DYNALLOC_MEMBER
+         ENDIF
          O     R5,=X'80000000'
          ST    R5,0(,R3)
          LA    R1,DYNALLOC_AREA
@@ -8841,13 +9475,13 @@ DYNALLOC_UNALLOC EQU *
             CVD   R15,G_DEC8
             UNPK  G_ZONED8,G_DEC8
             OI    G_ZONED8+7,X'F0'
-            MVC   G_LWZMRPT_LINE+28(8),G_ZONED8
+            MVC   G_LWZMRPT_LINE+30(8),G_ZONED8
             XR    R15,R15
             LH    R15,S99ERROR
             CVD   R15,G_DEC8
             UNPK  G_ZONED8,G_DEC8
             OI    G_ZONED8+7,X'F0'
-            MVC   G_LWZMRPT_LINE+37(8),G_ZONED8
+            MVC   G_LWZMRPT_LINE+39(8),G_ZONED8
             L     R15,G_LWZMAKE_RPTA
             BASR  R14,R15
             MVC   G_RETCODE,=F'8'
@@ -8856,6 +9490,43 @@ DYNALLOC_UNALLOC EQU *
 *
 DYNALLOC_UNALLOC_RET EQU *
          BR    R8
+*
+*
+*
+DYNALLOC_FILL_TRACE_DATA EQU *
+         MVI   G_HELPER_DATA,C' '
+         MVC   G_HELPER_DATA+1(L'G_HELPER_DATA-1),G_HELPER_DATA
+         LA    R2,G_HELPER_DATA
+         LA    R3,G_DYNALLOC_DSNAME
+         LA    R4,=A(L'G_DYNALLOC_DSNAME)
+TRACE_DYNALLOC_A_DSNAME_CHAR EQU *
+         IF (CLI,0(R3),NE,C' ') THEN
+            MVC   0(1,R2),0(R3)
+            LA    R2,1(,R2)
+            LA    R3,1(,R3)
+            BCT   R4,TRACE_DYNALLOC_A_DSNAME_CHAR
+         ENDIF
+         IF (CLI,G_DYNALLOC_MEMBER,NE,C' ') THEN
+            MVI   0(R2),C'('
+            LA    R2,1(,R2)
+            LA    R3,G_DYNALLOC_MEMBER
+            LA    R4,=A(L'G_DYNALLOC_MEMBER)
+TRACE_DYNALLOC_A_MEMBER_CHAR EQU *
+            IF (CLI,0(R3),NE,C' ') THEN
+               MVC   0(1,R2),0(R3)
+               LA    R2,1(,R2)
+               LA    R3,1(,R3)
+               BCT   R4,TRACE_DYNALLOC_A_MEMBER_CHAR
+            ENDIF
+            MVI   0(R2),C')'
+            LA    R2,1(,R2)
+         ENDIF
+         LA    R3,G_HELPER_DATA
+         SR    R2,R3
+         ST    R3,G_LWZMTRC_DATA_PTR * Save trace data ptr
+         STH   R2,G_LWZMTRC_DATA_SIZ * Set trace data size
+*
+         BR    R7
 *
          LTORG
 *
