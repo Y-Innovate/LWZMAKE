@@ -2360,12 +2360,17 @@ LWZMAKE_SCAN_STMT MLWZSAVE
          BE    SCAN_STMT_RET      * If so, stop parsing statement
 *
 *        Only a rule type statement can start with a $ variable
-*        Only a rule type statement can start with a /
-         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_VARIABLE),OR,      X
-               (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_SLASH) THEN
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_VARIABLE) THEN
 *           So the second token is not needed
-            OI    G_SCAN_STATE,SCAN_STATE_IN_RULE
+            BAL   R8,STMT_RULE    * Perform parsing of rule statement
+            B     SCAN_STMT_RET   * Statement parsed in subroutine
 *                                 * so stop parsing
+         ENDIF
+*
+*        Only a rule type statement can start with a /
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_SLASH) THEN
+            OI    G_SCAN_STATE,SCAN_STATE_IN_RULE
+*           So the second token is not needed
             BAL   R8,STMT_RULE    * Perform parsing of rule statement
             B     SCAN_STMT_RET   * Statement parsed in subroutine
 *                                 * so stop parsing
