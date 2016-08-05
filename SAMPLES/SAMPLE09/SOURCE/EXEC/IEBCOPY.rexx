@@ -237,8 +237,7 @@ g.parser.EXPECTED_NORMAL = 2
 g.parser.EXPECTED_OPEN_BRACKET = 4
 g.parser.EXPECTED_CLOSE_BRACKET = 8
 g.parser.EXPECTED_DOT = 16
-g.parser.EXPECTED_DOLLAR = 32
-g.parser.EXPECTED_PERCENT = 64
+g.parser.EXPECTED_ASTERISK = 32
 
 g.parser.SCAN_STATE_NOT_IN_PARM = 1
 g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM = g.parser.EXPECTED_EOF + ,
@@ -269,15 +268,13 @@ g.parser.EXPECTED_FOR_STATE_IN_MEMBER1 = g.parser.EXPECTED_NORMAL + ,
                                          g.parser.EXPECTED_OPEN_BRACKET + ,
                                          g.parser.EXPECTED_CLOSE_BRACKET + ,
                                          g.parser.EXPECTED_DOT + ,
-                                         g.parser.EXPECTED_DOLLAR + ,
-                                         g.parser.EXPECTED_PERCENT
+                                         g.parser.EXPECTED_ASTERISK
 g.parser.SCAN_STATE_IN_MEMBER2 = 11
 g.parser.EXPECTED_FOR_STATE_IN_MEMBER2 = g.parser.EXPECTED_NORMAL + ,
                                          g.parser.EXPECTED_OPEN_BRACKET + ,
                                          g.parser.EXPECTED_CLOSE_BRACKET + ,
                                          g.parser.EXPECTED_DOT + ,
-                                         g.parser.EXPECTED_DOLLAR + ,
-                                         g.parser.EXPECTED_PERCENT
+                                         g.parser.EXPECTED_ASTERISK
 
 g.parser.scanState = 1
 g.parser.scanStateTable.1 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM
@@ -515,6 +512,19 @@ IF g.error == 0 THEN DO
       END
       ELSE DO
          CALL log 'Unexpected ")" at pos 'g.scanner.colIndex
+         g.error = 8
+      END
+      SIGNAL lexerGetToken_complete
+   END
+
+   IF g.scanner.currChar == '*' THEN DO
+      _expected = g.parser.scanStateTable._state
+      IF C2D(BITAND(D2C(_expected), ,
+                    D2C(g.parser.EXPECTED_ASTERISK))) ¬= 0 THEN DO
+         g.lexer.currToken = g.scanner.currChar
+      END
+      ELSE DO
+         CALL log 'Unexpected "*" at pos 'g.scanner.colIndex
          g.error = 8
       END
       SIGNAL lexerGetToken_complete
