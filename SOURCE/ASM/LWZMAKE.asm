@@ -6839,6 +6839,8 @@ EXEC_TGT_BUILD EQU *
          BNE   EXEC_TGT_BUILD_NO_RECIPE
 *
 NEXT_RECIPE_STMT EQU *
+         ST    R7,EXEC_TGT_CURR_STMT
+*
          IF (CLI,STMT_TYPE,EQ,STMT_TYPE_CALL) THEN
             MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
             MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
@@ -7070,9 +7072,7 @@ SKIP_EXEC_EXPAND_ASSIGN EQU *
             L     R15,LWZMAKE_STORE_VARA_EXEC * Get address STORE_VAR
             BASR  R14,R15            * Link to STORE_VAR section
 *
-            L     R1,EXEC_TGT_PARA
-            L     R6,EXEC_TGT_PTR-EXEC_TGT_PAR(,R1)
-            C     R7,TGTSTMT-TARGET_DSECT(,R6)
+            C     R7,EXEC_TGT_CURR_STMT
             IF (NE) THEN
                ST    R7,G_STGOR_PTR
                MVC   G_STGOR_LEN,0(R7)
@@ -7080,7 +7080,7 @@ SKIP_EXEC_EXPAND_ASSIGN EQU *
                L     R15,LWZMAKE_STG_RELEASEA_EXEC
                BASR  R14,R15
 *
-               L     R7,TGTSTMT-TARGET_DSECT(,R6)
+               L     R7,EXEC_TGT_CURR_STMT
             ENDIF
 *
 SKIP_EXEC_ASSIGN EQU *
@@ -7123,6 +7123,7 @@ WORKAREA_EXEC_TGT           DSECT
 EXEC_TGT_SA                 DS    18F
 RETCODE_EXEC_TGT            DS    F
 EXEC_TGT_PARA               DS    A
+EXEC_TGT_CURR_STMT          DS    A
 EXEC_NEXTTGT_PARA           DS    A
 EXEC_NEXTTGT_PAR            DS    CL(EXEC_TGT_PAR_LEN)
 *
