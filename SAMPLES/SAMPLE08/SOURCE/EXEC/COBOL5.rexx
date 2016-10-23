@@ -42,6 +42,7 @@ g.sysprint = ""
 
 g.SYSLIN.allocated = 0
 g.SYSLIB.allocated = 0
+g.SYSLIB.ddname.0 = 0
 g.SYSIN.allocated = 0
 g.SYSPRINT.allocated = 0
 g.SYSPUNCH.allocated = 0
@@ -70,7 +71,7 @@ g.SYSUT15.allocated = 0
 RETURN
 
 /**********************************************************************/
-/* Allocate DD's for invoking IGYCRCTL                                */
+/* Allocate DD's for invoking IEWBLINK                                */
 /**********************************************************************/
 allocDDs: PROCEDURE EXPOSE g. SIGL
 
@@ -92,7 +93,8 @@ IF g.error == 0 THEN DO
 
       IF _rc == 0 THEN DO
          g.SYSLIB.allocated = 1
-         g.SYSLIB.ddname = _ddn
+         g.SYSLIB.ddname.0 = 1
+         g.SYSLIB.ddname.1 = _ddn
       END
       ELSE DO
          g.error = 8
@@ -105,7 +107,8 @@ IF g.error == 0 THEN DO
 
       IF _rc == 0 THEN DO
          g.SYSLIB.allocated = 1
-         g.SYSLIB.ddname = _ddn
+         g.SYSLIB.ddname.0 = 1
+         g.SYSLIB.ddname.1 = _ddn
       END
       ELSE DO
          g.error = 8
@@ -117,7 +120,11 @@ IF g.error == 0 THEN DO
          _rc = BPXWDYN("ALLOC DSN('"g.syslib.i"') SHR RTDDN(_ddn)")
 
          IF _rc == 0 THEN DO
-            _rc = BPXWDYN("CONCAT DDLIST("g.SYSLIB.ddname","_ddn")")
+            _nextDD = g.SYSLIB.ddname.0 + 1
+            g.SYSLIB.ddname.0 = _nextDD
+            g.SYSLIB.ddname._nextDD = _ddn
+
+            _rc = BPXWDYN("CONCAT DDLIST("g.SYSLIB.ddname.1","_ddn")")
 
             IF _rc ¬= 0 THEN DO
                g.error = 8
@@ -149,8 +156,13 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW RECFM(V,B,M) DSORG(PS) LRECL(133) CYL" || ,
-                 " SPACE(1,1) RTDDN(_ddn)")
+   IF g.sysprint /= "" THEN DO
+      _rc = BPXWDYN("ALLOC DSN('"g.sysprint"') SHR RTDDN(_ddn)")
+   END
+   ELSE DO
+      _rc = BPXWDYN("ALLOC NEW RECFM(V,B,M) DSORG(PS) LRECL(133) CYL" || ,
+                    " SPACE(1,1) RTDDN(_ddn)")
+   END
 
    IF _rc == 0 THEN DO
       g.SYSPRINT.allocated = 1
@@ -484,7 +496,7 @@ END
 RETURN
 
 /**********************************************************************/
-/* Free DD's after invoking IGYCRCTL                                  */
+/* Free DD's after invoking ASMA90                                    */
 /**********************************************************************/
 freeDDs: PROCEDURE EXPOSE g. SIGL
 
@@ -502,16 +514,17 @@ IF g.SYSLIN.allocated == 1 THEN DO
 END
 
 IF g.SYSLIB.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSLIB.ddname")")
+   DO i = 1 TO g.SYSLIB.ddname.0
+      _rc = BPXWDYN("FREE FI("g.SYSLIB.ddname.i")")
 
-   IF _rc == 0 THEN DO
-      g.SYSLIB.allocated = 0
+      IF _rc /= 0 THEN DO
+         g.error = 8
+         IF _rc > 0 THEN _rc = D2X(_rc)
+         CALL log 'Free of file 'g.SYSLIB.ddname.i' failed with '_rc
+      END
    END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSLIB.ddname' failed with '_rc
-   END
+
+   g.SYSLIB.allocated = 0
 END
 
 IF g.SYSIN.allocated == 1 THEN DO
@@ -841,7 +854,7 @@ END
 _ddlist = LEFT(g.SYSLIN.ddname,8) || ,
           COPIES('00'X,8) || ,
           COPIES('00'X,8) || ,
-          LEFT(g.SYSLIB.ddname,8) || ,
+          LEFT(g.SYSLIB.ddname.1,8) || ,
           LEFT(g.SYSIN.ddname,8)   || ,
           LEFT(g.SYSPRINT.ddname,8) || ,
           LEFT(g.SYSPUNCH.ddname,8) || ,
@@ -878,6 +891,8 @@ _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
 IF _rc == 0 THEN DO
    "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+
+   _rc = BPXWDYN("FREE FI("_ddn")")
 END
 ELSE DO
    SAY _rc
@@ -939,7 +954,7 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error ¬= 0   | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error ¬= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 

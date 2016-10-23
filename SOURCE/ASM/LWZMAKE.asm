@@ -523,11 +523,26 @@ NO_PARAMETER EQU *
          ST    R2,INPUTPTR        * Copy value pointer
          MVC   INPUTPOS,=H'0'     * Set initial scan position to start
 *
+         MVI   G_LWZMRPT_LINE,C' '
+         MVC   G_LWZMRPT_LINE+1(L'G_LWZMRPT_LINE-1),G_LWZMRPT_LINE
+         MVC   G_LWZMRPT_LINE(22),=C' Parameter received...'
+         IF (C,R3,GT,=F'110') THEN
+            L     R3,=F'110'
+         ENDIF
+         BCTR  R3,R0
+         B     *+10
+         MVC   G_LWZMRPT_LINE+23(1),0(R2)
+         EX    R3,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
          DROP  R4
 *
-NEXT_PARMS_ROUND EQU *
          L     R15,LWZMAKE_SCAN_TOKENA * Get address of SCAN_TOKEN
          BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+NEXT_PARMS_ROUND EQU *
+         MVI   G_SCAN_STATE,SCAN_STATE_NOT_IN_STMT
 *
          IF (CLI,G_MKFEOF,EQ,C'Y') THEN
             MVI   G_MKFEOF,C'N'
@@ -542,44 +557,56 @@ NEXT_PARMS_ROUND EQU *
             L     R15,LWZMAKE_SCAN_TOKENA * Get address of SCAN_TOKEN
             BASR  R14,R15         * Link to SCAN_TOKEN section
 *
-            L     R14,G_SCAN_TOKENA * Point R14 to token 1
-            CLI   0(R14),X'00'    * Check if empty token returned
-            BE    PARMS_ERROR     * If so, then error
-*
             CLC   G_SCAN_TOKEN_LEN,=F'1' * Switch has to be 1 char
             BNE   PARMS_ERROR     * If not, then error
+            CLC   G_SCAN_SPACE_COUNT,=F'0' * No space after '-'
+            BNE   PARMS_ERROR     * If not, then error
 *
+            L     R14,G_SCAN_TOKENA * Point R14 to token 1
             IF (CLI,0(R14),EQ,C't') THEN * Check for target sw?
+               OI    G_SCAN_STATE,SCAN_STATE_IN_PARMTARGET
+*
                L     R15,LWZMAKE_SCAN_TOKENA * Get address SCAN_TOKEN
                BASR  R14,R15      * Link to SCAN_TOKEN section
 *
-               L     R14,G_SCAN_TOKENA * Point R14 to token 1
-               CLI   0(R14),X'00' * Check if empty token returned
-               BE    PARMS_ERROR  * If so, then error
-*
-*              Double check length is between 1 and 72, if not error
                CLC   G_SCAN_TOKEN_LEN,=F'0'
                BE    PARMS_ERROR
-               CLC   G_SCAN_TOKEN_LEN,=F'72'
-               BH    PARMS_ERROR
 *
-*              * Check if normal token was returned
-               IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_NORMAL) THEN
-*                 Everything checks out, so copy to default target
-                  LA    R2,G_DEFAULT_TARGET * Point R2 to default tgt
-                  L     R3,G_SCAN_TOKENA    * Point R3 to token 1
-                  L     R4,G_SCAN_TOKEN_LEN * Get length of target in 1
-                  BCTR  R4,R0         * R4 = R4 - 1 for EX
-                  B     *+10          * Skip MVC constant for EX
-                  MVC   0(1,R2),0(R3) * MVC constant for EX
-                  EX    R4,*-6        * EX previous MVC stmt with R4
+               CLC   G_SCAN_SPACE_COUNT,=F'0'
+               BNH   PARMS_ERROR
 *
-                  CLI   G_SCAN_INPUT_STACK_IDX,X'01' * Check if we're
-*                                        * still in parameter input
-                  BNE   NEXT_PARMS_ROUND * If so, go for next parm
-               ELSE                 * Else, not token type normal
-                  B     PARMS_ERROR * means error
-               ENDIF
+               MVC   G_SCAN_SPACE_COUNT,=F'0'
+*
+               MVI   G_SCAN_APPEND_TO,X'01'
+               L     R15,LWZMAKE_APPEND_TOKENA
+               BASR  R14,R15
+*
+NEXT_PARMS_TARGET_TOKEN EQU *
+               L     R15,LWZMAKE_SCAN_TOKENA * Get address SCAN_TOKEN
+               BASR  R14,R15      * Link to SCAN_TOKEN section
+*
+               CLC   G_SCAN_TOKEN_LEN,=F'0'
+               BE    PARMS_TARGET_SET
+*
+               CLC   G_SCAN_SPACE_COUNT,=F'0'
+               BH    PARMS_TARGET_SET
+*
+               MVI   G_SCAN_APPEND_TO,X'01'
+               L     R15,LWZMAKE_APPEND_TOKENA
+               BASR  R14,R15
+*
+               B     NEXT_PARMS_TARGET_TOKEN
+*
+PARMS_TARGET_SET EQU *
+               LA    R2,G_DEFAULT_TARGET * Point R2 to default tgt
+               L     R3,G_SCAN_TOKEN2A   * Point R3 to token 2
+               L     R4,G_SCAN_TOKEN2_LEN * Get length of target in 2
+               BCTR  R4,R0         * R4 = R4 - 1 for EX
+               B     *+10          * Skip MVC constant for EX
+               MVC   0(1,R2),0(R3) * MVC constant for EX
+               EX    R4,*-6        * EX previous MVC stmt with R4
+*
+               B     NEXT_PARMS_ROUND
             ELSE                  * Else, it's not a -t switch
                B     PARMS_ERROR  * means error
             ENDIF
@@ -764,12 +791,14 @@ SCAN_STATE_TABLE            DS    0F
                             DC    AL4(SCAN_EXPECTED_FUNCTION4)
                             DC    AL4(SCAN_EXPECTED_INCLUDE)
                             DC    AL4(SCAN_EXPECTED_INCLUDE2)
+                            DC    AL4(SCAN_EXPECTED_PARMTARGET)
 *
 * Local constant pointers to section addresses
 LWZMAKE_TRACEA              DC    A(LWZMAKE_TRACE)
 LWZMAKE_RPTA                DC    A(LWZMAKE_RPT)
 LWZMAKE_STG_OBTAINA         DC    A(LWZMAKE_STG_OBTAIN)
 LWZMAKE_STG_RELEASEA        DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_APPEND_TOKENA       DC    A(LWZMAKE_APPEND_TOKEN)
 LWZMAKE_SCAN_TOKENA         DC    A(LWZMAKE_SCAN_TOKEN)
 LWZMAKE_PHASE1A             DC    A(LWZMAKE_PHASE1)
 LWZMAKE_PHASE2A             DC    A(LWZMAKE_PHASE2)
@@ -1097,6 +1126,7 @@ SCAN_STATE_IN_FUNCTION3     EQU   X'19'
 SCAN_STATE_IN_FUNCTION4     EQU   X'1A'
 SCAN_STATE_IN_INCLUDE       EQU   X'1B'
 SCAN_STATE_IN_INCLUDE2      EQU   X'1C'
+SCAN_STATE_IN_PARMTARGET    EQU   X'1D'
 SCAN_STATE_IN_RECIPE        EQU   X'80'
                             DS    C    2
 *
@@ -1162,6 +1192,7 @@ SCAN_EXPECTED_FUNCTION3     EQU   B'00001100000010110000000000000000'
 SCAN_EXPECTED_FUNCTION4     EQU   B'00001101100010110110000000000000'
 SCAN_EXPECTED_INCLUDE       EQU   B'00001110100010000000000000000000'
 SCAN_EXPECTED_INCLUDE2      EQU   B'01111111100010000000000000000000'
+SCAN_EXPECTED_PARMTARGET    EQU   B'10001011000000000000000000000000'
 SCAN_EXPECTED_IGNORE        EQU   B'01010000000000000000000000000000'
 SCAN_EXPECTED_NEWLINE       EQU   B'01000000000000000000000000000000'
 SCAN_EXPECTED_COMMENT       EQU   B'01110000000000000000000000000000'
@@ -2460,6 +2491,22 @@ LWZMAKE_SCAN_STMT MLWZSAVE
             ENDIF
          ENDIF
 *
+*        If first token is normal and second token is a decimal point
+*        it's probably a constant data set name, so it's a rule
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,X'00'),AND,                       X
+               (CLI,G_SCAN_TOKENTYPE2,EQ,SCAN_TOKENTYPE_NORMAL) THEN
+            IF (CLC,G_SCAN_TOKEN_LEN,EQ,=F'1') THEN
+               L     R14,G_SCAN_TOKENA
+               IF (CLI,0(R14),EQ,C'.') THEN
+                  OI    G_SCAN_STATE,SCAN_STATE_IN_RULE
+*
+                  BAL   R8,STMT_RULE  * Perform parsing of rule stmt
+                  B     SCAN_STMT_RET * Statement parsed in subroutine
+*                                     * so stop parsing
+               ENDIF
+            ENDIF
+         ENDIF
+*
 *        No valid combination of keywords found, so report syntax error
 *        and give off return code 8
          MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
@@ -2736,6 +2783,8 @@ STMT_RULE EQU  *
             CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_VARIABLE
             BE    STMT_R_SCAN_VAR
             CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SLASH
+            BE    STMT_R_TGT_TOKEN_APPEND
+            CLI   G_SCAN_TOKENTYPE,X'00'
             BE    STMT_R_TGT_TOKEN_APPEND
          ENDIF
 *
@@ -3526,6 +3575,7 @@ LWZMAKE_SCAN_VAR DS    0F
          MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
                KE_SCAN_VAR'
 *
+         MVC   SCAN_VAR_SAVE_SPACE_COUNT,G_SAVE_SPACE_COUNT
          MVC   G_SAVE_SPACE_COUNT,=F'0'
          MVC   SCAN_VAR_SAVE_CLOSE_BRACKET,G_SCAN_CLOSE_BRACKET
 *
@@ -3698,6 +3748,8 @@ LWZMAKE_SCAN_VAR DS    0F
          ENDIF
 *
 SCAN_VAR_RET EQU *
+         MVC   G_SAVE_SPACE_COUNT,SCAN_VAR_SAVE_SPACE_COUNT
+*
          L     R3,4(,R13)        * Restore address of callers SA
          FREEMAIN RU,LV=SCAN_VAR_DSECT_SIZ,A=(R13)
          LR    R13,R3
@@ -4422,6 +4474,9 @@ SCAN_VAR_DSECT              DSECT
 *
 SCAN_VAR_SAVE_APPEND_TO     DS    C
 SCAN_VAR_SAVE_CLOSE_BRACKET DS    C
+*
+                            DS    0F
+SCAN_VAR_SAVE_SPACE_COUNT   DS    F
 *
                             DS    0F
 SCAN_VAR_SAVE_TOKEN_LEN     DS    F
@@ -8975,7 +9030,7 @@ ISPEXEC_ENLARGE_TOKEN EQU *
                B     CALL_REXX_END
             ENDIF
 *
-            B     CALL_REXX_END
+            B     CALL_REXX_NO_ERROR
          ENDIF
 *
          LA    R6,G_IRXEXEC_EXECBLK
