@@ -1174,8 +1174,8 @@ SCAN_EXPECTED_RULE          EQU   B'00001111001010001010000000000000'
 SCAN_EXPECTED_RULE2         EQU   B'01111111100010111010000000000000'
 SCAN_EXPECTED_RULE3         EQU   B'01111111100010111010000000000000'
 SCAN_EXPECTED_CALL          EQU   B'00001100000010111000000000000000'
-SCAN_EXPECTED_CALL2         EQU   B'01111111100010111110000000000000'
-SCAN_EXPECTED_EXPAND        EQU   B'10001111100000110110000000000000'
+SCAN_EXPECTED_CALL2         EQU   B'01111111111010111110000000000000'
+SCAN_EXPECTED_EXPAND        EQU   B'10001111111000110110000000000000'
 SCAN_EXPECTED_PHONY         EQU   B'00001000000010000000000000000000'
 SCAN_EXPECTED_PHONY2        EQU   B'01110000000010000000000000000000'
 SCAN_EXPECTED_ADDPDSNAME    EQU   B'00001100000010110000000000000000'
@@ -7447,145 +7447,212 @@ GET_DATE_LOADMOD EQU *
             B     GET_DATE_LOADMOD_DEALLOC
          ENDIF
 *
-         MVC   IEWBFDAT_SB_SB(2),=C'SB'
-         MVC   IEWBFDAT_SB_SB+2(2),=X'0001'
-         XC    IEWBFDAT_SB_MTOKEN,IEWBFDAT_SB_MTOKEN
-         MVC   IEWBFDAT_SB_PGMNAME,MEM8_GD
-*
-         LA    R1,IEWBFDAT_SB_SB
-         ST    R1,IEWBFDAT_SB_PAR4A
-         LA    R1,IEWBFDAT_SB_MTOKEN
-         ST    R1,IEWBFDAT_SB_PAR4A+4
+         MVC   BLDLIST(2),=H'1'
+         MVC   BLDLIST+2(2),=H'62'
+         MVC   BLDL_DE,MEM8_GD
          L     R14,G_DCB_MEM_PTR
-         LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)
-         ST    R1,IEWBFDAT_SB_PAR4A+8
-         LA    R1,IEWBFDAT_SB_PGMNAME
-         O     R1,=X'80000000'
-         ST    R1,IEWBFDAT_SB_PAR4A+12
-         LA    R1,IEWBFDAT_SB_PAR4A
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)
+         BLDL  (R2),BLDLIST
 *
-         L     R15,G_IEWBFDATA
-         BASR  R14,R15
+         IEWBIND FUNC=STARTD,DIALOG=IEWBIND_DIALOG
 *
          C     R15,=A(0)
-         BE    GET_DATE_LOADMOD_NOERR1
-         C     R15,=A(4)
-         BE    GET_DATE_LOADMOD_NOERR1
-         C     R15,=A(12)
-         IF (EQ) THEN
-            C     R0,=X'10800032'
-            BE    GET_DATE_LOADMOD_NOTFOUND
-         ENDIF
-         CVD   R15,G_DEC8         * convert return value to packed
-         UNPK  G_ZONED8,G_DEC8    * convert return value to zoned
-         OI    G_ZONED8+7,X'F0'   * get rid of sign
-         MVC   G_HELPER_DATA(8),G_ZONED8
-         MVI   G_HELPER_DATA+8,C' '
-         ST    R0,G_DEC8          * Put ptr in area of at least 5 bytes
-         UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
-         TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex
-         MVC   G_HELPER_DATA+9(8),G_ZONED8
-         LA    R14,G_HELPER_DATA
-         ST    R14,G_LWZMTRC_DATA_PTR
-         MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
-         MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA
-         MLWZMRPT RPTLINE=CL133'0Error starting binder fast data accessX
-                session'
+         BE    GET_DATE_STARTD_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error starting binder dialog'
          MVC   G_RETCODE,=F'12'
          BR    R8
+GET_DATE_STARTD_NOERR EQU *
 *
-GET_DATE_LOADMOD_NOERR1 EQU *
-         MVI   G_DSFOUND,C'Y'
+         IEWBIND FUNC=CREATEW,WORKMOD=IEWBIND_WORKMOD,                 X
+               DIALOG=IEWBIND_DIALOG,INTENT=A
+*
+         C     R15,=A(0)
+         BE    GET_DATE_CREATEW_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error creating binder workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_CREATEW_NOERR EQU *
+*
+         L     R14,G_DCB_MEM_PTR
+         LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)
+         ST    R1,IEWBIND_DCBPTR
+         LA    R1,BLDL_DE
+         ST    R1,IEWBIND_DEPTR
+*
+         IEWBIND FUNC=INCLUDE,WORKMOD=IEWBIND_WORKMOD,                 X
+               INTYPE=POINTER,DCBPTR=IEWBIND_DCBPTR,                   X
+               DEPTR=IEWBIND_DEPTR
+*
+         C     R15,=A(0)
+         BE    GET_DATE_INCLUDE_NOERR
+         C     R15,=A(8)
+         IF (EQ) THEN
+            C     R0,=XL4'83000514'
+            BE    GET_DATE_DELETEW
+         ENDIF
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error including loadmod in workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_INCLUDE_NOERR EQU *
 *
 IEWBIDB_BASE EQU R6                      Base register for IDRB buffer.
 IDB_BASE     EQU R7                      Base register for IDRB entry.
          IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.
          IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.
 *
-         MVC   IEWBFDAT_GD_GD(2),=C'GD'
-         MVC   IEWBFDAT_GD_GD+2(2),=X'0001'
-         MVC   IEWBFDAT_GD_MTOKEN,IEWBFDAT_SB_MTOKEN
-         MVC   IEWBFDAT_GD_B_IDRB(2),=H'6'
-         MVC   IEWBFDAT_GD_B_IDRB+2(6),=C'B_IDRB'
-         XC    IEWBFDAT_GD_CURSOR,IEWBFDAT_GD_CURSOR
+         MVC   IEWBIND_CURSOR,=F'0'
+         MVC   IEWBIND_COUNT,=F'0'
+         MVC   IEWBIND_CLASS(2),=H'6'
+         MVC   IEWBIND_CLASS+2(6),=C'B_IDRB'
 *
-         LA    R1,IEWBFDAT_GD_GD
-         ST    R1,IEWBFDAT_GD_PAR8A
-         LA    R1,IEWBFDAT_GD_MTOKEN
-         ST    R1,IEWBFDAT_GD_PAR8A+4
-         LA    R1,IEWBFDAT_GD_B_IDRB
-         ST    R1,IEWBFDAT_GD_PAR8A+8
-         XR    R1,R1
-         ST    R1,IEWBFDAT_GD_PAR8A+12
-         ST    IEWBIDB_BASE,IEWBFDAT_GD_PAR8A+16
-         LA    R1,IEWBFDAT_GD_CURSOR
-         ST    R1,IEWBFDAT_GD_PAR8A+20
-         LA    R1,IEWBFDAT_GD_COUNT
-         ST    R1,IEWBFDAT_GD_PAR8A+24
-         L     R1,=X'80000000'
-         ST    R1,IEWBFDAT_GD_PAR8A+28
-         LA    R1,IEWBFDAT_GD_PAR8A
-*
-         L     R15,G_IEWBFDATA
-         BASR  R14,R15
+         IEWBIND FUNC=GETD,WORKMOD=IEWBIND_WORKMOD,CLASS=IEWBIND_CLASS,X
+               AREA=(R6),CURSOR=IEWBIND_CURSOR,COUNT=IEWBIND_COUNT
 *
          C     R15,=A(0)
-         IF (NE) THEN
-            C     R15,=A(4)
+         BE    GET_DATE_GETD_NOERR
+         C     R15,=A(4)
+         IF (EQ) THEN
+            C     R0,=XL4'83000800'
+            BE    GET_DATE_GETD_NOERR
          ENDIF
-         IF (NE) THEN
-            CVD   R15,G_DEC8      * convert return value to packed
-            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned
-            OI    G_ZONED8+7,X'F0' * get rid of sign
-            MVC   G_HELPER_DATA(8),G_ZONED8
-            MVI   G_HELPER_DATA+8,C' '
-            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes
-            UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
-            TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex
-            MVC   G_HELPER_DATA+9(8),G_ZONED8
-            LA    R14,G_HELPER_DATA
-            ST    R14,G_LWZMTRC_DATA_PTR
-            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
-            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA
-            MLWZMRPT RPTLINE=CL133'0Error during binder fast data accesX
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error getting IDRB data'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_GETD_NOERR EQU *
+         MVI   G_DSFOUND,C'Y'
+*
+GET_DATE_DELETEW EQU *
+*
+         IEWBIND FUNC=DELETEW,WORKMOD=IEWBIND_WORKMOD
+*
+         C     R15,=A(0)
+         BE    GET_DATE_DELETEW_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error deleting binder workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_DELETEW_NOERR EQU *
+*
+         IEWBIND FUNC=ENDD,DIALOG=IEWBIND_DIALOG
+*
+         C     R15,=A(0)
+         BE    GET_DATE_ENDD_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error ending binder dialog'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_ENDD_NOERR EQU *
+*
+         CLI   G_DSFOUND,C'Y'
+         BNE   GET_DATE_LOADMOD_NOTFOUND
+*
+*        MVC   IEWBFDAT_SB_SB(2),=C'SB'
+*        MVC   IEWBFDAT_SB_SB+2(2),=X'0001'
+*        XC    IEWBFDAT_SB_MTOKEN,IEWBFDAT_SB_MTOKEN
+*        MVC   IEWBFDAT_SB_PGMNAME,MEM8_GD
+*
+*        LA    R1,IEWBFDAT_SB_SB
+*        ST    R1,IEWBFDAT_SB_PAR4A
+*        LA    R1,IEWBFDAT_SB_MTOKEN
+*        ST    R1,IEWBFDAT_SB_PAR4A+4
+*        L     R14,G_DCB_MEM_PTR
+*        LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)
+*        ST    R1,IEWBFDAT_SB_PAR4A+8
+*        LA    R1,BLDL_DE
+*        O     R1,=X'80000000'
+*        ST    R1,IEWBFDAT_SB_PAR4A+12
+*        LA    R1,IEWBFDAT_SB_PAR4A
+*
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
+*
+*        C     R15,=A(0)
+*        BE    GET_DATE_LOADMOD_NOERR1
+*        C     R15,=A(4)
+*        BE    GET_DATE_LOADMOD_NOERR1
+*        C     R15,=A(12)
+*        IF (EQ) THEN
+*           C     R0,=XL4'10800032'
+*           BE    GET_DATE_LOADMOD_NOTFOUND
+*        ENDIF
+*        BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*        MLWZMRPT RPTLINE=CL133'0Error starting binder fast data accessX
+                session'
+*        MVC   G_RETCODE,=F'12'
+*        BR    R8
+*
+*GET_DATE_LOADMOD_NOERR1 EQU *
+*        MVI   G_DSFOUND,C'Y'
+*
+*IEWBIDB_BASE EQU R6                     Base register for IDRB buffer.
+*IDB_BASE     EQU R7                     Base register for IDRB entry.
+*        IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.
+*        IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.
+*
+*        MVC   IEWBFDAT_GD_GD(2),=C'GD'
+*        MVC   IEWBFDAT_GD_GD+2(2),=X'0001'
+*        MVC   IEWBFDAT_GD_MTOKEN,IEWBFDAT_SB_MTOKEN
+*        MVC   IEWBFDAT_GD_B_IDRB(2),=H'6'
+*        MVC   IEWBFDAT_GD_B_IDRB+2(6),=C'B_IDRB'
+*        XC    IEWBFDAT_GD_CURSOR,IEWBFDAT_GD_CURSOR
+*
+*        LA    R1,IEWBFDAT_GD_GD
+*        ST    R1,IEWBFDAT_GD_PAR8A
+*        LA    R1,IEWBFDAT_GD_MTOKEN
+*        ST    R1,IEWBFDAT_GD_PAR8A+4
+*        LA    R1,IEWBFDAT_GD_B_IDRB
+*        ST    R1,IEWBFDAT_GD_PAR8A+8
+*        XR    R1,R1
+*        ST    R1,IEWBFDAT_GD_PAR8A+12
+*        ST    IEWBIDB_BASE,IEWBFDAT_GD_PAR8A+16
+*        LA    R1,IEWBFDAT_GD_CURSOR
+*        ST    R1,IEWBFDAT_GD_PAR8A+20
+*        LA    R1,IEWBFDAT_GD_COUNT
+*        ST    R1,IEWBFDAT_GD_PAR8A+24
+*        L     R1,=X'80000000'
+*        ST    R1,IEWBFDAT_GD_PAR8A+28
+*        LA    R1,IEWBFDAT_GD_PAR8A
+*
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
+*
+*        C     R15,=A(0)
+*        IF (NE) THEN
+*           C     R15,=A(4)
+*        ENDIF
+*        IF (NE) THEN
+*           BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*           MLWZMRPT RPTLINE=CL133'0Error during binder fast data accesX
                s get data function'
-            MVC   G_RETCODE,=F'12'
-            BR    R8
-         ENDIF
+*           MVC   G_RETCODE,=F'12'
+*           BR    R8
+*        ENDIF
 *
-         MVC   IEWBFDAT_EN_EN(2),=C'EN'
-         MVC   IEWBFDAT_EN_EN+2(2),=X'0001'
-         MVC   IEWBFDAT_EN_MTOKEN,IEWBFDAT_SB_MTOKEN
+*        MVC   IEWBFDAT_EN_EN(2),=C'EN'
+*        MVC   IEWBFDAT_EN_EN+2(2),=X'0001'
+*        MVC   IEWBFDAT_EN_MTOKEN,IEWBFDAT_SB_MTOKEN
 *
-         LA    R1,IEWBFDAT_EN_EN
-         ST    R1,IEWBFDAT_EN_PAR2A
-         LA    R1,IEWBFDAT_EN_MTOKEN
-         ST    R1,IEWBFDAT_EN_PAR2A+4
-         LA    R1,IEWBFDAT_EN_PAR2A
+*        LA    R1,IEWBFDAT_EN_EN
+*        ST    R1,IEWBFDAT_EN_PAR2A
+*        LA    R1,IEWBFDAT_EN_MTOKEN
+*        ST    R1,IEWBFDAT_EN_PAR2A+4
+*        LA    R1,IEWBFDAT_EN_PAR2A
 *
-         L     R15,G_IEWBFDATA
-         BASR  R14,R15
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
 *
-         LTR   R15,R15
-         IF (NZ) THEN
-            CVD   R15,G_DEC8      * convert return value to packed
-            UNPK  G_ZONED8,G_DEC8 * convert return value to zoned
-            OI    G_ZONED8+7,X'F0' * get rid of sign
-            MVC   G_HELPER_DATA(8),G_ZONED8
-            MVI   G_HELPER_DATA+8,C' '
-            ST    R0,G_DEC8       * Put ptr in area of at least 5 bytes
-            UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
-            TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex
-            MVC   G_HELPER_DATA+9(8),G_ZONED8
-            LA    R14,G_HELPER_DATA
-            ST    R14,G_LWZMTRC_DATA_PTR
-            MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
-            MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA
-            MLWZMRPT RPTLINE=CL133'0Error ending binder fast data accesX
+*        LTR   R15,R15
+*        IF (NZ) THEN
+*           BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*           MLWZMRPT RPTLINE=CL133'0Error ending binder fast data accesX
                s session'
-            MVC   G_RETCODE,=F'12'
-            BR    R8
-         ENDIF
+*           MVC   G_RETCODE,=F'12'
+*           BR    R8
+*        ENDIF
 *
          MVI   CONVTOD_INAREA,X'00'
          MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA
@@ -7649,6 +7716,25 @@ GET_DATE_LOADMOD_DEALLOC EQU *
 *
 GET_DATE_LOADMOD_RET EQU *
          BR    R8
+*
+* Write trace record for binder error
+*
+GET_DATE_LOADMOD_BINDER_TRACE EQU *
+         CVD   R15,G_DEC8         * convert return value to packed
+         UNPK  G_ZONED8,G_DEC8    * convert return value to zoned
+         OI    G_ZONED8+7,X'F0'   * get rid of sign
+         MVC   G_HELPER_DATA(8),G_ZONED8
+         MVI   G_HELPER_DATA+8,C' '
+         ST    R0,G_DEC8          * Put ptr in area of at least 5 bytes
+         UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
+         TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex
+         MVC   G_HELPER_DATA+9(8),G_ZONED8
+         LA    R14,G_HELPER_DATA
+         ST    R14,G_LWZMTRC_DATA_PTR
+         MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA
+*
+         BR    R7
 *
 * Get the date from member stats
 *
@@ -8017,6 +8103,20 @@ MEM8_GD                     DS    CL8
 DAREA_GD                    DS    C
                             ORG   *+1023
 DAREA_GD_SIZ                EQU   *-DAREA_GD
+*
+                            DS    0F
+IEWBIND_DIALOG              DS    CL8
+IEWBIND_WORKMOD             DS    CL8
+IEWBIND_DCBPTR              DS    CL4
+IEWBIND_DEPTR               DS    CL4
+IEWBIND_CURSOR              DS    CL4
+IEWBIND_COUNT               DS    CL4
+IEWBIND_CLASS               DS    HL2,CL16
+*
+                            DS    0F
+BLDLIST                     DS    F
+BLDL_DE                     DS    CL8
+                            DS    CL50
 *
 IEWBFDAT_SB_PAR4A           DS    4A
 IEWBFDAT_SB_SB              DS    CL4
