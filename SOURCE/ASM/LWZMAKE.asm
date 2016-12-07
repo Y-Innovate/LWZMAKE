@@ -7382,7 +7382,16 @@ GET_DATE_OBTAIN EQU *
 *
          LTR   R15,R15
          IF (NZ) THEN
-            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'
+            CVD   R15,G_DEC8         * convert return value to packed
+            UNPK  G_ZONED8,G_DEC8    * convert return value to zoned
+            OI    G_ZONED8+7,X'F0'   * get rid of sign
+            MVC   G_LWZMRPT_LINE,=CL133'0CAMLST OBTAIN returned error cX
+               ode'
+            MVC   G_LWZMRPT_LINE+35(8),G_ZONED8
+            LA    R1,DAREA_GD+116
+            MVC   G_LWZMRPT_LINE+43(6),0(R1)
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
             MVC   G_RETCODE,=F'12'
             BR    R8
          ENDIF
@@ -7453,6 +7462,9 @@ GET_DATE_LOADMOD EQU *
          L     R14,G_DCB_MEM_PTR
          LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)
          BLDL  (R2),BLDLIST
+*
+         LTR   R15,R15
+         BNZ   GET_DATE_LOADMOD_NOTFOUND
 *
          IEWBIND FUNC=STARTD,DIALOG=IEWBIND_DIALOG
 *
