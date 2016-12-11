@@ -9,4 +9,4 @@
 //             LWZMHLQ=&LWZMHLQ,
 //             TARGET='CLEAN_ALL',
 //             MAKEFILE=&SAMPHLQ..CNTL(MAKEFILE),
-//             EXECLIB=&SAMPHLQ..EXEC
+//             EXECLIB=&LWZMHLQ..EXEC

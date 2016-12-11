@@ -14,7 +14,7 @@ mods        := $(loadlib)(SHA1) $(loadlib)(TSHA1)
 ALL : $(mods)
 
 $(mods) : $(loadlib) $(objlib) $(srclib)($%) $(lkedlib)($%)
-- CALL ASMA SOURCE($(srclib)($%)) OBJECT($(objlib)($%))\
+- CALL ASMA SYSIN($(srclib)($%)) SYSLIN($(objlib)($%))\
 -           SYSLIB($(syslib_asma))
 - CALL LKED SYSLIN($(lkedlib)($%)) SYSLMOD($(loadlib)($%))\
 -           SYSLIB($(syslib_lked)) PARM(LIST,XREF,RENT,REUS)

@@ -1,12 +1,17 @@
 /* REXX */
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
+SIGNAL ON error
 
 CALL init
 
 CALL submitJob
 
 EXIT g.error
+
+error:
+SAY 'ERROR OCCURRED AT 'SIGL
+EXIT 8
 
 /**********************************************************************/
 /* Initializations                                                    */
