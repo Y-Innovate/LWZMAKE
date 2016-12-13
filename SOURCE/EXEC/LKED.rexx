@@ -16,7 +16,7 @@ END
 
 CALL freeDDs
 
-IF g.IEWBLINK.retcode > 4 THEN
+IF g.IEWBLINK.retcode > 4 | g.IEWBLINK.retcode < 0 THEN
    g.error = g.IEWBLINK.retcode
 
 EXIT g.error
@@ -125,7 +125,7 @@ IF g.error == 0 THEN DO
 
             _rc = BPXWDYN("CONCAT DDLIST(SYSLIB,"_ddn")")
 
-            IF _rc ª= 0 THEN DO
+            IF _rc /= 0 THEN DO
                g.error = 8
                IF _rc > 0 THEN _rc = D2X(_rc)
                CALL log 'Dynamic concatenation failed with '_rc
@@ -183,7 +183,7 @@ IF g.error == 0 THEN DO
    END
 END
 
-IF g.error == 0 & g.object.0 ª= 0 THEN DO
+IF g.error == 0 & g.object.0 /= 0 THEN DO
    _rc = BPXWDYN("ALLOC DSN('"g.object.1"') FI(OBJECT) SHR REUSE")
 
    IF _rc == 0 THEN DO
@@ -207,7 +207,7 @@ IF g.error == 0 & g.object.0 ª= 0 THEN DO
 
          _rc = BPXWDYN("CONCAT DDLIST(OBJECT,"_ddn")")
 
-         IF _rc ª= 0 THEN DO
+         IF _rc /= 0 THEN DO
             g.error = 8
             IF _rc > 0 THEN _rc = D2X(_rc)
             CALL log 'Dynamic concatenation failed with '_rc
@@ -221,7 +221,7 @@ IF g.error == 0 & g.object.0 ª= 0 THEN DO
    END
 END
 
-IF g.error == 0 & g.load.0 ª= 0 THEN DO
+IF g.error == 0 & g.load.0 /= 0 THEN DO
    _rc = BPXWDYN("ALLOC DSN('"g.load.1"') FI(LOAD) SHR REUSE")
 
    IF _rc == 0 THEN DO
@@ -245,7 +245,7 @@ IF g.error == 0 & g.load.0 ª= 0 THEN DO
 
          _rc = BPXWDYN("CONCAT DDLIST(LOAD,"_ddn")")
 
-         IF _rc ª= 0 THEN DO
+         IF _rc /= 0 THEN DO
             g.error = 8
             IF _rc > 0 THEN _rc = D2X(_rc)
             CALL log 'Dynamic concatenation failed with '_rc
@@ -401,17 +401,38 @@ g.IEWBLINK.retcode = RC
 
 "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+_rc = RC
 
 IF _rc == 0 THEN DO
-   SAY "SYSPRINT copied to DD "_ddn
+   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-   "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+   IF _rc == 0 THEN DO
+      SAY "SYSPRINT copied to DD "_ddn
 
-   _rc = BPXWDYN("FREE FI("_ddn")")
+      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+
+      _rc = RC
+
+      IF _rc /= 0 THEN DO
+         g.error = 8
+         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+      END
+
+      _rc = BPXWDYN("FREE FI("_ddn")")
+
+      IF _rc /= 0 THEN DO
+         g.error = 8
+         CALL log "FREE for copy SYSPRINT failed "_rc
+      END
+   END
+   ELSE DO
+      g.error = 8
+      CALL log "ALLOC for copy SYSPRINT failed "_rc
+   END
 END
 ELSE DO
-   SAY _rc
+   g.error = 8
+   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 IF g.IEWBLINK.retcode > 4 THEN DO
@@ -487,27 +508,27 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error ª= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
    g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
    CALL lexerGetToken
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    SELECT
    WHEN _parmName == 'SYSLIN' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          g.syslin = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken ª= ')' THEN DO
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
             CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
             g.error = 8
             RETURN
@@ -517,16 +538,16 @@ DO WHILE g.error == 0
    WHEN _parmName == 'SYSLMOD' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          g.syslmod = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken ª= ')' THEN DO
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
             CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
             g.error = 8
             RETURN
@@ -536,66 +557,66 @@ DO WHILE g.error == 0
    WHEN _parmName == 'SYSLIB' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          _nextSyslib = g.syslib.0 + 1
          g.syslib.0 = _nextSyslib
          g.syslib._nextSyslib = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    WHEN _parmName == 'OBJECT' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          _nextObject = g.object.0 + 1
          g.object.0 = _nextObject
          g.object._nextObject = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    WHEN _parmName == 'LOAD' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          _nextLoad = g.load.0 + 1
          g.load.0 = _nextLoad
          g.load._nextLoad = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    WHEN _parmName == 'PARM' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM2
-      DO WHILE g.lexer.currToken ª= ')'
+      DO WHILE g.lexer.currToken /= ')'
          g.parm = g.parm || g.lexer.currToken
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    OTHERWISE
       NOP
    END
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
@@ -635,14 +656,14 @@ _dsname = g.lexer.currToken
 DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME2
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
-   IF g.lexer.currToken ª= '.' THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
+   IF g.lexer.currToken /= '.' THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME3
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
-   IF g.scanner.peekChar ª= '.' & g.scanner.peekChar ª= '(' THEN LEAVE
+   IF g.scanner.peekChar /= '.' & g.scanner.peekChar /= '(' THEN LEAVE
 END
 
 IF g.lexer.currToken == '(' THEN DO
@@ -695,7 +716,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == 'EOF' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -707,7 +728,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == '.' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -720,7 +741,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == '(' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -733,7 +754,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == ')' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -752,7 +773,7 @@ IF g.error == 0 THEN DO
          SIGNAL lexerGetToken_complete
       END
       g.lexer.currToken = g.scanner.currChar
-      DO WHILE g.error == 0 & g.scanner.currChar ª= 'EOF' & ,
+      DO WHILE g.error == 0 & g.scanner.currChar /= 'EOF' & ,
                VERIFY(g.scanner.peekChar, g.lexer.IDENTIFIER_CHARS) == 0
          CALL scannerGetChar
 
@@ -763,7 +784,7 @@ IF g.error == 0 THEN DO
 
    _expected = g.parser.scanStateTable._state
    IF C2D(BITAND(D2C(_expected), ,
-                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) ª= 0 THEN
+                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
      g.lexer.currToken = g.scanner.currChar
      SIGNAL lexerGetToken_complete
    END

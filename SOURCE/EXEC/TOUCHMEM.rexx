@@ -35,14 +35,14 @@ touch: PROCEDURE EXPOSE g. SIGL
 DO i = 1 TO g.touchds.0
    PARSE VAR g.touchds.i _someDataset'('_someMember')'
 
-   IF _someMember ª= "" THEN DO
+   IF _someMember /= "" THEN DO
       _lminit = "LMINIT DATAID(MYID)"
       _lminit = _lminit || " DATASET('"_someDataset"')"
       _lminit = _lminit || " ENQ(EXCLU)"
 
       ADDRESS ISPEXEC _lminit
 
-      IF RC ª= 0 THEN DO
+      IF RC /= 0 THEN DO
          CALL log 'LMINIT failed with 'RC
          g.error = 8
       END
@@ -57,7 +57,7 @@ DO i = 1 TO g.touchds.0
 
          ADDRESS ISPEXEC _lmmstats
 
-         IF RC ª= 0 THEN DO
+         IF RC /= 0 THEN DO
             CALL log 'LMMSTATS failed with 'RC
             g.error = 8
          END
@@ -66,7 +66,7 @@ DO i = 1 TO g.touchds.0
       IF g.error == 0 THEN DO
          ADDRESS ISPEXEC "LMFREE DATAID(&MYID)"
 
-         IF RC ª= 0 THEN DO
+         IF RC /= 0 THEN DO
             CALL log 'LMFREE failed with 'RC
             g.error = 8
          END
@@ -143,34 +143,34 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error ª= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
    g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
    CALL lexerGetToken
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    SELECT
    WHEN _parmName == 'DATASET' | _parmName == 'DATASETS' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken ª= ')'
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
          g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
          _dsname = parseDsname()
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
          _nextDs = g.touchds.0 + 1
          g.touchds.0 = _nextDs
          g.touchds._nextDs = _dsname
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
-         IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    OTHERWISE
       NOP
    END
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
@@ -196,14 +196,14 @@ _dsname = g.lexer.currToken
 DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME2
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
-   IF g.lexer.currToken ª= '.' THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
+   IF g.lexer.currToken /= '.' THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME3
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
-   IF g.scanner.peekChar ª= '.' & g.scanner.peekChar ª= '(' THEN LEAVE
+   IF g.scanner.peekChar /= '.' & g.scanner.peekChar /= '(' THEN LEAVE
 END
 
 IF g.lexer.currToken == '(' THEN DO
@@ -256,7 +256,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == 'EOF' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -268,7 +268,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == '.' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -281,7 +281,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == '(' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -294,7 +294,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == ')' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -313,7 +313,7 @@ IF g.error == 0 THEN DO
          SIGNAL lexerGetToken_complete
       END
       g.lexer.currToken = g.scanner.currChar
-      DO WHILE g.error == 0 & g.scanner.currChar ª= 'EOF' & ,
+      DO WHILE g.error == 0 & g.scanner.currChar /= 'EOF' & ,
                VERIFY(g.scanner.peekChar, g.lexer.IDENTIFIER_CHARS) == 0
          CALL scannerGetChar
 
@@ -324,7 +324,7 @@ IF g.error == 0 THEN DO
 
    _expected = g.parser.scanStateTable._state
    IF C2D(BITAND(D2C(_expected), ,
-                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) ª= 0 THEN
+                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
      g.lexer.currToken = g.scanner.currChar
      SIGNAL lexerGetToken_complete
    END

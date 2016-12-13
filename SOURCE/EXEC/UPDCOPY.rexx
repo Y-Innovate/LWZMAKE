@@ -1,7 +1,6 @@
 /* REXX */
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
-SIGNAL ON error
 
 CALL init
 
@@ -22,10 +21,6 @@ END
 CALL freeDDs
 
 EXIT g.error
-
-error:
-SAY 'ERROR OCCURRED AT 'SIGL
-EXIT 8
 
 /**********************************************************************/
 /* Initialize                                                         */
@@ -150,7 +145,7 @@ parseUpd: PROCEDURE EXPOSE g. SIGL
 
 "EXECIO * DISKR "g.UPDWITH.ddname" (STEM _updwith. FINIS"
 
-IF RC = 0 THEN DO
+IF RC == 0 THEN DO
    DO i = 1 TO _updwith.0
       _var = SUBSTR(_updwith.i,1,72)
       PARSE VAR _var '>'_replaceWhat'>'_replaceWith'>'

@@ -6,7 +6,7 @@ CALL init
 
 CALL safeDelete
 
-IF g.DELETE.retcode ª= 0 THEN
+IF g.DELETE.retcode /= 0 THEN
    g.error = 8
 
 EXIT g.error
@@ -42,7 +42,7 @@ DO i = 1 TO _wrds WHILE g.DELETE.retcode == 0
 
       ADDRESS TSO "DELETE '"WORD(g.arg,i)"'"
 
-      IF RC ª= 0 THEN DO
+      IF RC /= 0 THEN DO
          g.DELETE.retcode = RC
       END
    END

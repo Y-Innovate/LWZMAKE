@@ -1,4 +1,50 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : COBOL5                                                */
+/*                                                                    */
+/* Description: This program invokes IGYCRCTL to compile a source.    */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-SYSIN(-source-)--SYSLIN(-object-)--------------->  */
+/*                                                                    */
+/*              >--+-----------------------+----------------------->  */
+/*                 |         .---------.   |                          */
+/*                 |         V         |   |                          */
+/*                 '-SYSLIB(---copylib-+-)-'                          */
+/*                                                                    */
+/*              >--+--------------------+--+--------------------+-->  */
+/*                 '-SYSOPTF(-optfile-)-'  '-DBRMLIB(-dbrmlib-)-'     */
+/*                                                                    */
+/*              >--+---------------------+-><                         */
+/*                 '-SYSPRINT(-listing-)-'                            */
+/*                                                                    */
+/*              source : Input COBOL source data set.                 */
+/*              object : Output object module data set.               */
+/*              copylib: One or more input COBOL copybook PDS(E)'s,   */
+/*                       separated by spaces.                         */
+/*              optfile: Input COBOL compiler options data set.       */
+/*              dbrmlib: Output DBRM data set.                        */
+/*              listing: Output COBOL compile listing data set.       */
+/*                                                                    */
+/* Returns    : 0 when IGYCRCTL returned 4 or less                    */
+/*              8 when REXX error occurs or when parameter string     */
+/*                contains syntax error                               */
+/*              n any IGYCRCTL return code > 4                        */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "SYSIN(MY.COBOL.PDS(MEMBER))"   || ,                        */
+/*        " SYSLIN(MY.OBJ.PDS(MEMBER))"   || ,                        */
+/*        " SYSLIB(CEE.SCEESAMP)"         || ,                        */
+/*        " SYSPRINT(MY.LST.PDS(MEMBER))"                             */
+/*                                                                    */
+/* CALL 'COBOL' _par                                                  */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
@@ -16,7 +62,7 @@ END
 
 CALL freeDDs
 
-IF g.IGYCRCTL.retcode > 4 THEN
+IF g.IGYCRCTL.retcode > 4 | g.IGYCRCTL.retcode < 0 THEN
    g.error = g.IGYCRCTL.retcode
 
 EXIT g.error
@@ -126,7 +172,7 @@ IF g.error == 0 THEN DO
 
             _rc = BPXWDYN("CONCAT DDLIST("g.SYSLIB.ddname.1","_ddn")")
 
-            IF _rc ª= 0 THEN DO
+            IF _rc /= 0 THEN DO
                g.error = 8
                IF _rc > 0 THEN _rc = D2X(_rc)
                CALL log 'Dynamic concatenation failed with '_rc
@@ -344,7 +390,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   IF g.dbrmlib ª= "" THEN DO
+   IF g.dbrmlib /= "" THEN DO
       _rc = BPXWDYN("ALLOC DSN('"g.dbrmlib"') SHR RTDDN(_ddn)")
    END
    ELSE DO
@@ -363,7 +409,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   IF g.sysoptf ª= "" THEN DO
+   IF g.sysoptf /= "" THEN DO
       _rc = BPXWDYN("ALLOC DSN('"g.sysoptf"') SHR RTDDN(_ddn)")
    END
    ELSE DO
@@ -848,7 +894,7 @@ invokeIGYCRCTL: PROCEDURE EXPOSE g. SIGL
 
 _prog = 'IGYCRCTL'
 _parm = ''
-IF g.sysoptf ª= "" THEN DO
+IF g.sysoptf /= "" THEN DO
    _parm = 'OPTFILE'
 END
 _ddlist = LEFT(g.SYSLIN.ddname,8) || ,
@@ -887,17 +933,38 @@ g.IGYCRCTL.retcode = RC
 
 "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+_rc = RC
 
 IF _rc == 0 THEN DO
-   SAY "SYSPRINT copied to DD "_ddn
+   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-   "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+   IF _rc == 0 THEN DO
+      SAY "SYSPRINT copied to DD "_ddn
 
-   _rc = BPXWDYN("FREE FI("_ddn")")
+      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+
+      _rc = RC
+
+      IF _rc /= 0 THEN DO
+         g.error = 8
+         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+      END
+
+      _rc = BPXWDYN("FREE FI("_ddn")")
+
+      IF _rc /= 0 THEN DO
+         g.error = 8
+         CALL log "FREE for copy SYSPRINT failed "_rc
+      END
+   END
+   ELSE DO
+      g.error = 8
+      CALL log "ALLOC for copy SYSPRINT failed "_rc
+   END
 END
 ELSE DO
-   SAY _rc
+   g.error = 8
+   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 RETURN
@@ -956,19 +1023,19 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error ª= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
    g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
    CALL lexerGetToken
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
    CALL lexerGetToken
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   DO WHILE g.lexer.currToken ª= ')'
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   DO WHILE g.lexer.currToken /= ')'
       _dsname = parseDsname()
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       SELECT
          WHEN _parmName == 'SYSLIN' THEN DO
             g.syslin = _dsname
@@ -992,8 +1059,8 @@ DO WHILE g.error == 0
       END
       g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
       CALL lexerGetToken
-      IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      IF g.lexer.currToken ª= ')' THEN DO
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF g.lexer.currToken /= ')' THEN DO
          IF _parmName == 'SYSLIN' | _parmName == 'SYSIN' | ,
             _parmName == 'SYSOPTF' | _parmName == 'DBRMLIB' THEN DO
             CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
@@ -1002,7 +1069,7 @@ DO WHILE g.error == 0
          END
       END
    END
-   IF g.error ª= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
@@ -1037,14 +1104,14 @@ _dsname = g.lexer.currToken
 DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME2
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
-   IF g.lexer.currToken ª= '.' THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
+   IF g.lexer.currToken /= '.' THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
    g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME3
    CALL lexerGetToken
-   IF g.error ª= 0 THEN LEAVE
+   IF g.error /= 0 THEN LEAVE
    _dsname = _dsname || g.lexer.currToken
-   IF g.scanner.peekChar ª= '.' & g.scanner.peekChar ª= '(' THEN LEAVE
+   IF g.scanner.peekChar /= '.' & g.scanner.peekChar /= '(' THEN LEAVE
 END
 
 IF g.lexer.currToken == '(' THEN DO
@@ -1097,7 +1164,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == 'EOF' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_EOF))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -1109,7 +1176,7 @@ IF g.error == 0 THEN DO
 
    IF g.scanner.currChar == '.' THEN DO
       _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) ª= 0 THEN DO
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -1122,7 +1189,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == '(' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_OPEN_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -1135,7 +1202,7 @@ IF g.error == 0 THEN DO
    IF g.scanner.currChar == ')' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) ª= 0 THEN DO
+                    D2C(g.parser.EXPECTED_CLOSE_BRACKET))) /= 0 THEN DO
          g.lexer.currToken = g.scanner.currChar
       END
       ELSE DO
@@ -1154,7 +1221,7 @@ IF g.error == 0 THEN DO
          SIGNAL lexerGetToken_complete
       END
       g.lexer.currToken = g.scanner.currChar
-      DO WHILE g.error == 0 & g.scanner.currChar ª= 'EOF' & ,
+      DO WHILE g.error == 0 & g.scanner.currChar /= 'EOF' & ,
                VERIFY(g.scanner.peekChar, g.lexer.IDENTIFIER_CHARS) == 0
          CALL scannerGetChar
 
