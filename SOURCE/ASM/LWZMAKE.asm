@@ -3898,3 +3898,5900 @@ ADDPDSNAME3 EQU *
 *
 ADDPDSNAME_NEXT_MEMBER EQU *
 *        Get next token, which should be the a member name or variable
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_ADDPDSNAME_RET * Yes, stop parsing function
+*
+*        Check if scan state is IN_VARIABLE, if so link to SCAN_VAR
+*        section to expand it and loop around for the next keyword
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check for in variable
+         IF (NE) THEN
+            C     R14,=A(SCAN_STATE_IN_VARIABLER)
+         ENDIF
+         IF (EQ) THEN             * If so...
+            L     R15,LWZMAKE_SCAN_VARA_VAR * Get address of SCAN_VAR
+            BASR  R14,R15            * Link to SCAN_VAR section
+*
+            CLC   G_RETCODE,=F'0'    * Did an error occur?
+            BNE   SCAN_ADDPDSNAME_RET * Yes, stop parsing statement
+*
+            MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
+*
+            CLI   G_SCAN_APPEND_TO,X'00'
+            BE    ADDPDSNAME_NEXT_MEMBER * Loop around for next token
+            B     ADDPDSNAME4
+         ENDIF
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    ADDPDSNAME_FINISH
+*
+*           Append member to token 3
+            L     R0,G_SCAN_TOKEN2A
+            A     R0,G_SCAN_TOKEN2_LEN
+            L     R1,=F'1'
+            LA    R2,=C'('
+            LR    R3,R1
+            MVCL  R0,R2
+*
+            L     R2,G_SCAN_TOKENA  * Point R2 to token 1
+            L     R1,G_SCAN_TOKEN_LEN * Get length of token to append
+            LR    R3,R1             * Make sure no cropping/filling
+            MVCL  R0,R2             * Append to token 3
+*
+            L     R1,=F'1'
+            LA    R2,=C')'
+            LR    R3,R1
+            MVCL  R0,R2
+*
+            L     R0,G_SCAN_TOKENA
+            L     R1,G_SCAN_TOKEN2_LEN
+            A     R1,G_SCAN_TOKEN_LEN
+            LA    R1,2(,R1)
+            ST    R1,G_SCAN_TOKEN_LEN
+            L     R2,G_SCAN_TOKEN2A
+            LR    R3,R1
+            MVCL  R0,R2
+*
+            MVI   G_SCAN_APPEND_TO,X'02'
+            LT    R1,G_SCAN_TOKEN3_LEN * Get current length token 3
+            IF (Z) THEN             * Is this the first part of token 3
+               MVC   G_SCAN_SPACE_COUNT,=F'0' * Get rid of lead spaces
+            ENDIF
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            MVI   G_SCAN_APPEND_TO,X'00'
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    ADDPDSNAME_FINISH
+         ENDIF
+*
+ADDPDSNAME4 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_ADDPDSNAME4
+         OI    G_SCAN_STATE,SCAN_STATE_IN_ADDPDSNAME4
+*
+         B     ADDPDSNAME_NEXT_MEMBER * Loop around to get next token
+*
+ADDPDSNAME_FINISH EQU *
+         LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+         XR    R2,R2                 * Clear R2
+         IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+         BCTR  R2,R0                 * Subtract 1 from index
+         IC    R15,0(R2,R1)          * Get stack state in that idx
+         STC   R15,G_SCAN_STATE      * And save it as current state
+         STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+*
+         BAL   R7,SCAN_VAR_RESTORE
+*
+SCAN_ADDPDSNAME_RET EQU *
+         BR    R8
+*
+* Scan function MEMBERLIST
+*
+SCAN_MEMBERLIST EQU *
+         L     R15,LWZMAKE_APPEND_TOKENA_VAR
+         BASR  R14,R15
+*
+         BAL   R7,SCAN_VAR_SAVE
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+         ENDIF
+*
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_MEMBERLIST
+         OI    G_SCAN_STATE,SCAN_STATE_IN_MEMBERLIST
+*
+*        Get next token, which should be the start of the PDS name
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_MEMBERLIST_RET * Yes, stop parsing function
+*
+         B     MEMBERLIST_PDSNAME_CHECK_VAR
+*
+MEMBERLIST_PDSNAME_NEXT_TOKEN EQU *
+*        Get next token, which should be the PDS name
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_MEMBERLIST_RET * Yes, stop parsing function
+*
+         CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMA
+         BE    MEMBERLIST3
+         CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+         BE    MEMBERLIST_FINISH
+*
+         LT    R14,G_SCAN_TOKEN2_LEN
+         IF (NZ) THEN
+            LT    R14,G_SCAN_SPACE_COUNT
+            IF (NZ) THEN
+               MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as pds nameX
+                in memberlist function',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               BR    R8             * and return
+            ENDIF
+         ENDIF
+*
+MEMBERLIST_PDSNAME_CHECK_VAR EQU *
+*        Check if scan state is IN_VARIABLE, if so link to SCAN_VAR
+*        section to expand it and loop around for the next keyword
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check for in variable
+         IF (NE) THEN
+            C     R14,=A(SCAN_STATE_IN_VARIABLER)
+         ENDIF
+         IF (EQ) THEN             * If so...
+            L     R15,LWZMAKE_SCAN_VARA_VAR * Get address of SCAN_VAR
+            BASR  R14,R15            * Link to SCAN_VAR section
+*
+            CLC   G_RETCODE,=F'0'    * Did an error occur?
+            BNE   SCAN_MEMBERLIST_RET * Yes, stop parsing statement
+*
+            MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
+*
+            B     MEMBERLIST2
+         ENDIF
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    MEMBERLIST_FINISH
+*
+*           Append token 1 to token 2
+            MVC   SCAN_VAR_SAVE_APPEND_TO,G_SCAN_APPEND_TO
+            MVI   G_SCAN_APPEND_TO,X'01'
+            LT    R1,G_SCAN_TOKEN2_LEN
+            IF (Z) THEN
+               MVC   G_SCAN_SPACE_COUNT,=A(0)
+            ENDIF
+*
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            MVC   G_SCAN_APPEND_TO,SCAN_VAR_SAVE_APPEND_TO
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    MEMBERLIST_FINISH
+         ENDIF
+*
+MEMBERLIST2 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_MEMBERLIST2
+         OI    G_SCAN_STATE,SCAN_STATE_IN_MEMBERLIST2
+*
+         B     MEMBERLIST_PDSNAME_NEXT_TOKEN
+*
+MEMBERLIST3 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_MEMBERLIST3
+         OI    G_SCAN_STATE,SCAN_STATE_IN_MEMBERLIST3
+*        If we're expanding
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+*           Clear token 3 length, which will receive the member(s)
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+         ENDIF
+*
+MEMBERLIST_MEMFILTER EQU *
+*        Get next token, which should be the a member name or variable
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_MEMBERLIST_RET * Yes, stop parsing function
+*
+*        Check if scan state is IN_VARIABLE, if so link to SCAN_VAR
+*        section to expand it and loop around for the next keyword
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check for in variable
+         IF (NE) THEN
+            C     R14,=A(SCAN_STATE_IN_VARIABLER)
+         ENDIF
+         IF (EQ) THEN             * If so...
+            L     R15,LWZMAKE_SCAN_VARA_VAR * Get address of SCAN_VAR
+            BASR  R14,R15            * Link to SCAN_VAR section
+*
+            CLC   G_RETCODE,=F'0'    * Did an error occur?
+            BNE   SCAN_MEMBERLIST_RET * Yes, stop parsing statement
+*
+            MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
+*
+            CLI   G_SCAN_APPEND_TO,X'00'
+            BE    MEMBERLIST_MEMFILTER * Loop around for next token
+            B     MEMBERLIST4
+         ENDIF
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    MEMBERLIST_FINISH
+*
+            MVI   G_SCAN_APPEND_TO,X'02'
+            LT    R1,G_SCAN_TOKEN3_LEN * Get current length token 3
+            IF (Z) THEN             * Is this the first part of token 3
+               MVC   G_SCAN_SPACE_COUNT,=F'0' * Get rid of lead spaces
+            ENDIF
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            MVI   G_SCAN_APPEND_TO,X'00'
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    MEMBERLIST_FINISH
+         ENDIF
+*
+MEMBERLIST4 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_MEMBERLIST4
+         OI    G_SCAN_STATE,SCAN_STATE_IN_MEMBERLIST4
+*
+         B     MEMBERLIST_MEMFILTER * Loop around to get next token
+*
+MEMBERLIST_FINISH EQU *
+         LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+         XR    R2,R2                 * Clear R2
+         IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+         BCTR  R2,R0                 * Subtract 1 from index
+         IC    R15,0(R2,R1)          * Get stack state in that idx
+         STC   R15,G_SCAN_STATE      * And save it as current state
+         STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+*           Get the member list
+            L     R15,LWZMAKE_GET_MEMLISTA_VAR * Get addr GET_MEMLIST
+            BASR  R14,R15         * Link to GET_MEMLIST section
+         ENDIF
+*
+         BAL   R7,SCAN_VAR_RESTORE
+*
+SCAN_MEMBERLIST_RET EQU *
+         BR    R8
+*
+* Scan function FUNCTION
+*
+SCAN_FUNCTION EQU *
+         L     R15,LWZMAKE_APPEND_TOKENA_VAR
+         BASR  R14,R15
+*
+         BAL   R7,SCAN_VAR_SAVE
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+         ENDIF
+*
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_FUNCTION
+         OI    G_SCAN_STATE,SCAN_STATE_IN_FUNCTION
+*
+*        Get next token, which should be the start of a REXX name
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_FUNCTION_RET  * Yes, stop parsing function
+*
+         B     FUNCTION_REXXNAME_CHECK_VAR
+*
+FUNCTION_REXXNAME_NEXT_TOKEN EQU *
+*        Get next token, which should be the REXX name
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_FUNCTION_RET  * Yes, stop parsing function
+*
+         CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMA
+         BE    FUNCTION3
+         CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+         BE    FUNCTION_FINISH
+*
+         LT    R14,G_SCAN_TOKEN2_LEN
+         IF (NZ) THEN
+            LT    R14,G_SCAN_SPACE_COUNT
+            IF (NZ) THEN
+               MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as REXX nameX
+                in function',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               BR    R8             * and return
+            ENDIF
+         ENDIF
+*
+FUNCTION_REXXNAME_CHECK_VAR EQU *
+*        Check if scan state is IN_VARIABLE, if so link to SCAN_VAR
+*        section to expand it and loop around for the next keyword
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check for in variable
+         IF (NE) THEN
+            C     R14,=A(SCAN_STATE_IN_VARIABLER)
+         ENDIF
+         IF (EQ) THEN             * If so...
+            L     R15,LWZMAKE_SCAN_VARA_VAR * Get address of SCAN_VAR
+            BASR  R14,R15            * Link to SCAN_VAR section
+*
+            CLC   G_RETCODE,=F'0'    * Did an error occur?
+            BNE   SCAN_FUNCTION_RET * Yes, stop parsing statement
+*
+            MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
+*
+            B     FUNCTION2
+         ENDIF
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    FUNCTION_FINISH
+*
+*           Append token 1 to token 2
+            MVC   SCAN_VAR_SAVE_APPEND_TO,G_SCAN_APPEND_TO
+            MVI   G_SCAN_APPEND_TO,X'01'
+            LT    R1,G_SCAN_TOKEN2_LEN
+            IF (Z) THEN
+               MVC   G_SCAN_SPACE_COUNT,=A(0)
+            ENDIF
+*
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            MVC   G_SCAN_APPEND_TO,SCAN_VAR_SAVE_APPEND_TO
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    FUNCTION_FINISH
+         ENDIF
+*
+FUNCTION2 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_FUNCTION2
+         OI    G_SCAN_STATE,SCAN_STATE_IN_FUNCTION2
+*
+         B     FUNCTION_REXXNAME_NEXT_TOKEN
+*
+FUNCTION3 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_FUNCTION3
+         OI    G_SCAN_STATE,SCAN_STATE_IN_FUNCTION3
+*        If we're expanding
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+*           Clear token 3 length, which will receive the member(s)
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+         ENDIF
+*
+FUNCTION_PARAMETER_NEXT_TOKEN EQU *
+*        Get next token, which should be the a member name or variable
+         L     R15,LWZMAKE_SCAN_TOKENA_VAR * Get address of SCAN_TOKEN
+         BASR  R14,R15            * Link to SCAN_TOKEN section
+*
+         CLC   G_RETCODE,=F'0'    * Did an error occur?
+         BNE   SCAN_FUNCTION_RET * Yes, stop parsing function
+*
+*        Check if scan state is IN_VARIABLE, if so link to SCAN_VAR
+*        section to expand it and loop around for the next keyword
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check for in variable
+         IF (NE) THEN
+            C     R14,=A(SCAN_STATE_IN_VARIABLER)
+         ENDIF
+         IF (EQ) THEN             * If so...
+            L     R15,LWZMAKE_SCAN_VARA_VAR * Get address of SCAN_VAR
+            BASR  R14,R15            * Link to SCAN_VAR section
+*
+            CLC   G_RETCODE,=F'0'    * Did an error occur?
+            BNE   SCAN_FUNCTION_RET * Yes, stop parsing statement
+*
+            MVC   G_SCAN_CLOSE_BRACKET,SCAN_VAR_SAVE_CLOSE_BRACKET
+*
+            CLI   G_SCAN_APPEND_TO,X'00'
+            BE    FUNCTION_PARAMETER_NEXT_TOKEN * Loop around
+            B     FUNCTION4
+         ENDIF
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    FUNCTION_FINISH
+*
+            MVI   G_SCAN_APPEND_TO,X'02'
+            LT    R1,G_SCAN_TOKEN3_LEN * Get current length token 3
+            IF (Z) THEN             * Is this the first part of token 3
+               MVC   G_SCAN_SPACE_COUNT,=F'0' * Get rid of lead spaces
+            ENDIF
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            MVI   G_SCAN_APPEND_TO,X'00'
+         ELSE
+            L     R15,LWZMAKE_APPEND_TOKENA_VAR
+            BASR  R14,R15
+*
+            CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+            BE    FUNCTION_FINISH
+         ENDIF
+*
+FUNCTION4 EQU *
+*        Clear scan state except for left most bit indicating in recipe
+         NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*        Set scan state bits to IN_FUNCTION4
+         OI    G_SCAN_STATE,SCAN_STATE_IN_FUNCTION4
+*
+         B     FUNCTION_PARAMETER_NEXT_TOKEN * Loop around
+*
+FUNCTION_FINISH EQU *
+         LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+         XR    R2,R2                 * Clear R2
+         IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+         BCTR  R2,R0                 * Subtract 1 from index
+         IC    R15,0(R2,R1)          * Get stack state in that idx
+         STC   R15,G_SCAN_STATE      * And save it as current state
+         STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+*
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+*           Get the member list
+            L     R15,LWZMAKE_CALL_FUNCA_VAR * Get addr CALL_FUNC
+            BASR  R14,R15         * Link to CALL_FUNC section
+         ENDIF
+*
+         BAL   R7,SCAN_VAR_RESTORE
+*
+SCAN_FUNCTION_RET EQU *
+         BR    R8
+*
+* Save tokens
+*
+SCAN_VAR_SAVE EQU *
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            MVC   SCAN_VAR_SAVE_TOKENA,G_SCAN_TOKENA
+            MVC   SCAN_VAR_SAVE_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
+            MVC   SCAN_VAR_SAVE_TOKEN_LEN,G_SCAN_TOKEN_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN_LEN,=A(0)
+*
+            MVC   SCAN_VAR_SAVE_TOKEN2A,G_SCAN_TOKEN2A
+            MVC   SCAN_VAR_SAVE_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   SCAN_VAR_SAVE_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN2_LEN,=A(0)
+*
+            MVC   SCAN_VAR_SAVE_TOKEN3A,G_SCAN_TOKEN3A
+            MVC   SCAN_VAR_SAVE_TOKEN3_MAXLEN,G_SCAN_TOKEN3_MAXLEN
+            MVC   SCAN_VAR_SAVE_TOKEN3_LEN,G_SCAN_TOKEN3_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_VAR
+            BASR  R14,R15              * Allocate a memory block
+            MVC   G_SCAN_TOKEN3A,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN3_LEN,=A(0)
+         ENDIF
+*
+         BR    R7
+*
+* Restore tokens
+*
+SCAN_VAR_RESTORE EQU *
+         IF (CLI,G_SCAN_APPEND_TO,EQ,X'00') THEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_VAR
+            BASR  R14,R15
+*
+            MVC   G_SCAN_TOKENA,SCAN_VAR_SAVE_TOKENA
+            MVC   G_SCAN_TOKEN_MAXLEN,SCAN_VAR_SAVE_TOKEN_MAXLEN
+            MVC   G_SCAN_TOKEN_LEN,SCAN_VAR_SAVE_TOKEN_LEN
+*
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_VAR
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,SCAN_VAR_SAVE_TOKEN2A
+            MVC   G_SCAN_TOKEN2_MAXLEN,SCAN_VAR_SAVE_TOKEN2_MAXLEN
+            MVC   G_SCAN_TOKEN2_LEN,SCAN_VAR_SAVE_TOKEN2_LEN
+*
+*           Push variable value on to input stack
+            XR    R2,R2           * Clear R2
+            XR    R3,R3           * Clear R3
+            IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack index
+            C     R3,=A(MAX_SCAN_INPUT_STACK_ENTRY) * Will an extra
+*                                 * entry fit?
+            IF (NL) THEN          * If not write error
+               MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
+               flow',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'12' * Set return code 12
+               B     SCAN_VAR_RET     * and return
+            ENDIF
+            LA    R3,1(,R3)       * Add 1 to stack size
+            STC   R3,G_SCAN_INPUT_STACK_IDX * And store it
+            BCTR  R3,R0           * Subtract 1 to calculate offset
+            M     R2,=A(INPUT_DSECT_SIZ) * Calculate offset to new ntry
+            LA    R2,G_SCAN_INPUT_STACK * Point R2 to input stack
+            AR    R2,R3           * Add calculated offset
+*
+            USING INPUT_DSECT,R2  * Address with INPUT DSECT
+*
+            MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF_FREE * Set inp type
+            MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
+            MVC   INPUTLEN,G_SCAN_TOKEN3_LEN+2 * Copy value length
+            MVC   INPUTPTR,G_SCAN_TOKEN3A * Copy value pointer
+            MVC   INPUTPOS,=H'0'  * Set initial scan position to start
+*
+            DROP  R2
+*
+            MVC   G_SCAN_TOKEN3A,SCAN_VAR_SAVE_TOKEN3A
+            MVC   G_SCAN_TOKEN3_MAXLEN,SCAN_VAR_SAVE_TOKEN3_MAXLEN
+            MVC   G_SCAN_TOKEN3_LEN,SCAN_VAR_SAVE_TOKEN3_LEN
+         ENDIF
+*
+         BR    R7
+*
+         LTORG
+*
+* Local constant pointers to section addresses
+LWZMAKE_APPEND_TOKENA_VAR DC    A(LWZMAKE_APPEND_TOKEN)
+LWZMAKE_STG_OBTAINA_VAR   DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_VAR  DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_SCAN_TOKENA_VAR   DC    A(LWZMAKE_SCAN_TOKEN)
+LWZMAKE_FINDVARA_VAR      DC    A(LWZMAKE_FINDVAR)
+LWZMAKE_SCAN_VARA_VAR     DC    A(LWZMAKE_SCAN_VAR)
+LWZMAKE_GET_MEMLISTA_VAR  DC    A(LWZMAKE_GET_MEMLIST)
+LWZMAKE_CALL_FUNCA_VAR    DC    A(LWZMAKE_CALL_FUNC)
+*
+SCAN_VAR_DSECT              DSECT
+                            DS    18F * My savearea
+*
+SCAN_VAR_SAVE_APPEND_TO     DS    C
+SCAN_VAR_SAVE_CLOSE_BRACKET DS    C
+*
+                            DS    0F
+SCAN_VAR_SAVE_SPACE_COUNT   DS    F
+*
+                            DS    0F
+SCAN_VAR_SAVE_TOKEN_LEN     DS    F
+SCAN_VAR_SAVE_TOKEN2_LEN    DS    F
+SCAN_VAR_SAVE_TOKEN3_LEN    DS    F
+SCAN_VAR_SAVE_TOKEN_MAXLEN  DS    F
+SCAN_VAR_SAVE_TOKEN2_MAXLEN DS    F
+SCAN_VAR_SAVE_TOKEN3_MAXLEN DS    F
+SCAN_VAR_SAVE_TOKENA        DS    A
+SCAN_VAR_SAVE_TOKEN2A       DS    A
+SCAN_VAR_SAVE_TOKEN3A       DS    A
+*
+SCAN_VAR_DSECT_SIZ          EQU   *-SCAN_VAR_DSECT
+*
+LWZMAKE  CSECT
+*
+***********************************************************************
+* Section: LWZMAKE_SCAN_TOKEN                                         *
+* Purpose: Parsing lexer. This section invokes LWZMAKE_SCAN_CHAR to   *
+*          get characetrs in order to return the next keyword. It     *
+*          gets rid of whitespace, but counts the spaces leading the  *
+*          next keyword should those need to be preserved.            *
+*          Based on the current scan state, checks are performed      *
+*          whether a type of token is allowed where it is found, in   *
+*          other words most of the syntax checking is done here.      *
+*          R7 is used as the index register to address the next       *
+*          character position in G_SCAN_TOKEN.
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_SCAN_TOKEN MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_SCAN_TOKEN'
+*
+         MVC   G_SCAN_TOKEN_LEN,=F'0' * Initialize token 1 length
+         MVI   G_SCAN_TOKENTYPE,X'00' * Initialize token 1 type
+         MVC   G_SCAN_SPACE_COUNT,=F'0' * Initialize space count
+         XR    R7,R7                  * Initialize index reg to token
+*
+STATE_AND_SCAN_FOR_WHITESPACE EQU *
+*        Translate scan state to bitstring of allowed token types
+         IC    R2,G_SCAN_STATE    * Get the scan state
+         N     R2,=X'0000007F'    * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         SLL   R2,2               * Multiply by 4 (scan state table
+*                                 * contains full words)
+         L     R1,SCAN_STATE_TABLEA_TOKEN * Point R1 to scan state tab
+         AR    R1,R2              * Add offset for current scan stata
+         MVC   G_SCAN_EXPECTED,0(R1) * Get the corresponding bitstring
+*
+SCAN_FOR_WHITESPACE EQU *
+         L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address to SCAN_CHAR
+         BASR  R14,R15            * Link to SCAN_CHAR section
+*
+*        Check for end of file and whether it's expected
+         IF (CLI,G_MKFEOF,EQ,C'Y') THEN * Is EOF switch on?
+*                                 * And was it expected?
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_EOF,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected end of file',APND_LC=X
+               C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+            ENDIF
+            B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+         ENDIF
+*
+*        Check for beginning a new line, when allowed and not in a
+*        continued statement, this resets the scan state to not in stmt
+         IF (CLI,G_SCAN_NEWLINE,EQ,C'Y') THEN * Is new line switch on?
+*                                 * And was it expected?
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_NEWLINE,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected new line',APND_LC=C'YX
+               '
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*           Check if we're not in a continued line
+            IF (CLI,G_SCAN_CONTINUED_LINE,NE,C'Y') THEN
+               IC    R14,G_SCAN_STATE * Get the scan state
+               N     R14,=X'0000007F' * Clear out bits 0-56, including
+*                                     * the high order bit in the scan
+*                                     * state for 'in recipe'
+               C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check not in stmt
+               IF (NE) THEN           * If not so...
+*                 Clear scan state except for left most bit 'in recipe'
+                  NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*                 Set scan state bits to NOT_IN_STMT
+                  OI    G_SCAN_STATE,SCAN_STATE_NOT_IN_STMT
+*                 Skip to finishing valid token
+                  B     SCAN_TOKEN_VALID
+               ENDIF
+            ENDIF
+            B     STATE_AND_SCAN_FOR_WHITESPACE * Loop for next char
+         ENDIF
+*
+*        Check space, if so add to leading space char count
+         IF (CLI,G_SCAN_CURRCHAR,EQ,C' ') THEN
+            L     R2,G_SCAN_SPACE_COUNT * Get current space count
+            LA    R2,1(,R2)             * Add 1
+            ST    R2,G_SCAN_SPACE_COUNT * And put it back
+            B     SCAN_FOR_WHITESPACE   * Loop for next char
+         ENDIF
+*
+*        Don't test for ignore when not in INPUTTYPE MAKEFILE (_INC)
+         XR    R2,R2              * Clear R2
+         XR    R3,R3              *   and R3
+         IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack index
+         BCTR  R3,R0              * Subtract 1 for calculating offset
+         M     R2,=A(INPUT_DSECT_SIZ) * Calculate offset to entry
+         LA    R2,G_SCAN_INPUT_STACK * Point R2 to input stack
+         AR    R2,R3              * Add calculated offset
+*
+         MVI   G_SCAN_TOKEN_72,C'N'
+*
+         USING INPUT_DSECT,R2  * Address with INPUT DSECT
+         CLI   INPUTTYPE,INPUTTYPE_MAKEFILE
+         BE    CHECK_IGNORE
+         CLI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC
+         BE    CHECK_IGNORE
+         B     SKIP_IGNORE
+         DROP  R2
+CHECK_IGNORE EQU *
+         MVI   G_SCAN_TOKEN_72,C'Y'
+*
+*        Anything beyond column 72 is ignored and considered the end
+*        of a line
+         L     R6,G_SCAN_CURRCOL  * Get current column
+         C     R6,=F'72'          * Check if we're beyond col 72
+         IF (GE) THEN             * If so (currcol starts with 0)
+*           Set token type to ignore
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_IGNORE
+*           Was it expected?
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_IGNORE,Z) THEN
+*              Prepare helper data for parse error trace record
+               MVC   G_HELPER_DATA(23),=C'UNEXPECTED END OF LINE '
+               MVC   G_HELPER_DATA+23(1),G_SCAN_STATE
+               MVI   G_HELPER_DATA+24,C' '
+               MVC   G_HELPER_DATA+25(4),G_SCAN_EXPECTED
+               LA    R14,G_HELPER_DATA * Get address to helper data
+               ST    R14,G_LWZMTRC_DATA_PTR * Set it as trace data ptr
+               MVC   G_LWZMTRC_DATA_SIZ,=AL2(29) * Set trace data len
+               MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'003',DATA
+               MLWZMRPT RPTLINE=CL133'0Unexpected end of line',APND_LC=X
+               C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+CHECK_NEXT_IGNORE_CHAR EQU *
+*           Reaching column 80 in combination with not a continued line
+*           resets scan state to not in stmt
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'79'         * Check column 80
+            IF (GE) THEN            * If we're there
+*                                   * And it's not a continued line
+               IF (CLI,G_SCAN_CONTINUED_LINE,NE,C'Y') THEN
+                  IC    R14,G_SCAN_STATE * Get the scan state
+                  N     R14,=X'0000007F' * Clear out bits 0-56,
+*                                    * including the high order bit in
+*                                    * the scan state for 'in recipe'
+                  C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check
+                  IF (NE) THEN       * not in stmt?
+*                    Clear scan state except left most bit 'in recipe'
+                     NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*                    Set scan state bits to NOT_IN_STMT
+                     OI    G_SCAN_STATE,SCAN_STATE_NOT_IN_STMT
+*                    Skip to finishing valid token
+                     B     SCAN_TOKEN_VALID
+                  ENDIF
+               ENDIF
+*              Overrule bitstring with that for a new line
+               MVC   G_SCAN_EXPECTED,=A(SCAN_EXPECTED_NEWLINE)
+*              Jump to scan for whitespace, which for a new line after
+*              continuation jumps to STATE_AND_SCAN_FOR_WHITESPACE and
+*              reset to the correct bitstring
+               B     SCAN_FOR_WHITESPACE
+            ENDIF
+*           We end up here for chars in columns 72-80
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15          * Link to SCAN_CHAR section
+            CLI   G_MKFEOF,C'Y'    * At this point EOF should
+            BE    SCAN_TOKEN_VALID * return valid ignore token
+            CLI   G_SCAN_NEWLINE,C'Y' * Same goes for new line
+            BE    SCAN_TOKEN_VALID * returns valid ignore token
+            B     CHECK_NEXT_IGNORE_CHAR * None of the above, so loop
+*                                  * around checking next ignore char
+         ENDIF
+*
+SKIP_IGNORE EQU *
+*
+*        At this point we've ruled out EOF, new line and pos 72-80
+*        so we can start checking token types.
+*        Point R5 to current char to start checking.
+         LA    R5,G_SCAN_CURRCHAR
+*
+*        Check for comments
+         IF (CLI,0(R5),EQ,C'#') THEN
+*           Set token type to comment
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMENT
+*           Prepare helper data for start parse token trace record
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'612',CONST=C'COX
+               MMENT'
+*           Was comment expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_COMMENT,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected comment',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+CHECK_NEXT_COMMENT_CHAR EQU *
+*           Anything up to column 72 is considered part of the comments
+*           after that, if not in continued line we can reset scan
+*           state to not in stmt
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'71'         * Check if we're at 72 yet
+            IF (NL) THEN            * If so...
+*              And it's not a continued line
+               IF (CLI,G_SCAN_CONTINUED_LINE,NE,C'Y') THEN
+                  IC    R14,G_SCAN_STATE * Get the scan state
+                  N     R14,=X'0000007F' * Clear out bits 0-56,
+*                                    * including the high order bit in
+*                                    * the scan state for 'in recipe'
+                  C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check
+                  IF (NE) THEN       * not in stmt?
+*                    Clear scan state except left most bit 'in recipe'
+                     NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*                    Set scan state bits to NOT_IN_STMT
+                     OI    G_SCAN_STATE,SCAN_STATE_NOT_IN_STMT
+*                    Skip to finishing valid token
+                     B     SCAN_TOKEN_VALID
+                  ENDIF
+               ENDIF
+*              Overrule bitstring with that for ignore chars
+               MVC   G_SCAN_EXPECTED,=A(SCAN_EXPECTED_IGNORE)
+*              Jump to scan for whitespace, to check for ignore chars
+*              and newline / EOF
+               B     SCAN_FOR_WHITESPACE
+            ENDIF
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15                 * Link to SCAN_CHAR section
+            B     CHECK_NEXT_COMMENT_CHAR * Loop for next comment char
+         ENDIF
+*
+*        If we ended up here and we've already had line continuation
+*        character, anything other than comment is a syntax error
+         IF (CLI,G_SCAN_CONTINUED_LINE,EQ,C'Y') THEN
+            MLWZMRPT RPTLINE=CL133'0Syntax error, only comments allowedX
+                after continuation character',APND_LC=C'Y'
+            MVC   G_RETCODE,=F'8' * Set return code 8
+            B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
+         ENDIF
+*
+*        Check for continuation character
+         IF (CLI,0(R5),EQ,C'\') THEN
+*           Set token type to continuation
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CONTINUATION
+*           Set switch for continuation to true
+            MVI   G_SCAN_CONTINUED_LINE,C'Y'
+*           Overrule bitstring with that for comments
+            MVC   G_SCAN_EXPECTED,=A(SCAN_EXPECTED_COMMENT)
+*           Jump to scan for whitespace, to look for comments, ignore
+*           chars and newline / EOF
+            B     SCAN_FOR_WHITESPACE
+         ENDIF
+*
+*        Only on column 1 check for recipe prefix
+         CLI   G_SCAN_TOKEN_72,C'Y'
+         BNE   SKIP_RECIPE_PREFIX
+         L     R6,G_SCAN_CURRCOL  * Get current column
+         C     R6,=F'0'           * Check for column 1
+         IF (EQ) THEN             * If so...
+            CLC   0(1,R5),G_RECIPEPREFIX * Check for recipe prefix char
+            IF (EQ) THEN          * If that's the case...
+*              Set token type to recipe prefix
+               MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_RECIPEPREFIX
+*              Was it expected? If not, write error and stop
+               IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_RECIPREF,Z) THEN
+UNEXPECTED_RECIPE EQU *
+                  MLWZMRPT RPTLINE=CL133'0Unexpected recipe',APND_LC=C'X
+               Y'
+                  MVC   G_RETCODE,=F'8' * Set return code 8
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+               ENDIF
+*              In rare cases the expected bitstring doesn't cover it,
+*              e.g. a recipe line followed by an empty line and
+*              another recipe line. That's why this elaborate check.
+*              If the previous statement wasn't a rule
+               IF (CLI,G_PREV_STMT_TYPE,NE,STMT_TYPE_RULE) THEN
+*                 and the scan state isn't in recipe
+                  IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,Z) THEN
+*                    and the previous scan state wasn't either
+                     IF (CLI,G_PREV_STMT_IN_RECIPE,NE,C'Y') THEN
+*                       then also write error and stop
+                        B     UNEXPECTED_RECIPE
+                     ENDIF
+                  ENDIF
+               ENDIF
+*              If we end up here the recipe prefix was valid, so set
+*              the bit in the scan state
+               OI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*              Loop around to continue scanning for whitespace
+               B     SCAN_FOR_WHITESPACE
+            ENDIF
+         ENDIF
+SKIP_RECIPE_PREFIX EQU *
+*
+*        Check for assignment operator
+         IF (CLI,0(R5),EQ,C'=') THEN
+*           Set token type to operator
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
+*           Was it expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=C'YX
+               '
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            B     SCAN_TOKEN_VALID   * Skip to finishing valid token
+         ENDIF
+*
+*        Check for conditional assignment operator
+         IF (CLI,0(R5),EQ,C'?') THEN
+*           If the next char will return =
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
+               CLI   G_SCAN_TOKEN_72,C'Y'
+               BNE   SET_CONDITIONAL_OPERATOR
+*              Check for ?= on pos 71 (making = an ignore char)
+               L     R6,G_SCAN_CURRCOL * Get current column
+               C     R6,=F'71'         * Check for pos 72
+               IF (L) THEN
+SET_CONDITIONAL_OPERATOR EQU *
+*                 Set token type to operator
+                  MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
+*                 Was it expected? If not, write error and stop
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
+                     MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_X
+               LC=C'Y'
+                     MVC   G_RETCODE,=F'8' * Set return code 8
+                     B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+                  ENDIF
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN
+                  BASR  R14,R15            * Link to SCAN_CHAR section
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  B     SCAN_TOKEN_VALID   * Skip to finishing
+               ELSE
+                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=X
+               C'Y'
+                  MVC   G_RETCODE,=F'8'    * Set return code 8
+                  B     SCAN_TOKEN_RET     * Skip rest of tokenizer
+               ENDIF
+            ENDIF
+         ENDIF
+*
+*        Check for colon, which could be a rule or byte 1 of :=
+         IF (CLI,0(R5),EQ,C':') THEN
+*           Set token type to rule (check for := follows)
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_RULE
+*           If the next char will return =
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
+*              Check if an operator is expected, if not error and stop
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
+                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=X
+               C'Y'
+                  MVC   G_RETCODE,=F'8' * Set return code 8
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+               ENDIF
+            ELSE
+*              If next char is not =, so it's a rule
+*              Check if a rule is expected, if not error and stop
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_RULE,Z) THEN
+                  MLWZMRPT RPTLINE=CL133'0Unexpected colon',APND_LC=C'YX
+               '
+                  MVC   G_RETCODE,=F'8' * Set return code 8
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+               ENDIF
+            ENDIF
+*           If we end up here the rule or operator was valid
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_UNCONDITIONAL_OPERATOR
+*           Check for := on pos 71 (making = an ignore char)
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'71'         * Check for pos 72
+            BNL   SCAN_TOKEN_VALID  * Skip to finishing valid token
+CHECK_UNCONDITIONAL_OPERATOR EQU *
+*           Check again for next char =
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
+*              Set token type to operator
+               MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
+               L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get addr SCAN_CHAR
+               BASR  R14,R15             * Link to SCAN_CHAR section
+               BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            ENDIF
+            B     SCAN_TOKEN_VALID * Skip to finishing valid token
+         ENDIF
+*
+*        Check for a variable
+         IF (CLI,0(R5),EQ,C'$') THEN
+*           Set token type to variable (check for $@ or $% follows)
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_VARIABLE
+*           Was it expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_OPENVAR,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected variable or function'X
+               ,APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+*           Check if next char will be @
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'@') THEN
+*              Set token type to target variable
+               MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_ACRO
+*              Was it expected? If so, continue checking because the
+*              expected bitstring isn't complete
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_ACRO,O) THEN
+*                 Check if in recipe
+                  TM    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+                  IF (Z) THEN     * Not in recipe, keep on checking
+*                    Check if in expand (resolving variables in rule
+*                    requisites during phase 2)
+                     TM    G_SCAN_STATE,SCAN_STATE_IN_EXPAND
+                  ENDIF
+*                 If either of the tests above gives CC ones
+                  IF (O) THEN
+                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                     L     R15,LWZMAKE_SCAN_CHARA_TOKEN
+                     BASR  R14,R15             * Link to SCAN_CHAR
+                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                     B     SCAN_TOKEN_VALID    * Skip to finish token
+                  ENDIF
+               ENDIF
+*              If not expected or the other tests above fail, write
+*              error and stop
+               MLWZMRPT RPTLINE=CL133'0Unexpected target variable',APNDX
+               _LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+*           Check if next char will be %
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'%') THEN
+*              Set token type to target member variable
+               MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_PERCENT
+*              Was it expected? If so, continue checking because the
+*              expected bitstring isn't complete
+               IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_PERCENT,O) THEN
+*                 Check if in recipe
+                  TM    G_SCAN_STATE,SCAN_STATE_IN_RULE2
+                  IF (Z) THEN     * Not in rule2, keep on checking
+                     TM    G_SCAN_STATE,SCAN_STATE_IN_RULE3
+                  ENDIF
+                  IF (Z) THEN     * Not in rule3, keep op checking
+*                    Check if in expand (resolving variables in rule
+*                    requisites during phase 2)
+                     TM    G_SCAN_STATE,SCAN_STATE_IN_EXPAND
+                  ENDIF
+*                 If either of the tests above gives CC ones
+                  IF (NO) THEN
+                     MVI   G_SCAN_TOKENTYPE,X'00'
+                  ENDIF
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  L     R15,LWZMAKE_SCAN_CHARA_TOKEN
+                  BASR  R14,R15             * Link to SCAN_CHAR
+                  BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+                  B     SCAN_TOKEN_VALID    * Skip to finish token
+               ELSE
+                  MLWZMRPT RPTLINE=CL133'0Unexpected target member variX
+               able',APND_LC=C'Y'
+                  MVC   G_RETCODE,=F'8' * Set return code 8
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+               ENDIF
+            ENDIF
+*
+*           So it's not $@ or $%, continue checking normal variable
+*           If we're at pos 71 or more, no sense checking the rest
+*           because there's not enough room for a variable
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_VAR_BRACKET
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'70'         * Check for pos 71 or above
+            IF (NL) THEN            * If so write error and stop
+               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+CHECK_VAR_BRACKET EQU *
+*           Check if next char will be either ( or {
+            IF (CLI,G_SCAN_PEEKCHAR,EQ,C'(') THEN
+*              Save matching close bracket to check later
+               MVI   G_SCAN_CLOSE_BRACKET,C')'
+            ELSE
+               IF (CLI,G_SCAN_PEEKCHAR,EQ,C'{') THEN
+*                 Save matching close bracket to check later
+                  MVI   G_SCAN_CLOSE_BRACKET,C'}'
+               ELSE
+*                 Neither ( nor { is a syntax error
+                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
+                  MVC   G_RETCODE,=F'8' * Set return code 8
+                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+               ENDIF
+            ENDIF
+*
+*           Valid variable start, so store in token 1
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15             * Link to SCAN_CHAR section
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+*           The next bit of code is a dirty trick because determining
+*           if the scan state should be set to rule should really only
+*           be done in the statement parser section.
+*           The thing is, when a variable is the first token the scan
+*           state should be IN_RULE before pushing it on the stack and
+*           setting it to IN_VARIABLE(R)
+            IC    R14,G_SCAN_STATE * Get the scan state
+            N     R14,=X'0000007F' * Clear out bits 0-56, including
+*                                  * the high order bit in the scan
+*                                  * state for 'in recipe'
+            C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check not in stmt
+            IF (EQ) THEN           * If so...
+*              Clear scan state except for left most bit 'in recipe'
+               NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*              Set scan state bits to IN_RULE
+               OI    G_SCAN_STATE,SCAN_STATE_IN_RULE
+            ENDIF
+*
+*           Push current scan state on the stack before setting
+*           it to IN_VARIABLE(R)
+            LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+            XR    R2,R2                 * Clear R2
+            IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+            IC    R15,G_SCAN_STATE      * Get current scan state
+            STC   R15,0(R2,R1)          * and store it in the stack
+            LA    R2,1(,R2)             * Add 1 to stack index
+            C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
+            IF (H) THEN                 * Yep, write error and stop
+               MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
+               flow',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'12'   * Set return code 12
+               B     SCAN_TOKEN_RET     * Skip rest of tokenizer
+            ENDIF
+            STC   R2,G_SCAN_STATE_STACK_IDX * Store new stack size
+*
+*           Clear scan state except left most bit 'in recipe', which
+*           sets CC
+            NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+            IF (Z) THEN           * If in recipe bit is off
+*              Set scan state bits to IN_VARIABLE
+               OI    G_SCAN_STATE,SCAN_STATE_IN_VARIABLE
+            ELSE                  * Else if recipe bit is on
+*              Set scan state bits to IN_VARIABLER
+               OI    G_SCAN_STATE,SCAN_STATE_IN_VARIABLER
+            ENDIF
+            B     SCAN_TOKEN_VALID * Skip to finishing valid token
+         ENDIF
+*
+*        Check for a closing bracket
+         CLI   0(R5),C')'          * Is it a )
+         IF (NE) THEN              * If not
+            CLI   0(R5),C'}'       * Is it a }
+         ENDIF
+         IF (EQ) THEN              * If it was ) or }
+*           Set token type to closing bracket
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
+*           Was if expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_CLOSEBRC,Z) THEN
+UNEXPECTED_CLOSE_BRACKET EQU *
+               MLWZMRPT RPTLINE=CL133'0Unexpected close bracket',APND_LX
+               C=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+*           Check if close bracket matches previous open bracket
+            IF (CLI,G_SCAN_CLOSE_BRACKET,NE,X'00') THEN
+               CLC   0(1,R5),G_SCAN_CLOSE_BRACKET
+               BNE   UNEXPECTED_CLOSE_BRACKET
+               MVI   G_SCAN_CLOSE_BRACKET,X'00'
+            ENDIF
+*
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+*           Check if scan state is form of IN_VARIABLE*, if not it's
+*           just a closing bracket, meaning no pop of scan state stack
+            IC    R14,G_SCAN_STATE * Get the scan state
+            N     R14,=X'0000007F' * Clear out bits 0-56, including
+*                                  * the high order bit in the scan
+*                                  * state for 'in recipe'
+            C     R14,=A(SCAN_STATE_IN_VARIABLE2) * Check in variable2
+            IF (NE) THEN           * If not, check in variableR
+               C     R14,=A(SCAN_STATE_IN_VARIABLER)
+               BNE   SCAN_TOKEN_VALID * Neither, so skip to finish
+            ENDIF
+            LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+            XR    R2,R2                 * Clear R2
+            IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+            BCTR  R2,R0                 * Subtract 1 from index
+            IC    R15,0(R2,R1)          * Get stack state in that idx
+            STC   R15,G_SCAN_STATE      * And save it as current state
+            STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+            B     SCAN_TOKEN_VALID      * Skip to finishing valid token
+         ENDIF
+*
+*        Check for a comma
+         CLI   0(R5),C','          * Is it a ,
+         IF (EQ) THEN
+*           Set token type to comma
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMA
+*           Was if expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_COMMA,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected comma',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            B     SCAN_TOKEN_VALID      * Skip to finishing valid token
+         ENDIF
+*
+*        Check for a slash
+         CLI   0(R5),C'/'          * Is it a /
+         IF (EQ) THEN
+*           Set token type to slash
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SLASH
+*           Was if expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_SLASH,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected slash',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+            ENDIF
+*
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+            B     SCAN_TOKEN_VALID      * Skip to finishing valid token
+         ENDIF
+*
+*        Special variables are the first token in a new statement, so
+*        if we're already in one, skip the special variable check
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check not in statement
+         BNE   SKIP_SCAN_SPECIAL  * If not skip special var check
+*
+*        Check for special variable. This snippet only checks for a
+*        variable that starts with . and consists of valid special var
+*        characters. Whether it's semantically valid is checked in the
+*        statement parser.
+         IF (CLI,0(R5),EQ,C'.') THEN
+*           Set token type to special variable
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SPECIAL
+*           Was it expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_SPECIAL,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected special variable',APNX
+               D_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
+            ENDIF
+*
+STORE_NEXT_SPECIAL_TOKEN_CHAR EQU *
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_SPECIAL_PEEKCHAR
+*
+*           Positions up to 72 count as part of the special var name
+*           We check peek char so when the next token is parsed,
+*           scanning continues with the char directly after the special
+*           variable name
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'71'         * Check pos 72 and if we're there
+            BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
+*
+CHECK_SPECIAL_PEEKCHAR EQU *
+            LA    R2,G_SCAN_PEEKCHAR * Point R2 to peek char
+            TRT   0(1,R2),SPECIAL_TOKEN_NEXTCHAR * Check for valid char
+            BNZ   SCAN_TOKEN_VALID  * If not, skip to finish token
+*           Ending up here means the char is valid, to scan it and
+*           loop around to store it and check the next
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15           * Link to SCAN_CHAR section
+            B     STORE_NEXT_SPECIAL_TOKEN_CHAR * Loop around
+         ENDIF
+*
+SKIP_SCAN_SPECIAL EQU *
+*
+*        Check for normal token
+         TRT   0(1,R5),NORMAL_TOKEN_STARTCHAR
+         IF (Z) THEN
+*           Set token type to normal
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_NORMAL
+*           Was it expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_NORMAL,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected token',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
+            ENDIF
+*
+STORE_NEXT_NORMAL_TOKEN_CHAR EQU *
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_NORMAL_PEEKCHAR
+*
+*           Positions up to 72 count as part of the normal token name
+*           We check peek char so when the next token is parsed,
+*           scanning continues with the char directly after the normal
+*           token name
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'71'         * Check pos 72 and if we're there
+            BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
+*
+CHECK_NORMAL_PEEKCHAR EQU *
+            LA    R2,G_SCAN_PEEKCHAR * Point R2 to peek char
+            CLI   0(R2),C'$'
+            BE    SCAN_TOKEN_VALID
+            TRT   0(1,R2),NORMAL_TOKEN_NEXTCHAR * Check for valid char
+            BNZ   SCAN_TOKEN_VALID   * If not, skip to finish token
+*           Ending up here means the char is valid, to scan it and
+*           loop around to store it and check the next
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15         * Link to SCAN_CHAR section
+            B     STORE_NEXT_NORMAL_TOKEN_CHAR * Loop around
+         ENDIF
+*
+*        Check for number token
+         TRT   0(1,R5),NUMBER_TOKEN_CHAR
+         IF (Z) THEN
+*           Set token type to number
+            MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_NUMBER
+*           Was it expected? If not, write error and stop
+            IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_NUMBER,Z) THEN
+               MLWZMRPT RPTLINE=CL133'0Unexpected number',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'8' * Set return code 8
+               B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
+            ENDIF
+*
+STORE_NEXT_NUMBER_TOKEN_CHAR EQU *
+            BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+            CLI   G_SCAN_TOKEN_72,C'Y'
+            BNE   CHECK_NUMBER_PEEKCHAR
+*
+*           Positions up to 72 count as part of the number token name
+*           We check peek char so when the next token is parsed,
+*           scanning continues with the char directly after the number
+*           token name
+            L     R6,G_SCAN_CURRCOL * Get current column
+            C     R6,=F'71'         * Check pos 72 and if we're there
+            BNL   SCAN_TOKEN_VALID  * skip to finishing valid token
+*
+CHECK_NUMBER_PEEKCHAR EQU *
+            LA    R5,G_SCAN_PEEKCHAR * Point R2 to peek char
+            TRT   0(1,R5),NUMBER_TOKEN_CHAR * Check for valid char
+            BNZ   SCAN_TOKEN_VALID   * If not, skip to finish token
+*           Ending up here means the char is valid, to scan it and
+*           loop around to store it and check the next
+            L     R15,LWZMAKE_SCAN_CHARA_TOKEN * Get address SCAN_CHAR
+            BASR  R14,R15         * Link to SCAN_CHAR section
+            B     STORE_NEXT_NUMBER_TOKEN_CHAR * Loop around
+         ENDIF
+*
+*        If the scanned character doesn't start any of the previous
+*        types, just store the character, don't set a type and just let
+*        the parser take care of it
+         BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+*
+*        Previous code jumps here when a valid done is completely
+*        scanned
+SCAN_TOKEN_VALID EQU *
+*        If normal token, it could be a call keyword
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_NORMAL) THEN
+            CLC   G_SCAN_TOKEN_LEN,=F'4' * Is the token 4 bytes long?
+            IF (EQ) THEN
+               L     R14,G_SCAN_TOKENA    * Point R14 to token 1
+               MVC   G_CALL4,0(R14)       * Copy to helper var
+               OC    G_CALL4,=X'40404040' * Convert to uppercase
+               CLC   G_CALL4,=C'CALL'     * Is it CALL?
+               IF (EQ) THEN               * If so...
+*                 Set token type to call
+                  MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CALL
+               ENDIF
+            ENDIF
+         ENDIF
+*
+*        Write a trace record for the token we just scanned
+*        Put token type char and scanned token in helper data
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEBUG) THEN
+            MVC   G_HELPER_DATA(1),G_SCAN_TOKENTYPE * Store token type
+            MVI   G_HELPER_DATA+1,C' '  * followed by space
+            LA    R2,G_HELPER_DATA+2    * Point R2 to where token comes
+            L     R3,G_SCAN_TOKENA      * Point R3 to scanned token
+            L     R4,G_SCAN_TOKEN_LEN   * Get length of scanned token
+            C     R4,=A(L'G_HELPER_DATA-2) * Compare it to leftover
+            IF (H) THEN                 * space, if too long
+               L     R4,=A(L'G_HELPER_DATA-2) * Replace with what fits
+            ENDIF
+            LA    R5,2(,R4)             * Put the correct length in R5
+            BCTR  R4,R0                 * R4 = R4 - 1 for EX
+            B     *+10                  * Skip MVC constant for EX
+            MVC   0(1,R2),0(R3)         * MVC constant for EX
+            EX    R4,*-6                * EX previous MVC stmt with R4
+            LA    R2,G_HELPER_DATA      * Get address of helper data
+            ST    R2,G_LWZMTRC_DATA_PTR * And store as trace data ptr
+            STH   R5,G_LWZMTRC_DATA_SIZ * And store as data length
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'610',DATA
+         ENDIF
+*
+SCAN_TOKEN_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+* Store token char routine, appends a scanned char to token 1
+* R7 is expected to contain the position within token 1 where the next
+* character should be stored (used as an index register).
+*
+STORE_TOKEN_CHAR EQU *
+         C     R7,=A(SCAN_TOKEN_MAXLEN) * Have we exhausted token 1?
+         IF (GT) THEN             * If so, write error and stop
+            MLWZMRPT RPTLINE=CL133'0Internal error, no more room left iX
+               n 4K token space',APND_LC=C'Y'
+            MVC   G_RETCODE,=F'12' * Set return code 12
+            B     SCAN_TOKEN_RET   * Dirty jump to end of tokenizer
+         ENDIF                     * but quicker than check retcode
+*                                  * everytime after this routine
+         L     R4,G_SCAN_TOKENA   * Point R4 to token 1
+         IC    R5,G_SCAN_CURRCHAR * Get the last scanned character
+         STC   R5,0(R7,R4)        * And store it at index R7
+         LA    R7,1(,R7)          * Increase index R7 with 1
+         ST    R7,G_SCAN_TOKEN_LEN * and store it as token 1 length
+         BR    R8                 * Return
+*
+         LTORG
+*
+* Local constant pointers to section addresses
+LWZMAKE_SCAN_CHARA_TOKEN     DC    A(LWZMAKE_SCAN_CHAR)
+*
+* Local constant pointers to previously defined constants, but too far
+* away for local addressing
+SCAN_STATE_TABLEA_TOKEN      DC    A(SCAN_STATE_TABLE)
+*
+* Translate table for starting character for a normal token
+* Can be ía-zA-Zù
+NORMAL_TOKEN_STARTCHAR DS 0F
+         DC    256X'FF'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'a'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'j'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_STARTCHAR+C's'
+         DC    X'0000000000000000'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'A'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'J'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'S'
+         DC    X'0000000000000000'
+         ORG
+*
+* Translate table for any character for a normal token except the first
+* Can be í$#@_a-zA-Z0-9ù
+NORMAL_TOKEN_NEXTCHAR DS 0F
+         DC    256X'FF'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'$'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'#'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'@'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'_'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'a'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'j'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C's'
+         DC    X'0000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'A'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'J'
+         DC    X'000000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'S'
+         DC    X'0000000000000000'
+         ORG   NORMAL_TOKEN_NEXTCHAR+C'0'
+         DC    X'00000000000000000000'
+         ORG
+*
+* Translate table for any character for a special token
+* Can be í_A-Zù
+SPECIAL_TOKEN_NEXTCHAR DS 0F
+         DC    256X'FF'
+         ORG   SPECIAL_TOKEN_NEXTCHAR+C'_'
+         DC    X'00'
+         ORG   SPECIAL_TOKEN_NEXTCHAR+C'A'
+         DC    X'000000000000000000'
+         ORG   SPECIAL_TOKEN_NEXTCHAR+C'J'
+         DC    X'000000000000000000'
+         ORG   SPECIAL_TOKEN_NEXTCHAR+C'S'
+         DC    X'0000000000000000'
+         ORG
+*
+* Translate table for any character for a number token
+* Can be í0-9ù
+NUMBER_TOKEN_CHAR DS 0F
+         DC    256X'FF'
+         ORG   NUMBER_TOKEN_CHAR+C'0'
+         DC    X'00000000000000000000'
+         ORG
+*
+***********************************************************************
+* Section: LWZMAKE_SCAN_CHAR                                          *
+* Purpose: Parsing scanner. This section gets the next character from *
+*          whichever input is at the top of the input stack. For a    *
+*          makefile, after column 80 a next record is read, any other *
+*          type of input is simply read until its last char. If an    *
+*          input is exhausted it is popped from the input stack.      *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_SCAN_CHAR MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEEBUG,MSGNR=C'604',CONST=C'LWZMX
+               AKE_SCAN_CHAR'
+*
+         MVI   G_SCAN_NEWLINE,C'N' * Initialize newline
+         MVC   G_SCAN_CURRCHAR(2),=X'0000' * Init CURRCHAR + PEEKCHAR
+*
+SCAN_CHAR_CHECK_INPUT_STACK EQU *
+*        Check for empty input stack, of so set EOF and skip the rest
+         IF (CLI,G_SCAN_INPUT_STACK_IDX,EQ,X'00') THEN
+            MVI   G_MKFEOF,C'Y'   * Set EOF switch to Y
+            B     SCAN_CHAR_RET   * Skip rest of scanner
+         ELSE
+*           Get the top entry in the input stack
+            XR    R2,R2           * Clear R2
+            XR    R3,R3           *   and R3
+            IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack index
+            BCTR  R3,R0           * Subtract 1 for calculating offset
+            M     R2,=A(INPUT_DSECT_SIZ) * Calculate offset to entry
+            LA    R2,G_SCAN_INPUT_STACK * Point R2 to input stack
+            AR    R2,R3           * Add calculated offset
+*
+            USING INPUT_DSECT,R2  * Address with INPUT DSECT
+*
+            XR    R1,R1
+            LH    R1,INPUTPOS
+            ST    R1,G_SCAN_CURRCOL
+*
+            CLI   INPUTTYPE,INPUTTYPE_MAKEFILE
+            BE    SCAN_CHAR_READ_FROM_MAKEFILE * If so jump ahead
+            CLI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC
+            BE    SCAN_CHAR_READ_FROM_MAKEFILE * If so jump ahead
+*
+            XR    R3,R3
+            LH    R3,INPUTLEAD
+            CH    R3,=H'0'
+            IF (NE) THEN
+               MVI   G_SCAN_CURRCHAR,C' '
+               BCTR  R3,R0
+               STH   R3,INPUTLEAD
+               B     SCAN_CHAR_RET
+            ENDIF
+*
+            XR    R3,R3           * Clear R3
+            LH    R3,INPUTPOS     * Get next position in input
+            CH    R3,INPUTLEN     * Has input been exhausted?
+            IF (L) THEN           * If not...
+               L     R4,INPUTPTR  * Point R4 to input
+               IC    R5,0(R3,R4)  * Get the next character from input
+               STC   R5,G_SCAN_CURRCHAR * and put it in CURRCHAR
+               LA    R3,1(,R3)    * Advance next position
+               STH   R3,INPUTPOS  * and store it in input block
+               CH    R3,INPUTLEN  * Was this the last char?
+               IF (L) THEN        * If not, also get PEEKCHAR
+                  IC    R5,0(R3,R4) * Get the next char + 1 from input
+                  STC   R5,G_SCAN_PEEKCHAR * and put it in PEEKCHAR
+               ENDIF
+               B     SCAN_CHAR_RET * Skip rest of scanner
+            ELSE                  * Else, input exhausted
+               IF (CLI,INPUTTYPE,EQ,INPUTTYPE_STRPTR_NEOF_FREE) THEN
+                  XR    R3,R3
+                  LH    R3,INPUTLEN
+                  ST    R3,G_STGOR_LEN
+                  MVC   G_STGOR_PTR,INPUTPTR
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_RELEASEA_SCAN_CHAR
+                  BASR  R14,R15
+               ENDIF
+               XR    R3,R3        * Clear R3
+               IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack idx
+               BCTR  R3,R0        * Subtract 1
+               STC   R3,G_SCAN_INPUT_STACK_IDX * and put back in stack
+*              Input type that continues with popped stack entry?
+               IF (CLI,INPUTTYPE,NE,INPUTTYPE_STRPTR_NEOF),AND,        X
+               (CLI,INPUTTYPE,NE,INPUTTYPE_STRPTR_NEOF_FREE) THEN
+                  MVI   G_MKFEOF,C'Y'
+                  B     SCAN_CHAR_RET * Skip rest of scan char
+               ENDIF
+               B     SCAN_CHAR_CHECK_INPUT_STACK * Loop around to
+*                                 * check the input stack again
+            ENDIF
+         ENDIF
+*
+SCAN_CHAR_READ_FROM_MAKEFILE EQU *
+*        A makefile has LRECL 80 but in order to return a line change
+*        as a separate token, a fictitious 81st column is used for that
+*        When we go beyond column 81 that triggers a next record to be
+*        read from the makefile.
+         XR    R1,R1
+         LH    R1,INPUTPOS
+         ST    R1,G_SCAN_CURRCOL
+*
+         L     R3,G_SCAN_CURRCOL  * Get the current column
+         LA    R3,1(,R3)          * Advance 1 position
+         ST    R3,G_SCAN_CURRCOL  * and put it back
+         STH   R3,INPUTPOS
+         C     R3,=F'80'          * Check if we're past 81 yet
+         IF (GT) THEN             * If so...
+            MVI   G_SCAN_CONTINUED_LINE,C'N' * Reset continued line
+            BAL   R8,READNEXT     * Read another input record
+         ELSE                     * Not past 81
+            IF (EQ) THEN          * Buf if exactly at 81
+               MVI   G_SCAN_NEWLINE,C'Y' * Set new line switch to Y
+               B     SCAN_CHAR_RET       * Skip rest of scanner
+            ENDIF
+         ENDIF
+*
+*        Input type that continues with popped stack entry?
+         IF (CLI,G_MKFEOF,EQ,C'Y') THEN
+            MVI   G_MKFEOF,C'N'
+            B     SCAN_CHAR_CHECK_INPUT_STACK
+         ENDIF
+         DROP  R2
+*
+*        If we're here, we're scanning a column between 1 and 80
+         LA    R4,G_MAKEFILE_REC  * Point R4 to the last read record
+         L     R3,G_SCAN_CURRCOL  * Get the current column
+         IC    R5,0(R3,R4)        * Get the next character from input
+         STC   R5,G_SCAN_CURRCHAR * and put it in CURRCHAR
+         C     R3,=F'79'          * Check pos = 80
+         IF (LT) THEN             * Only pos < 80 there's a PEEKCHAR
+            IC    R5,1(R3,R4)     * Get the next char + 1 from input
+            STC   R5,G_SCAN_PEEKCHAR * and put it in PEEKCHAR
+         ENDIF
+*
+*        The rest of this scanner code is for writing a deeebug trace
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEEEBUG) THEN
+            LA    R2,G_HELPER_DATA   * Point R2 to helper data
+            MVC   0(5,R2),=C'LINE '  * Start with line constant
+            LA    R2,5(,R2)          * Advance R2 to right after
+            LA    R6,5               * Use R6 as length
+            L     R3,G_SCAN_CURRLINE * Get the current line number
+            CVD   R3,G_DEC8          * Convert it to packed decimal
+            UNPK  G_ZONED8,G_DEC8    * Convert it to zoned
+            OI    G_ZONED8+7,X'F0'   * Get rid of sign nibble
+            MVC   0(8,R2),G_ZONED8   * Append line number to trc data
+            LA    R2,8(,R2)          * Advance R2 to right after
+            LA    R6,8(,R6)          * Add 8 to length
+            MVC   0(8,R2),=C' COLUMN ' * Append column constant
+            LA    R2,8(,R2)          * Advance R2 to right after
+            LA    R6,8(,R6)          * Add 8 to length
+            L     R3,G_SCAN_CURRCOL  * Get the current column numer
+            LA    R3,1(,R3)          * Add 1 because it's zero based
+            CVD   R3,G_DEC8          * Convert it to packed decimal
+            UNPK  G_ZONED8,G_DEC8    * Convert it to zoned
+            OI    G_ZONED8+7,X'F0'   * Get rid of sign nibble
+            MVC   0(8,R2),G_ZONED8   * Append column number to trc data
+            LA    R2,8(,R2)          * Advance R2 to right after
+            LA    R6,8(,R6)          * Add 8 to length
+            MVI   0(R2),C' '         * Append a space
+            MVC   1(1,R2),G_SCAN_CURRCHAR * Append current char
+            MVI   2(R2),C' '         * Append another space
+            MVC   3(1,R2),G_SCAN_PEEKCHAR * Append peek char
+            LA    R6,4(,R6)          * Add 4 to length
+            LA    R2,G_HELPER_DATA   * Get address of helper data
+            ST    R2,G_LWZMTRC_DATA_PTR * Set is as trace data pointer
+            STH   R6,G_LWZMTRC_DATA_SIZ * Store R6 as trace data length
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEEBUG,MSGNR=C'611',DATA
+         ENDIF
+*
+SCAN_CHAR_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+* Read next MAKEFILE record
+*
+READNEXT EQU   *
+         XR    R5,R5              * Clear R5
+         IC    R5,G_SCAN_INPUT_STACK_IDX * Get current stack index
+         BCTR  R5,R0              * Subtract 1 to calculate offset
+         M     R4,=A(INPUT_DSECT_SIZ) * Calculate offset to new ntry
+         LA    R3,G_SCAN_INPUT_STACK * Point R3 to input stack
+         AR    R3,R5              * Add calculated offset
+         L     R4,INPUTPTR-INPUT_DSECT(,R3) * Advance to INPUTPTR
+         LA    R7,READNEXT_10     * Set R7 to statement EODAD routine
+*                                 * branches to at EOF
+         GET   (R4),G_MAKEFILE_REC * Get a record from makefile
+READNEXT_10 EQU *
+         IF (CLI,G_MKFEOF,NE,C'Y') THEN * Did we hit EOF? If not
+            MVC   G_SCAN_CURRCOL,=F'0' * Reset current column to 0
+            MVC   INPUTPOS-INPUT_DSECT(2,R3),=H'0'
+            L     R4,G_SCAN_CURRLINE * Get the current line
+            LA    R4,1(,R4)          * Advance 1 line count
+            ST    R4,G_SCAN_CURRLINE * And put it back as current line
+         ELSE
+            IF (CLI,INPUTTYPE-INPUT_DSECT(R3),EQ,INPUTTYPE_MAKEFILE_INCX
+               ) THEN
+               CLOSE ((R4)),MODE=31
+*
+               L     R7,INPUTXPTR-INPUT_DSECT(,R3)
+*
+               MVI   G_DYNALLOC_DSNAME,C' '
+               MVC   G_DYNALLOC_DSNAME+1(L'G_DYNALLOC_DSNAME-1),G_DYNALX
+               LOC_DSNAME
+               XR    R4,R4
+               LH    R4,STMT_I_INCLEN-STMT_I_DSECT(,R7)
+               C     R4,=A(L'G_DYNALLOC_DSNAME)
+               IF (H) THEN
+                  L     R4,=A(L'G_DYNALLOC_DSNAME)
+               ENDIF
+               LA    R2,G_DYNALLOC_DSNAME
+               LA    R3,STMT_I_INC-STMT_I_DSECT(,R7)
+READNEXT_DSNAME_CHAR EQU *
+               IF (CLI,0(R3),NE,C'(') THEN
+                  MVC   0(1,R2),0(R3)
+                  LA    R2,1(,R2)
+                  LA    R3,1(,R3)
+                  BCT   R4,READNEXT_DSNAME_CHAR
+               ENDIF
+*
+               MVC   G_DYNALLOC_MEMBER,=CL8' '
+               IF (CLI,0(R3),EQ,C'(') THEN
+                  LA    R3,1(,R3)
+                  LA    R2,G_DYNALLOC_MEMBER
+                  LA    R4,8
+READNEXT_MEMBER_CHAR EQU *
+                  IF (CLI,0(R3),NE,C')') THEN
+                     MVC   0(1,R2),0(R3)
+                     LA    R2,1(,R2)
+                     LA    R3,1(,R3)
+                     BCT   R4,READNEXT_MEMBER_CHAR
+                  ENDIF
+               ENDIF
+*
+               MVI   G_DYNALLOC_FUNC,C'U'
+*
+               L     R15,LWZMAKE_DYNALLOCA_SCAN_CHAR
+               BASR  R14,R15
+*
+               CLC   G_RETCODE,=F'0'
+               BNE   READNEXT_RET
+            ENDIF
+         ENDIF
+*
+READNEXT_RET EQU *
+         BR    R8                 * Return
+*
+         LTORG
+*
+LWZMAKE_STG_RELEASEA_SCAN_CHAR DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_DYNALLOCA_SCAN_CHAR    DC    A(LWZMAKE_DYNALLOC)
+*
+***********************************************************************
+* Section: LWZMAKE_ALLOC_STMT                                         *
+* Purpose: Allocate a memory block for an internal representation of  *
+*          a statement. This section also fills in the generic part   *
+*          of the allocated statement block, including chaining into  *
+*          the linked list of statements.                             *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_ALLOC_STMT MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_ALLOC_STMT'
+*
+         MVC   G_STMT_ALLOC_RETURN_PTR,=A(0) * Initialize return ptr
+*
+         MVC   G_STMT_SAVE_PTR,=A(0) * Initialize helper pointer
+*
+         LA    R7,G_STMT_LIST_PTR    * Get start of statement linked
+*                                    * list
+FIND_STMT_SLOT EQU *
+         CLC   0(4,R7),=A(0)         * Have we reached an empty ptr?
+         IF (NZ) THEN                * If not, go down the chain
+            L     R6,0(,R7)          * Get the actual pointer
+            ST    R6,G_STMT_SAVE_PTR * Save for back chain
+            LA    R7,STMT_NEXT_PTR-STMT_DSECT(,R6) * Get next stmt ptr
+            B     FIND_STMT_SLOT     * and loop around to check it
+         ENDIF
+*
+*        Allocate a statement block
+         MVC   G_STGOR_LEN,G_STMT_ALLOC_LEN * Set length to allocate
+         MVI   G_STGOR_TYPE,STGOR_TYPE_STMT * Set block type
+         L     R15,LWZMAKE_STG_OBTAINA_STMT
+         BASR  R14,R15              * Allocate a memory block
+         L     R1,G_STGOR_PTR
+         ST    R1,0(,R7)            * Save it at forward chain address
+         ST    R1,G_STMT_ALLOC_RETURN_PTR * Also save it as return ptr
+*
+*        Initialize block
+         L     R2,G_STMT_ALLOC_RETURN_PTR * Point R2 to memory block
+         L     R3,G_STMT_ALLOC_LEN  * Get length of block
+         XR    R0,R0                * Clear R0
+         XR    R1,R1                *   and R1
+         MVCL  R2,R0                * Zero out memory block
+*
+*        Fill in generic stuff
+         L     R1,G_STMT_ALLOC_RETURN_PTR
+*        Fill in block length and statement type
+         MVC   STMT_LEN-STMT_DSECT(4,R1),G_STMT_ALLOC_LEN
+         MVC   STMT_TYPE-STMT_DSECT(1,R1),G_STMT_ALLOC_TYPE
+*        Fill in switch for statement in recipe
+         IF (TM,G_SCAN_STATE,SCAN_STATE_IN_RECIPE,O) THEN
+            MVI   STMT_IN_RECIPE-STMT_DSECT(R1),C'Y'
+         ELSE
+            MVI   STMT_IN_RECIPE-STMT_DSECT(R1),C'N'
+         ENDIF
+*        Fill in back chain statement pointer
+         MVC   STMT_PREV_PTR-STMT_DSECT(4,R1),G_STMT_SAVE_PTR
+*
+ALLOC_STMT_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_STMT DC    A(LWZMAKE_STG_OBTAIN)
+*
+* Translate table for hex conversion
+STMT_HEXTAB EQU   *-C'0'
+            DC    C'0123456789ABCDEF'
+***********************************************************************
+* Section: LWZMAKE_STORE_VAR                                          *
+* Purpose: Assign a value to a variable. The binary search tree is    *
+*          searched, if the variable is found the new value is        *
+*          assigned. If not found, a new variable memory block is     *
+*          allocated, added to the binary search tree and then the    *
+*          value is assigned.                                         *
+*          R7 should point to a statement block for an assignment     *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_STORE_VAR MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_STORE_VAR'
+*
+         USING STMT_A_DSECT,R7    * Use R7 for addressing statement
+         USING VAR_DSECT,R6       * Use R6 for addressing variable
+*
+         LT    R6,G_FIRST_VAR_PTR * Get the start of the search tree
+         IF (Z) THEN              * If this is the first var
+            BAL   R8,ALLOC_VAR    * Perform allocate variable routine
+            LR    R6,R1           * Copy returned pointer to R6
+            ST    R6,G_FIRST_VAR_PTR * And set it as start of tree
+         ELSE                     * Else, search tree not empty
+TEST_VARS   EQU   *               * Test this var for matching name
+            XR    R3,R3           * Clear R3
+            LH    R3,STMT_A_DESTLEN * and get length of stmt var name
+            CH    R3,VARNAMELEN   * Compare it to current var name len
+            IF (H) THEN           * Compare length of shortest of the 2
+               LH    R3,VARNAMELEN * If current var name len is less
+            ENDIF                 * then use that
+            BCTR  R3,R0           * Subtract 1 for EX
+            LA    R2,STMT_A_DEST  * Point R2 to statement var name
+            LA    R4,VARNAME      * Point R4 to current var name
+            B     *+10            * Skip CLC constant for EX
+            CLC   0(1,R2),0(R4)   * CLC constant for EX
+            EX    R3,*-6          * EX previous CLC stmt with R3
+            IF (L) THEN           * If statement var name is lower
+               CLC   VARLOW,=A(0) * Check if current var's low ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_VAR * Perform allocate var routine
+                  ST    R1,VARLOW * Store returned pointer as low ptr
+                  LR    R6,R1     * And set it as the current var ptr
+                  B     FILL_VAR  * Skip to filling variable value
+               ELSE               * Else, current var's low ptr is set
+                  L     R6,VARLOW * Replace current var by low var
+                  B     TEST_VARS * Loop around to test that one
+               ENDIF
+            ELSE                  * Else, statement var name is >=
+               IF (EQ) THEN       * If the compared part is equal
+                  CLC   STMT_A_DESTLEN,VARNAMELEN * Check if they're
+                  IF (EQ) THEN    * also of equal length
+                     B     FILL_VAR * because then no alloc needed,
+                  ENDIF           * just replacing the value
+               ENDIF
+*              If we end up here, it's not a match
+               CLC   VARHIGH,=A(0) * Check if curr var's high ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_VAR * Perform allocate var routine
+                  ST    R1,VARHIGH * Store returned pointer as high ptr
+                  LR    R6,R1     * And set it as the current var ptr
+                  B     FILL_VAR  * Skip to filling variable value
+               ELSE               * Else, current var's high ptr is set
+                  L     R6,VARHIGH * Replace current var by high var
+                  B     TEST_VARS * Loop around to test that one
+               ENDIF
+            ENDIF
+         ENDIF
+*
+* Set a value, either in a new variable just allocated, or replacing a
+* value of an existing variable
+FILL_VAR EQU   *
+         CLC   VALLEN,=AL2(0)     * Check if there's an existing value
+         IF (NE) THEN             * If so...
+            XR    R2,R2           * Clear R2
+            LH    R2,VALLEN       * and put old value length in
+            ST    R2,G_STGOR_LEN
+            MVC   G_STGOR_PTR,VALPTR * Get old value pointer
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+            L     R15,LWZMAKE_STG_RELEASEA_STORE_VAR
+            BASR  R14,R15
+         ENDIF
+         XR    R2,R2              * Clear R2
+         LH    R2,STMT_A_SRCLEN   * Get new value length
+         STH   R2,VALLEN          * Put it in variable block
+         ST    R2,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+         L     R15,LWZMAKE_STG_OBTAINA_STORE_VAR
+         BASR  R14,R15              * Allocate value storage
+         L     R1,G_STGOR_PTR
+         ST    R1,VALPTR          * Put new memory ptr in var block
+         LR    R0,R1              * Copy new value ptr to R0
+         LR    R1,R2              * Copy new value length to R1
+         LR    R3,R1              * Make sure no cropping/filling
+         LA    R2,STMT_A_SRC      * Point R2 to new value
+         MVCL  R0,R2              * Copy new value to variable value
+*
+*        Write a report line with variable assignment
+         MVC   G_LWZMRPT_LINE,=CL133' .....................'
+         LA    R2,G_LWZMRPT_LINE+1
+         LA    R3,21
+         LA    R4,VARNAME
+         LR    R5,R3
+         CH    R5,VARNAMELEN
+         IF (H) THEN
+            LH    R5,VARNAMELEN
+         ENDIF
+         BCTR  R5,R0
+         B     *+10
+         MVC   0(1,R2),0(R4)
+         EX    R5,*-6
+         LA    R2,G_LWZMRPT_LINE+23
+         LA    R3,110
+         L     R4,VALPTR
+         LR    R5,R3
+         CH    R5,VALLEN
+         IF (H) THEN
+            LH    R5,VALLEN
+         ENDIF
+         LTR   R5,R5
+         BZ    STORE_VAR_WRITE_RPT
+         BCTR  R5,R0
+         B     *+10
+         MVC   0(1,R2),0(R4)
+         EX    R5,*-6
+STORE_VAR_WRITE_RPT EQU *
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         DROP  R6
+*
+STORE_VAR_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+* Allocate a variable block. Value for variable is allocated separately
+* The using for R7 in previous code is left intact to keep addressing
+* of the assignment statement possible.
+*
+ALLOC_VAR EQU  *
+         L     R3,=A(VAR_DSECT_LEN) * Get size of VAR_DSECT
+*
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_VAR
+         L     R15,LWZMAKE_STG_OBTAINA_STORE_VAR
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
+*
+*        Clear memory block
+         LR    R2,R1              * Copy ptr to target block to R2
+         XR    R4,R4              * Clear R4
+         XR    R5,R5              *   and R5
+         MVCL  R2,R4              * Zero out memory
+*
+         USING VAR_DSECT,R1       * Addressing of new variable block
+*
+         MVC   VARLEN,=A(VAR_DSECT_LEN)
+         MVC   VARNAMELEN,STMT_A_DESTLEN * Copy variable name length
+         MVC   VARNAME,STMT_A_DEST * Copy variable name (both 72 long)
+*
+         DROP  R1
+*
+         BR    R8                 * Return
+*
+         DROP  R7
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_STORE_VAR  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_STORE_VAR DC    A(LWZMAKE_STG_RELEASE)
+*
+* Translate table for hex conversion
+VAR_HEXTAB EQU   *-C'0'
+           DC    C'0123456789ABCDEF'
+*
+***********************************************************************
+* Section: LWZMAKE_STORE_TGT                                          *
+* Purpose: Store a target in binary search tree. The binary search    *
+*          tree is searched, but an existing entry won't be replaced, *
+*          the tree can contain duplicate entries. At the correct     *
+*          place a new allocated memory block is inserted and filled  *
+*          with the target data.                                      *
+*          R7 should point to a rule statement block                  *
+*          R9 should point to global data.                            *
+*          Token 1 contains a single space delimited target name      *
+***********************************************************************
+LWZMAKE_STORE_TGT MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_STORE_TGT'
+*
+         USING TARGET_DSECT,R6    * Use R6 for addressing variable
+*
+         LT    R6,G_FIRST_TGT_PTR * Get the start of the search tree
+         IF (Z) THEN              * If this is the first target
+            BAL   R8,ALLOC_TGT    * Perform allocate target routine
+            ST    R1,G_FIRST_TGT_PTR * Store return ptr start of tree
+            B     STORE_TGT_RET   * Skip rest of store target
+         ELSE                     * Else, search tree not empty
+TEST_TGTS   EQU   *               * Test this target for matching name
+            L     R3,G_SCAN_TOKEN_LEN * Get new target name length
+            CH    R3,TGTNAMELEN   * Compare it to current tgt name len
+            IF (H) THEN           * Compare length of shortest of the 2
+               LH    R3,TGTNAMELEN * If current tgt name len is less
+            ENDIF                 * then use that
+            BCTR  R3,R0           * Subtract 1 for EX
+            L     R2,G_SCAN_TOKENA * Point R2 to new target name
+            LA    R4,TGTNAME      * Point R4 to current target name
+            B     *+10            * Skip CLC constant for EX
+            CLC   0(1,R2),0(R4)   * CLC constant for EX
+            EX    R3,*-6          * EX previous CLC stmt with R3
+            IF (L) THEN           * If new target name is lower
+               CLC   TGTLOW,=A(0) * Check if current tgt's low ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_TGT * Perform allocate tgt routine
+                  ST    R1,TGTLOW * Store returned poitner as low ptr
+                  B     STORE_TGT_RET * Skip rest of store target
+               ELSE               * Else, current tgt's low ptr is set
+                  L     R6,TGTLOW * Replace current tgt by low tgt
+                  B     TEST_TGTS * Loop around to test that one
+               ENDIF
+            ELSE                  * Else, new target name is >=
+               CLC   TGTHIGH,=A(0) * Check if curr tgt's high ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_TGT * Perform allocate tgt routine
+                  ST    R1,TGTHIGH * Store returned pointer as high ptr
+                  B     STORE_TGT_RET * Skip rest of store target
+               ELSE               * Else, current tgt's high ptr is set
+                  L     R6,TGTHIGH * Replace current tgt by high tgt
+                  B     TEST_TGTS * Loop around to test that one
+               ENDIF
+            ENDIF
+         ENDIF
+*
+         DROP  R6
+*
+STORE_TGT_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+* Allocate a target block
+* R7 is left intact pointing to the rule statement where this target
+* originated
+*
+ALLOC_TGT EQU  *
+         L     R3,=A(TARGET_DSECT_LEN) * Get size of fixed part of tgt
+         A     R3,G_SCAN_TOKEN_LEN  * Add target name length
+         A     R3,=A(8)           * Add length for optional member name
+*
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_TGT
+         L     R15,LWZMAKE_STG_OBTAINA_TGT
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
+*
+         USING TARGET_DSECT,R1    * Addressing of new target block
+*
+*        Clear memory block
+         LR    R2,R1              * Copy ptr to target block to R2
+         XR    R4,R4              * Clear R4
+         XR    R5,R5              *   and R5
+         MVCL  R2,R4              * Zero out memory
+*
+*        Fill in new target block
+         L     R3,=A(TARGET_DSECT_LEN) * Get size of fixed part of tgt
+         A     R3,G_SCAN_TOKEN_LEN  * Add target name length
+         A     R3,=A(8)           * Add length for optional member name
+         ST    R3,TGTLEN          * Store total block length
+         L     R2,G_SCAN_TOKEN_LEN * Get length of target name
+         STH   R2,TGTNAMELEN      * Store target name length in block
+         ST    R7,TGTSTMT         * Store target stmt ptr in block
+         LA    R2,TGTNAME         * Point R2 to target name in block
+         L     R3,G_SCAN_TOKEN_LEN * Get target name length
+         L     R4,G_SCAN_TOKENA   * Point R4 to target name in token 1
+         LR    R5,R3              * Make sure no cropping/filling
+         MVCL  R2,R4              * Copy target name to block
+*
+         DROP  R1
+*
+         BR    R8                 * Return
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_TGT DC    A(LWZMAKE_STG_OBTAIN)
+*
+* Translate table for hex conversion
+TGT_HEXTAB EQU   *-C'0'
+           DC    C'0123456789ABCDEF'
+*
+***********************************************************************
+* Section: LWZMAKE_STORE_PNY                                          *
+* Purpose: Store a PHONY in the binary search tree. Duplicates are    *
+*          simply ignored. Every new phony is allocated a new phony   *
+*          memory block, which is added to the binary search tree.    *
+*          R7 should point to a statement block for a PHONY           *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_STORE_PNY MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_STORE_PNY'
+*
+         USING STMT_P_DSECT,R7    * Use R7 for addressing PHONY stmt
+         USING PHONY_DSECT,R6     * Use R6 for addressing PHONY
+*
+         LT    R6,G_FIRST_PNY_PTR * Get the start of the search tree
+         IF (Z) THEN              * If this is the first PHONY
+            BAL   R8,ALLOC_PNY    * Perform allocate PHONY routine
+            LR    R6,R1           * Copy returned pointer to R6
+            ST    R6,G_FIRST_PNY_PTR * And set it as start of tree
+         ELSE                     * Else, search tree not empty
+TEST_PNYS   EQU   *               * Test this PHONY for matching name
+            XR    R3,R3           * Clear R3
+            LH    R3,STMT_P_PNYLEN * and get length of stmt PNONY name
+            CH    R3,PNYNAMELEN   * Compare it to current PHONY len
+            IF (H) THEN           * Compare length of shortest of the 2
+               LH    R3,PNYNAMELEN * If current PHONY name len is less
+            ENDIF                 * then use that
+            BCTR  R3,R0           * Subtract 1 for EX
+            LA    R2,STMT_P_PNY   * Point R2 to statement PHONY name
+            LA    R4,PNYNAME      * Point R4 to current PHONY name
+            B     *+10            * Skip CLC constant for EX
+            CLC   0(1,R2),0(R4)   * CLC constant for EX
+            EX    R3,*-6          * EX previous CLC stmt with R3
+            IF (L) THEN           * If statement PHONY name is lower
+               CLC   PNYLOW,=A(0) * Check if current PHONY low ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_PNY * Perform allocate PHONY routine
+                  ST    R1,PNYLOW * Store returned pointer as low ptr
+                  LR    R6,R1     * And set it as the current PHONY ptr
+                  B     FILL_PNY  * Skip to writing report line
+               ELSE               * Else, current PHONY low ptr is set
+                  L     R6,PNYLOW * Replace current PHONY by low PHONY
+                  B     TEST_PNYS * Loop around to test that one
+               ENDIF
+            ELSE                  * Else, statement PHONY name is >=
+               IF (EQ) THEN       * If the compared part is equal
+                  CLC   STMT_P_PNYLEN,PNYNAMELEN * Check if they're
+                  IF (EQ) THEN    * also of equal length
+                     B     STORE_PNY_RET * we're done
+                  ENDIF
+               ENDIF
+*              If we end up here, it's not a match
+               CLC   PNYHIGH,=A(0) * Check if curr PHONY high ptr set
+               IF (EQ) THEN       * If not
+                  BAL   R8,ALLOC_PNY * Perform allocate PHONY routine
+                  ST    R1,PNYHIGH * Store returned pointer as high ptr
+                  LR    R6,R1     * And set it as the current PHONY ptr
+                  B     FILL_PNY  * Skip to writing report line
+               ELSE               * Else, current PHONY high ptr is set
+                  L     R6,PNYHIGH * Replace current PHONY by high
+                  B     TEST_PNYS * Loop around to test that one
+               ENDIF
+            ENDIF
+         ENDIF
+*
+* Fill a new PHONY name
+FILL_PNY EQU   *
+*
+*        Write a report line with PHONY
+*        MVC   G_LWZMRPT_LINE,=CL133' Phony target ........'
+*        LA    R2,G_LWZMRPT_LINE+23
+*        LA    R3,110
+*        LA    R4,PNYNAME
+*        LR    R5,R3
+*        CH    R5,PNYNAMELEN
+*        IF (H) THEN
+*           LH    R5,PNYNAMELEN
+*        ENDIF
+*        BCTR  R5,R0
+*        B     *+10
+*        MVC   0(1,R2),0(R4)
+*        EX    R5,*-6
+*        L     R15,G_LWZMAKE_RPTA
+*        BASR  R14,R15
+*
+         DROP  R6
+*
+STORE_PNY_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+* Allocate a PHONY block.
+* The using for R7 in previous code is left intact to keep addressing
+* of the PHONY statement possible.
+*
+ALLOC_PNY EQU  *
+         L     R3,=A(PHONY_DSECT_LEN) * Get size of fixed part of PHONY
+         AH    R3,STMT_P_PNYLEN   * Add PHONY name length
+*
+         ST    R3,G_STGOR_LEN
+         MVI   G_STGOR_TYPE,STGOR_TYPE_PNY
+         L     R15,LWZMAKE_STG_OBTAINA_PNY
+         BASR  R14,R15
+         L     R1,G_STGOR_PTR
+*
+         USING PHONY_DSECT,R1     * Addressing of new PHONY block
+*
+*        Clear memory block
+         LR    R2,R1              * Copy ptr to target block to R2
+         XR    R4,R4              * Clear R4
+         XR    R5,R5              *   and R5
+         MVCL  R2,R4              * Zero out memory
+*
+*        Fill in new target block
+         L     R3,=A(PHONY_DSECT_LEN) * Get size of fixed part of PHONY
+         AH    R3,STMT_P_PNYLEN   * Add PHONY name length
+         ST    R3,PNYLEN          * Store total block length
+         XR    R3,R3              * Clear R2
+         LH    R3,STMT_P_PNYLEN   * Get length of PHONY name
+         STH   R3,PNYNAMELEN      * Store PHONY name length in block
+         ST    R7,PNYSTMT         * Store PHONY stmt ptr in block
+         LA    R2,PNYNAME         * Point R2 to PHONY name in block
+         LA    R4,STMT_P_PNY      * Point R4 to PHONY name in stmt
+         LR    R5,R3              * Make sure no cropping/filling
+         MVCL  R2,R4              * Copy PHONY name to block
+*
+         DROP  R1
+*
+         BR    R8                 * Return
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_PNY DC    A(LWZMAKE_STG_OBTAIN)
+*
+* Translate table for hex conversion
+PNY_HEXTAB EQU   *-C'0'
+           DC    C'0123456789ABCDEF'
+*
+***********************************************************************
+* Section: LWZMAKE_FINDVAR                                            *
+* Purpose: Find a variable in variable binary search tree             *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_FINDVAR MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_FINDVAR'
+*
+         MVC   G_FOUND_VAR_PTR,=A(0) * Initialize return pointer
+*
+         USING VAR_DSECT,R6       * Use R6 for addressing variable
+*
+         LT    R6,G_FIRST_VAR_PTR * Get start of search tree for vars
+         IF (Z) THEN              * If no vars in tree
+            B     FINDVAR_RET     * Skip rest of find var
+         ENDIF
+TEST_VARF   EQU   *
+         XR    R3,R3              * Clear R3
+         LH    R3,G_SRCH_VAR_LEN  * Get var to find's name length
+         CH    R3,VARNAMELEN      * Compare it to current var name len
+         IF (H) THEN              * Compare length of shortest of the 2
+            LH    R3,VARNAMELEN   * If current var name len is less
+         ENDIF                    * then use that
+         BCTR  R3,R0              * Subtract 1 for EX
+         LA    R2,G_SRCH_VAR      * Point R2 to var to find's name
+         LA    R4,VARNAME         * Point R4 to current var name
+         B     *+10               * Skip CLC constant for EX
+         CLC   0(1,R2),0(R4)      * CLC constant for EX
+         EX    R3,*-6             * EX previous CLC stmt with R3
+         IF (L) THEN              * If find var name is lower
+            CLC   VARLOW,=A(0)    * Check if current var's low ptr set
+            IF (EQ) THEN          * If not
+               B     FINDVAR_RET  * Var not found, skip rest of findvar
+            ELSE                  * Else, current var's low ptr set
+               L     R6,VARLOW    * Replace current var by low var
+               B     TEST_VARF    * Loop around to test that one
+            ENDIF
+         ELSE                     * Else, find var name is >=
+            IF (EQ) THEN          * If the compared part is equal
+               CLC   G_SRCH_VAR_LEN,VARNAMELEN * Check if they're also
+               IF (EQ) THEN       * of equal length
+                  ST    R6,G_FOUND_VAR_PTR * Return this var's ptr
+                  B     FINDVAR_RET * Skip rest of find var
+               ENDIF
+            ENDIF
+*           If we end up here, it's not a match
+            CLC   VARHIGH,=A(0)   * Check if curr var's high ptr set
+            IF (EQ) THEN          * If not
+               B     FINDVAR_RET  * Var not found, skip rest of findvar
+            ELSE                  * Else, current var's high ptr set
+               L     R6,VARHIGH   * Replace current var by high var
+               B     TEST_VARF    * Loop around to test that one
+            ENDIF
+         ENDIF
+*
+         DROP  R6
+*
+FINDVAR_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+***********************************************************************
+* Section: LWZMAKE_FINDTGT                                            *
+* Purpose: Find a target in target binary search tree                 *
+*          The name of the target to find is in token 1.              *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_FINDTGT MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_FINDTGT'
+*
+         MVC   G_FOUND_TGT_PTR,=A(0) * Initialize return pointer
+*
+         USING TARGET_DSECT,R6    * Use R6 for addressing target
+*
+         LT    R6,G_FIRST_TGT_PTR * Get start of search tree for tgts
+         IF (Z) THEN              * If no tgts in tree
+            B     FINDTGT_RET     * Skip rest of find tgt
+         ENDIF
+TEST_TGTF EQU  *
+         L     R3,G_SCAN_TOKEN_LEN * Get tgt to find's name length
+         CH    R3,TGTNAMELEN      * Compare it to current tgt name len
+         IF (H) THEN              * Compare length of shortest of the 2
+            LH    R3,TGTNAMELEN   * If current tgt name len is less
+         ENDIF                    * then use that
+         BCTR  R3,R0              * Subtract 1 for EX
+         L     R2,G_SCAN_TOKENA   * Point R2 to tgt to find's name
+         LA    R4,TGTNAME         * Point R4 to current tgt name
+         B     *+10               * Skip CLC constant for EX
+         CLC   0(1,R2),0(R4)      * CLC constant for EX
+         EX    R3,*-6             * EX previous CLC stmt with R3
+         IF (L) THEN              * If find tgt name is lower
+            CLC   TGTLOW,=A(0)    * Check if current tgt's low ptr set
+            IF (EQ) THEN          * If not
+               B     FINDTGT_RET  * Tgt not found, skip rest of findtgt
+            ELSE                  * Else, current tgt's low ptr set
+               L     R6,TGTLOW    * Replace current tgt by low tgt
+               B     TEST_TGTF    * Loop around to test that one
+            ENDIF
+         ELSE                     * Else, find tgt name is >=
+            IF (EQ) THEN          * If the compared part is equal
+               CLC   G_SCAN_TOKEN_LEN+2(2),TGTNAMELEN * Check if also
+               IF (EQ) THEN       * of equal length
+                  ST    R6,G_FOUND_TGT_PTR * Return this tgt's ptr
+                  B     FINDTGT_RET * Skip rest of find tgt
+               ENDIF
+            ENDIF
+*           If we end up here, it's not a match
+            CLC   TGTHIGH,=A(0)   * Check if curr tgt's high ptr set
+            IF (EQ) THEN          * If not
+               B     FINDTGT_RET  * Tgt not found, skip rest of findtgt
+            ELSE                  * Else, current tgt's high ptr set
+               L     R6,TGTHIGH   * Replace current tgt by high tgt
+               B     TEST_TGTF    * Loop around to test that one
+            ENDIF
+         ENDIF
+*
+FINDTGT_RET EQU *
+*        Write result of find var to report
+         CLC   G_FOUND_TGT_PTR,=A(0) * Was a tgt found?
+         IF (EQ) THEN                * Nope
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... No targeX
+               t found'
+         ELSE                        * Tgt was found
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Target fX
+               ound'
+         ENDIF
+         L     R15,G_LWZMAKE_RPTA * Get address of LWZMAKE_RPT section
+         BASR  R14,R15            * Link to LWZMAKE_RPT section
+*
+         DROP  R6
+*
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+***********************************************************************
+* Section: LWZMAKE_FINDPNY                                            *
+* Purpose: Find a PHONY in PHONY binary search tree                   *
+*          The name of the PHONY to find is in token 1.               *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_FINDPNY MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_FINDPNY'
+*
+         MVC   G_FOUND_PNY_PTR,=A(0) * Initialize return pointer
+*
+         USING PHONY_DSECT,R6     * Use R6 for addressing PHONY
+*
+         LT    R6,G_FIRST_PNY_PTR * Get start of search tree for PNYs
+         IF (Z) THEN              * If no PNYs in tree
+            B     FINDPNY_RET     * Skip rest of find PHONY
+         ENDIF
+TEST_PNYF EQU  *
+         L     R3,G_SCAN_TOKEN_LEN * Get PNY to find's name length
+         CH    R3,PNYNAMELEN      * Compare it to current PNY name len
+         IF (H) THEN              * Compare length of shortest of the 2
+            LH    R3,PNYNAMELEN   * If current PNY name len is less
+         ENDIF                    * then use that
+         BCTR  R3,R0              * Subtract 1 for EX
+         L     R2,G_SCAN_TOKENA   * Point R2 to PNY to find's name
+         LA    R4,PNYNAME         * Point R4 to current PNY name
+         B     *+10               * Skip CLC constant for EX
+         CLC   0(1,R2),0(R4)      * CLC constant for EX
+         EX    R3,*-6             * EX previous CLC stmt with R3
+         IF (L) THEN              * If find PNY name is lower
+            CLC   PNYLOW,=A(0)    * Check if current PNY's low ptr set
+            IF (EQ) THEN          * If not
+               B     FINDPNY_RET  * PNY not found, skip rest of findpny
+            ELSE                  * Else, current PNY's low ptr set
+               L     R6,PNYLOW    * Replace current PNY by low PNY
+               B     TEST_PNYF    * Loop around to test that one
+            ENDIF
+         ELSE                     * Else, find PNY name is >=
+            IF (EQ) THEN          * If the compared part is equal
+               CLC   G_SCAN_TOKEN_LEN+2(2),PNYNAMELEN * Check if also
+               IF (EQ) THEN       * of equal length
+                  ST    R6,G_FOUND_PNY_PTR * Return this PNY's ptr
+                  B     FINDPNY_RET * Skip rest of find PNY
+               ENDIF
+            ENDIF
+*           If we end up here, it's not a match
+            CLC   PNYHIGH,=A(0)   * Check if curr PNY's high ptr set
+            IF (EQ) THEN          * If not
+               B     FINDPNY_RET  * PNY not found, skip rest of findpny
+            ELSE                  * Else, current PNY's high ptr set
+               L     R6,PNYHIGH   * Replace current PNY by high PNY
+               B     TEST_PNYF    * Loop around to test that one
+            ENDIF
+         ENDIF
+*
+FINDPNY_RET EQU *
+*        Write result of find var to report
+         CLC   G_FOUND_PNY_PTR,=A(0) * Was a PNY found?
+         IF (EQ) THEN                * Nope
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Target iX
+               s a file'
+         ELSE                        * Tgt was found
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Target iX
+               s PHONY'
+         ENDIF
+         L     R15,G_LWZMAKE_RPTA * Get address of LWZMAKE_RPT section
+         BASR  R14,R15            * Link to LWZMAKE_RPT section
+*
+         DROP  R6
+*
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+***********************************************************************
+* Section: LWZMAKE_FREEBST                                            *
+* Purpose: Recursively free an entry in a binary search tree.         *
+*          G_STGOR_TYPE is set to the storage block type              *
+*          R1 points to the current entry.                            *
+*          R9 should point to global data.                            *
+***********************************************************************
+LWZMAKE_FREEBST MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_FREEBST'
+*
+         LT    R2,4(,R1)
+         IF (NZ) THEN
+            LR    R3,R1
+            LR    R1,R2
+            L     R15,LWZMAKE_FREEBSTA_FREEBST
+            BASR  R14,R15
+            LR    R1,R3
+            MVC   4(4,R1),=A(0)
+         ENDIF
+*
+         LT    R2,8(,R1)
+         IF (NZ) THEN
+            LR    R3,R1
+            LR    R1,R2
+            L     R15,LWZMAKE_FREEBSTA_FREEBST
+            BASR  R14,R15
+            LR    R1,R3
+            MVC   8(4,R1),=A(0)
+         ENDIF
+*
+         IF (CLI,G_STGOR_TYPE,EQ,STGOR_TYPE_VAR) THEN
+            XR    R2,R2
+            LH    R2,VALLEN-VAR_DSECT(,R1)
+            LTR   R2,R2
+            BZ    SKIP_FREEBST_RELEASE_VARVAL
+            LT    R3,VALPTR-VAR_DSECT(,R1)
+            BZ    SKIP_FREEBST_RELEASE_VARVAL
+            ST    R2,G_STGOR_LEN
+            ST    R3,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
+            L     R15,LWZMAKE_STG_RELEASEA_FREEBST
+            BASR  R14,R15
+            MVI   G_STGOR_TYPE,STGOR_TYPE_VAR
+SKIP_FREEBST_RELEASE_VARVAL EQU *
+         ENDIF
+*
+         ST    R1,G_STGOR_PTR
+         MVC   G_STGOR_LEN,0(R1)
+         L     R15,LWZMAKE_STG_RELEASEA_FREEBST
+         BASR  R14,R15
+*
+FREEBST_RET EQU *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+* Translate table for hex conversion
+FREEBST_HEXTAB EQU   *-C'0'
+               DC    C'0123456789ABCDEF'
+*
+LWZMAKE_FREEBSTA_FREEBST     DC    A(LWZMAKE_FREEBST)
+LWZMAKE_STG_RELEASEA_FREEBST DC    A(LWZMAKE_STG_RELEASE)
+*
+***********************************************************************
+* Section: LWZMAKE_EXEC_TGT                                           *
+* Purpose: Execute a target. This is a recursive section, in other    *
+*          words, it calls itself.                                    *
+*          First, the target last altered date is acquired. Then the  *
+*          requisites are 'expanded', meaning any variables in that   *
+*          string are resolved. Then, for each requisite this section *
+*          is invoked. If, after all requisites have been processed,  *
+*          any of the requisites had a laster altered date more       *
+*          recent than the target's, that target should be built.     *
+*          If so, the recipe following the rult statement for this    *
+*          target is executed.                                        *
+*          R9 should point to global data.                            *
+***********************************************************************
+*
+LWZMAKE_EXEC_TGT DS    0F
+         STM   R14,R12,12(R13)   * Save callers registers
+         LR    R10,R15           * Set R10 to entry point
+         LA    R11,4095(,R10)    * Setup R11 as second using
+         LA    R11,1(,R11)       *   base register
+         USING LWZMAKE_EXEC_TGT,R10,R11 * Establish addressing
+         LR    R2,R1             * Save possible parameter ptr
+         GETMAIN RU,LV=WORKAREA_EXEC_TGT_LEN
+         ST    R13,4(R1)         * Backward chain callers SA
+         ST    R1,8(R13)         * Forward chain my SA
+         LR    R13,R1            * Point R13 to my SA
+         USING WORKAREA_EXEC_TGT,R13 * Establish addressing
+         USING GLOBAL_DATA_DSECT,R9
+         LR    R1,R2             * Restore parameter list ptr in R1
+         XR    R15,R15
+         ST    R15,RETCODE_EXEC_TGT
+*
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_EXEC_TGT'
+*
+*        Reset scanning variables
+         MVC   G_SCAN_CURRCOL,=F'0' * Not really used, but it shouldn't
+*                                 * be whatever value (like 80) left
+*                                 * over from scanning makefile
+         MVI   G_MKFEOF,C'N'      * Reset EOF switch
+*
+*        This section is invoked with a parameter of EXEC_TGT_PAR. It
+*        holds a pointer to a TARGET_DSECT, which in turn points to a
+*        STMT_R_DSECT.
+         L     R1,0(,R1)          * Get pointer to first parameter
+         ST    R1,EXEC_TGT_PARA   * Save it
+         L     R6,EXEC_TGT_PTR-EXEC_TGT_PAR(,R1) * Get TARGET_DSECT ptr
+         USING TARGET_DSECT,R6    * Address it with R6
+         L     R7,TGTSTMT         * Get originating rule statement ptr
+         USING STMT_R_DSECT,R7    * Address it with R7
+*
+*
+         MVC   G_LWZMRPT_LINE,=CL133' Processing target ...'
+         LA    R2,G_LWZMRPT_LINE+23
+         LA    R3,TGTNAME
+         L     R4,=F'110'
+         CH    R4,TGTNAMELEN
+         IF (H) THEN
+            LH    R4,TGTNAMELEN
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         L     R2,G_SCAN_TOKENA
+         LA    R3,TGTNAME
+         XR    R4,R4
+         LH    R4,TGTNAMELEN
+         ST    R4,G_SCAN_TOKEN_LEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,LWZMAKE_FINDPNYA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_FOUND_PNY_PTR,=A(0)
+         IF (NE) THEN
+            XC    TARGET_ALTER_DATE,TARGET_ALTER_DATE
+            B     EXEC_TGT_PREREQ
+         ENDIF
+*
+         L     R2,G_SCAN_TOKENA
+         LA    R3,TGTNAME
+         XR    R4,R4
+         LH    R4,TGTNAMELEN
+         ST    R4,G_SCAN_TOKEN_LEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,LWZMAKE_GET_DATEA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   EXEC_TGT_RET
+*
+         LT    R3,G_MVSDS_MEMBER_LEN
+         IF (NZ) THEN
+            STH   R3,TGTNAMEMEMLEN
+            LA    R2,TGTNAME
+            AH    R2,TGTNAMELEN
+            L     R4,G_MVSDS_MEMBER_PTR
+            BCTR  R3,R0
+            B     *+10
+            MVC   0(1,R2),0(R4)
+            EX    R3,*-6
+         ENDIF
+*
+         MVC   TARGET_ALTER_DATE,G_SAVE_ALTER_DATE
+         CLC   TARGET_ALTER_DATE,=16X'FF'
+         IF (EQ) THEN
+            MLWZMRPT RPTLINE=CL133' ..................... Target has noX
+                last altered date, build required'
+         ENDIF
+*
+EXEC_TGT_PREREQ EQU *
+         CLC   STMT_R_REQLEN,=H'0'
+         BE    EXEC_TGT_PREREQ_DONE
+*
+         XR    R2,R2
+         XR    R3,R3
+         IC    R3,G_SCAN_INPUT_STACK_IDX
+         C     R3,=A(MAX_SCAN_INPUT_STACK_ENTRY)
+         IF (NL) THEN
+            MLWZMRPT RPTLINE=CL133'0Internal error, state stack overfloX
+               w'
+            MVC   G_RETCODE,=F'12'
+            B     EXEC_TGT_RET
+         ENDIF
+         LA    R3,1(,R3)
+         STC   R3,G_SCAN_INPUT_STACK_IDX
+         BCTR  R3,R0
+         M     R2,=A(INPUT_DSECT_SIZ)
+         LA    R2,G_SCAN_INPUT_STACK
+         AR    R2,R3
+         USING INPUT_DSECT,R2
+         MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF
+         MVC   INPUTLEN,STMT_R_REQLEN
+         LA    R4,STMT_R_TGT
+         AH    R4,STMT_R_TGTLEN
+         ST    R4,INPUTPTR
+         MVC   INPUTPOS,=H'0'
+         DROP  R2
+*
+         MVI   G_SCAN_STATE,SCAN_STATE_IN_EXPAND
+         MVC   G_SCAN_TOKEN2_LEN,=F'0'
+*
+EXEC_TGT_PREREQ_NEXT_TOKEN EQU *
+         L     R15,LWZMAKE_SCAN_TOKENA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   EXEC_TGT_RET
+*
+         IF (CLI,G_MKFEOF,EQ,C'Y') THEN
+            MVI   G_MKFEOF,C'N'
+            B     EXEC_TGT_PREREQ_EXPANDED
+         ENDIF
+*
+         IC    R14,G_SCAN_STATE
+         N     R14,=X'0000007F'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE)
+         IF (EQ) THEN
+            MVI   G_SCAN_APPEND_TO,X'00'
+            MVI   G_SCAN_VAR_PRESERVE_SPACES,C'1'
+            L     R15,LWZMAKE_SCAN_VARA_EXEC
+            BASR  R14,R15
+*
+            CLC   G_RETCODE,=F'0'
+            BNE   EXEC_TGT_RET
+*
+            B     EXEC_TGT_PREREQ_NEXT_TOKEN
+         ENDIF
+*
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_PERCENT) THEN
+            L     R2,G_SCAN_TOKENA
+            LA    R4,TGTNAME
+            AH    R4,TGTNAMELEN
+            XR    R3,R3
+            LH    R3,TGTNAMEMEMLEN
+            ST    R3,G_SCAN_TOKEN_LEN
+            BCTR  R3,R0
+            B     *+10
+            MVC   0(1,R2),0(R4)
+            EX    R3,*-6
+         ENDIF
+         IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_ACRO) THEN
+            L     R2,G_SCAN_TOKENA
+            LA    R4,TGTNAME
+            XR    R3,R3
+            LH    R3,TGTNAMELEN
+            ST    R3,G_SCAN_TOKEN_LEN
+            BCTR  R3,R0
+            B     *+10
+            MVC   0(1,R2),0(R4)
+            EX    R3,*-6
+         ENDIF
+*
+*        Append token 1 to token 2
+         MVI   G_SCAN_APPEND_TO,X'01'
+         L     R15,LWZMAKE_APPEND_TOKENA_EXEC * Get addr APPEND_TOKEN
+         BASR  R14,R15            * Link to APPEND_TOKEN section
+*
+         B     EXEC_TGT_PREREQ_NEXT_TOKEN
+*
+EXEC_TGT_PREREQ_EXPANDED EQU *
+         MVC   G_LWZMRPT_LINE,=CL133' Prerequisites........'
+         LA    R2,G_LWZMRPT_LINE+23
+         L     R3,G_SCAN_TOKEN2_LEN
+         L     R4,G_SCAN_TOKEN2A
+         C     R3,=A(110)
+         IF (H) THEN
+            L     R3,=A(110)
+         ENDIF
+         BCTR  R3,R0
+         B     *+10
+         MVC   0(1,R2),0(R4)
+         EX    R3,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         MVC   EXEC_WORD_SPLIT_PTR,G_SCAN_TOKEN2A
+         MVC   EXEC_WORD_SPLIT_LEN,G_SCAN_TOKEN2_LEN
+EXEC_TGT_SCAN_NEXT_PREREQ EQU *
+         L     R2,EXEC_WORD_SPLIT_PTR
+         L     R3,EXEC_WORD_SPLIT_LEN
+         L     R4,G_SCAN_TOKENA
+         XR    R5,R5
+         ST    R5,G_SCAN_TOKEN_LEN
+EXEC_TGT_PREREQ_BLANK EQU *
+         IF (CLI,0(R2),EQ,C' ') THEN
+            LA    R2,1(,R2)
+            BCT   R3,EXEC_TGT_PREREQ_BLANK
+            B     EXEC_TGT_RET
+         ENDIF
+EXEC_TGT_PREREQ_NONBLANK EQU *
+         MVC   0(1,R4),0(R2)
+         LA    R4,1(,R4)
+         LA    R5,1(,R5)
+         BCTR  R3,R0
+         C     R3,=F'0'
+         IF (H) THEN
+            LA    R2,1(,R2)
+            CLI    0(R2),C' '     * Current pos a space?
+            BNE   EXEC_TGT_PREREQ_NONBLANK
+         ENDIF
+         ST    R5,G_SCAN_TOKEN_LEN
+         ST    R2,EXEC_WORD_SPLIT_PTR
+         ST    R3,EXEC_WORD_SPLIT_LEN
+*
+         MVC   G_LWZMRPT_LINE,=CL133' Next prereq for tgt .'
+         LA    R2,G_LWZMRPT_LINE+23
+         LA    R3,TGTNAME
+         L     R4,=F'110'
+         CH    R4,TGTNAMELEN
+         IF (H) THEN
+            LH    R4,TGTNAMELEN
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         MVC   G_LWZMRPT_LINE,=CL133' Checking prereq .....'
+         LA    R2,G_LWZMRPT_LINE+23
+         L     R3,G_SCAN_TOKENA
+         L     R4,=F'110'
+         C     R4,G_SCAN_TOKEN_LEN
+         IF (H) THEN
+            L     R4,G_SCAN_TOKEN_LEN
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         IF (CLC,G_SCAN_TOKEN_LEN,EQ,=F'1') THEN
+            L     R14,G_SCAN_TOKENA
+            SELECT CLI,0(R14),EQ
+            WHEN C'0'
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            WHEN C'1'
+               MLWZMRPT RPTLINE=CL133' ..................... Force builX
+               d unconditionally'
+               MVC   TARGET_ALTER_DATE,=16X'FF'
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            ENDSEL
+         ENDIF
+*
+         L     R15,LWZMAKE_FINDTGTA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   EXEC_TGT_RET
+*
+         CLC   G_FOUND_TGT_PTR,=A(0)
+         IF (NE) THEN
+            MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
+            MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
+            MVC   EXEC_SAVE_SCAN_TOKEN_LEN,G_SCAN_TOKEN_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN_LEN,=A(0)
+*
+            MVC   EXEC_SAVE_SCAN_TOKEN2A,G_SCAN_TOKEN2A
+            MVC   EXEC_SAVE_SCAN_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   EXEC_SAVE_SCAN_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN2_LEN,=A(0)
+*
+            LA    R1,EXEC_NEXTTGT_PAR
+            MVC   EXEC_TGT_PTR-EXEC_TGT_PAR(4,R1),G_FOUND_TGT_PTR
+            ST    R1,EXEC_NEXTTGT_PARA
+            LA    R1,EXEC_NEXTTGT_PARA
+            L     R15,LWZMAKE_EXEC_TGTA_EXEC
+            BASR  R14,R15
+*
+            CLC   G_RETCODE,=F'0'
+            BNE   EXEC_TGT_RET
+*
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA
+            MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN
+            MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN
+*
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A
+            MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN
+            MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN
+*
+            MVC   G_LWZMRPT_LINE,=CL133' Continuing target ...'
+            LA    R2,G_LWZMRPT_LINE+23
+            LA    R3,TGTNAME
+            L     R4,=F'110'
+            CH    R4,TGTNAMELEN
+            IF (H) THEN
+               LH    R4,TGTNAMELEN
+            ENDIF
+            BCTR  R4,R0
+            B     *+10
+            MVC   0(1,R2),0(R3)
+            EX    R4,*-6
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+*
+            MVC   G_LWZMRPT_LINE,=CL133' Continuing prereq ...'
+            LA    R2,G_LWZMRPT_LINE+23
+            L     R3,G_SCAN_TOKENA
+            L     R4,=F'110'
+            C     R4,G_SCAN_TOKEN_LEN
+            IF (H) THEN
+               L     R4,G_SCAN_TOKEN_LEN
+            ENDIF
+            BCTR  R4,R0
+            B     *+10
+            MVC   0(1,R2),0(R3)
+            EX    R4,*-6
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+         ENDIF
+*
+         L     R15,LWZMAKE_FINDPNYA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_FOUND_PNY_PTR,=A(0)
+         BNE   EXEC_TGT_PREREQ_CHECK_LOOP
+*
+         L     R15,LWZMAKE_GET_DATEA_EXEC
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   EXEC_TGT_RET
+*
+         IF (CLI,G_DSFOUND,NE,C'Y') THEN
+            MLWZMRPT RPTLINE=CL133' ..................... Prerequisite X
+               not found, build stopped'
+            MVC   G_RETCODE,=F'8'
+            B     EXEC_TGT_RET
+         ENDIF
+*
+         CLC   TARGET_ALTER_DATE,=16X'00'
+         BE    EXEC_TGT_PREREQ_CHECK_LOOP
+*
+         CLC   TARGET_ALTER_DATE,=16X'FF'
+         IF (NE) THEN
+            CLC   TARGET_ALTER_DATE,G_SAVE_ALTER_DATE
+            IF (LT) THEN
+               MLWZMRPT RPTLINE=CL133' ..................... Target is X
+               older than prereq, build required'
+               MVC   TARGET_ALTER_DATE,=16X'FF'
+            ENDIF
+         ENDIF
+*
+EXEC_TGT_PREREQ_CHECK_LOOP EQU *
+         L     R3,EXEC_WORD_SPLIT_LEN
+         C     R3,=F'0'
+         BH    EXEC_TGT_SCAN_NEXT_PREREQ
+*
+EXEC_TGT_PREREQ_DONE EQU *
+         CLC   TARGET_ALTER_DATE,=16X'FF'
+         IF (NE) THEN
+            CLC   TARGET_ALTER_DATE,=16X'00'
+         ENDIF
+         IF (EQ) THEN
+            BAL   R8,EXEC_TGT_BUILD
+         ELSE
+            MLWZMRPT RPTLINE=CL133' ..................... No need to buX
+               ild target'
+            B     EXEC_TGT_RET
+         ENDIF
+*
+         DROP  R6
+         DROP  R7
+*
+EXEC_TGT_RET EQU *
+         L     R2,RETCODE_EXEC_TGT * Save return value
+         L     R3,4(,R13)        * Restore address of callers SA
+         FREEMAIN RU,LV=WORKAREA_EXEC_TGT_LEN,A=(R13)
+         LR    R15,R2            * Restore return value
+         LR    R13,R3            * Address of callers SA
+         L     R14,12(R13)       * Restore callers R14
+         LM    R0,R12,20(R13)    * Restore callers registers 0-12
+         BR    R14               * Return
+*
+* Execute the recipe
+*
+EXEC_TGT_BUILD EQU *
+         L     R1,EXEC_TGT_PARA
+         L     R6,EXEC_TGT_PTR-EXEC_TGT_PAR(,R1)
+         USING TARGET_DSECT,R6
+         L     R7,TGTSTMT
+         USING STMT_DSECT,R7
+*
+         MVC   G_LWZMRPT_LINE,=CL133' Building target .....'
+         LA    R2,G_LWZMRPT_LINE+23
+         LA    R3,TGTNAME
+         L     R4,=F'110'
+         CH    R4,TGTNAMELEN
+         IF (H) THEN
+            LH    R4,TGTNAMELEN
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         DROP  R6
+*
+         LT    R7,STMT_NEXT_PTR
+         BZ    EXEC_TGT_BUILD_NO_RECIPE
+*
+         CLI   STMT_IN_RECIPE,C'Y'
+         BNE   EXEC_TGT_BUILD_NO_RECIPE
+*
+NEXT_RECIPE_STMT EQU *
+         ST    R7,EXEC_TGT_CURR_STMT
+*
+         IF (CLI,STMT_TYPE,EQ,STMT_TYPE_CALL) THEN
+            MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
+            MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
+            MVC   EXEC_SAVE_SCAN_TOKEN_LEN,G_SCAN_TOKEN_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN_LEN,=A(0)
+*
+            MVC   EXEC_SAVE_SCAN_TOKEN2A,G_SCAN_TOKEN2A
+            MVC   EXEC_SAVE_SCAN_TOKEN2_MAXLEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   EXEC_SAVE_SCAN_TOKEN2_LEN,G_SCAN_TOKEN2_LEN
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,G_STGOR_PTR
+            MVC   G_SCAN_TOKEN2_LEN,=A(0)
+*
+            ST    R6,G_CALL_REXX_PAR2A
+            ST    R7,G_CALL_REXX_PAR2A+4
+            LA    R1,G_CALL_REXX_PAR2A
+*
+            L     R15,LWZMAKE_CALL_REXXA_EXEC
+            BASR  R14,R15
+*
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKENA
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKENA,EXEC_SAVE_SCAN_TOKENA
+            MVC   G_SCAN_TOKEN_MAXLEN,EXEC_SAVE_SCAN_TOKEN_MAXLEN
+            MVC   G_SCAN_TOKEN_LEN,EXEC_SAVE_SCAN_TOKEN_LEN
+*
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN2_MAXLEN
+            MVC   G_STGOR_PTR,G_SCAN_TOKEN2A
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_EXEC
+            BASR  R14,R15
+            MVC   G_SCAN_TOKEN2A,EXEC_SAVE_SCAN_TOKEN2A
+            MVC   G_SCAN_TOKEN2_MAXLEN,EXEC_SAVE_SCAN_TOKEN2_MAXLEN
+            MVC   G_SCAN_TOKEN2_LEN,EXEC_SAVE_SCAN_TOKEN2_LEN
+         ENDIF
+         IF (CLI,STMT_TYPE,EQ,STMT_TYPE_ASSIGNMENT) THEN
+            DROP  R7
+            USING STMT_A_DSECT,R7
+*
+            MVI   G_DO_EXPAND,C'Y'
+            MVI   G_DO_ASSIGN,C'Y'
+*
+            IF (CLI,STMT_A_OPERATOR,EQ,C'=') THEN
+               MVI   G_DO_EXPAND,C'N'
+               B     EXEC_ASSIGN_START
+            ENDIF
+*
+            IF (CLC,STMT_A_OPERATOR,EQ,=C'?=') THEN
+*              Copy variable name to FINDVAR name
+               XR    R1,R1
+               LH    R1,STMT_A_DESTLEN * Get length of variable name
+               STH   R1,G_SRCH_VAR_LEN * Put length in FINDVAR len
+               LA    R0,G_SRCH_VAR   * Point R0 to FINDVAR search name
+               LA    R2,STMT_A_DEST  * Point R2 to variable name
+               LR    R3,R1        * Make sure no cropping/filling
+               MVCL  R0,R2        * Copy variable name to FINDVAR name
+*
+               L     R15,LWZMAKE_FINDVARA_EXEC * Get address to FINDVAR
+               BASR  R14,R15         * Link to FINDVAR section
+*
+               LT    R4,G_FOUND_VAR_PTR * Check if a pointer returned
+               IF (NZ) THEN
+                  MVI   G_DO_EXPAND,C'N'
+                  MVI   G_DO_ASSIGN,C'N'
+                  B     EXEC_ASSIGN_START
+               ENDIF
+            ENDIF
+*
+EXEC_ASSIGN_START EQU *
+            CLI   G_DO_EXPAND,C'Y'
+            BNE   SKIP_EXEC_EXPAND_ASSIGN
+*
+            XR    R2,R2
+            XR    R3,R3
+            IC    R3,G_SCAN_INPUT_STACK_IDX
+            C     R3,=A(MAX_SCAN_INPUT_STACK_ENTRY)
+            IF (NL) THEN
+               MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
+               flow'
+               MVC   G_RETCODE,=F'12'
+               BR    R8
+            ENDIF
+            LA    R3,1(,R3)
+            STC   R3,G_SCAN_INPUT_STACK_IDX
+            BCTR  R3,R0
+            M     R2,=A(INPUT_DSECT_SIZ)
+            LA    R2,G_SCAN_INPUT_STACK
+            AR    R2,R3
+            USING INPUT_DSECT,R2
+            MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF
+            MVC   INPUTLEN,STMT_A_SRCLEN
+            LA    R14,STMT_A_SRC
+            ST    R14,INPUTPTR
+            MVC   INPUTPOS,=H'0'
+            MVI   G_MKFEOF,C'N'
+*
+            DROP  R2
+*
+*           Push current scan state on the stack before setting
+*           it to IN_EXPAND
+            LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+            XR    R2,R2                 * Clear R2
+            IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+            IC    R15,G_SCAN_STATE      * Get current scan state
+            STC   R15,0(R2,R1)          * and store it in the stack
+            LA    R2,1(,R2)             * Add 1 to stack index
+            C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
+            IF (H) THEN                 * Yep, write error and stop
+               MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
+               flow',APND_LC=C'Y'
+               MVC   G_RETCODE,=F'12'   * Set return code 12
+               BR    R8                 * Skip rest
+            ENDIF
+            STC   R2,G_SCAN_STATE_STACK_IDX * Store new stack size
+*
+            MVI   G_SCAN_STATE,SCAN_STATE_IN_EXPAND
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+*
+EXEC_ASSIGN_NEXT_TOKEN EQU *
+            L     R15,LWZMAKE_SCAN_TOKENA_EXEC
+            BASR  R14,R15
+*
+            CLC   G_RETCODE,=F'0'
+            BNE   EXEC_TGT_BUILD_RET
+*
+            IF (CLI,G_MKFEOF,EQ,C'Y') THEN
+               MVI   G_MKFEOF,C'N'
+               B     EXEC_ASSIGN_EXPANDED
+            ENDIF
+*
+            IC    R14,G_SCAN_STATE
+            N     R14,=X'0000007F'
+            C     R14,=A(SCAN_STATE_IN_VARIABLE)
+            IF (EQ) THEN
+               MVI   G_SCAN_APPEND_TO,X'00'
+               MVI   G_SCAN_VAR_PRESERVE_SPACES,C'1'
+               L     R15,LWZMAKE_SCAN_VARA_EXEC
+               BASR  R14,R15
+*
+               CLC   G_RETCODE,=F'0'
+               BNE   EXEC_TGT_BUILD_RET
+*
+               B     EXEC_ASSIGN_NEXT_TOKEN
+            ENDIF
+*
+            L     R1,G_SCAN_TOKEN_LEN
+            C     R1,=F'2'
+            IF (EQ) THEN
+               L     R2,G_SCAN_TOKENA
+               CLC   0(2,R2),=C'$@'
+               IF (EQ) THEN
+                  LA    R3,TGTNAME-TARGET_DSECT(,R6)
+                  XR    R4,R4
+                  LH    R4,TGTNAMELEN-TARGET_DSECT(,R6)
+                  ST    R4,G_SCAN_TOKEN_LEN
+                  BCTR  R4,R0
+                  B     *+10
+                  MVC   0(1,R2),0(R3)
+                  EX    R4,*-6
+               ENDIF
+               CLC   0(2,R2),=C'$%'
+               IF (EQ) THEN
+                  LA    R3,TGTNAME-TARGET_DSECT(,R6)
+                  XR    R4,R4
+                  LH    R4,TGTNAMELEN-TARGET_DSECT(,R6)
+                  AR    R3,R4
+                  LH    R4,TGTNAMEMEMLEN-TARGET_DSECT(,R6)
+                  ST    R4,G_SCAN_TOKEN_LEN
+                  BCTR  R4,R0
+                  B     *+10
+                  MVC   0(1,R2),0(R3)
+                  EX    R4,*-6
+               ENDIF
+            ENDIF
+*
+            MVI   G_SCAN_APPEND_TO,X'02'
+            L     R15,LWZMAKE_APPEND_TOKENA_EXEC
+            BASR  R14,R15         * Link to APPEND_TOKEN section
+*
+            B     EXEC_ASSIGN_NEXT_TOKEN
+*
+EXEC_ASSIGN_EXPANDED EQU *
+            LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+            XR    R2,R2                 * Clear R2
+            IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+            BCTR  R2,R0                 * Subtract 1 from index
+            IC    R15,0(R2,R1)          * Get stack state in that idx
+            STC   R15,G_SCAN_STATE      * And save it as current state
+            STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+*
+            CLI   G_DO_ASSIGN,C'Y'
+            BNE   SKIP_EXEC_ASSIGN
+*
+*           Allocate a new memory block for this assignment
+            L     R4,=A(STMT_A_DSECT_LEN) * Size of block without token
+            A     R4,G_SCAN_TOKEN3_LEN    * Add token length
+            ST    R4,G_STGOR_LEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_STMT
+            L     R15,LWZMAKE_STG_OBTAINA_EXEC
+            BASR  R14,R15
+            L     R5,G_STGOR_PTR
+*
+            MVC   0(STMT_A_DSECT_LEN,R5),0(R7)
+            LR    R7,R5
+*
+*           Fill in source text (token 3) in assignment block
+            LA    R0,STMT_A_SRC      * Point R0 to source in block
+            L     R1,G_SCAN_TOKEN3_LEN * Get length of source
+            STH   R1,STMT_A_SRCLEN   * Store length in block
+            L     R2,G_SCAN_TOKEN3A  * Point R2 to token 3
+            LR    R3,R1              * Make sure no cropping/filling
+            MVCL  R0,R2              * Copy source text
+*
+SKIP_EXEC_EXPAND_ASSIGN EQU *
+            CLI   G_DO_ASSIGN,C'Y'
+            BNE   SKIP_EXEC_ASSIGN
+*
+            L     R15,LWZMAKE_STORE_VARA_EXEC * Get address STORE_VAR
+            BASR  R14,R15            * Link to STORE_VAR section
+*
+            C     R7,EXEC_TGT_CURR_STMT
+            IF (NE) THEN
+               ST    R7,G_STGOR_PTR
+               MVC   G_STGOR_LEN,0(R7)
+               MVI   G_STGOR_TYPE,STGOR_TYPE_STMT
+               L     R15,LWZMAKE_STG_RELEASEA_EXEC
+               BASR  R14,R15
+*
+               L     R7,EXEC_TGT_CURR_STMT
+            ENDIF
+*
+SKIP_EXEC_ASSIGN EQU *
+*
+            DROP  R7
+            USING STMT_DSECT,R7
+         ENDIF
+*
+         LT    R7,STMT_NEXT_PTR
+         BZ    EXEC_TGT_BUILD_RET
+*
+         CLI   STMT_IN_RECIPE,C'Y'
+         BE    NEXT_RECIPE_STMT
+*
+         DROP  R7
+*
+EXEC_TGT_BUILD_RET EQU *
+         BR    R8
+*
+EXEC_TGT_BUILD_NO_RECIPE EQU *
+         MLWZMRPT RPTLINE=CL133' ..................... No recipe'
+         BR    R8
+*
+         LTORG
+*
+LWZMAKE_SCAN_TOKENA_EXEC    DC    A(LWZMAKE_SCAN_TOKEN)
+LWZMAKE_SCAN_VARA_EXEC      DC    A(LWZMAKE_SCAN_VAR)
+LWZMAKE_FINDPNYA_EXEC       DC    A(LWZMAKE_FINDPNY)
+LWZMAKE_FINDTGTA_EXEC       DC    A(LWZMAKE_FINDTGT)
+LWZMAKE_EXEC_TGTA_EXEC      DC    A(LWZMAKE_EXEC_TGT)
+LWZMAKE_GET_DATEA_EXEC      DC    A(LWZMAKE_GET_DATE)
+LWZMAKE_APPEND_TOKENA_EXEC  DC    A(LWZMAKE_APPEND_TOKEN)
+LWZMAKE_CALL_REXXA_EXEC     DC    A(LWZMAKE_CALL_REXX)
+LWZMAKE_STORE_VARA_EXEC     DC    A(LWZMAKE_STORE_VAR)
+LWZMAKE_FINDVARA_EXEC       DC    A(LWZMAKE_FINDVAR)
+LWZMAKE_STG_OBTAINA_EXEC    DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_EXEC   DC    A(LWZMAKE_STG_RELEASE)
+*
+WORKAREA_EXEC_TGT           DSECT
+EXEC_TGT_SA                 DS    18F
+RETCODE_EXEC_TGT            DS    F
+EXEC_TGT_PARA               DS    A
+EXEC_TGT_CURR_STMT          DS    A
+EXEC_NEXTTGT_PARA           DS    A
+EXEC_NEXTTGT_PAR            DS    CL(EXEC_TGT_PAR_LEN)
+*
+                            DS    0F
+TARGET_ALTER_DATE           DS    CL16
+*
+                            DS    0F
+EXEC_WORD_SPLIT_PTR         DS    A
+EXEC_WORD_SPLIT_LEN         DS    F
+*
+                            DS    0F
+EXEC_SAVE_SCAN_TOKEN_LEN    DS    F
+EXEC_SAVE_SCAN_TOKEN2_LEN   DS    F
+EXEC_SAVE_SCAN_TOKEN_MAXLEN DS    F
+EXEC_SAVE_SCAN_TOKEN2_MAXLEN DS    F
+EXEC_SAVE_SCAN_TOKENA       DS    A
+EXEC_SAVE_SCAN_TOKEN2A      DS    A
+WORKAREA_EXEC_TGT_LEN       EQU *-WORKAREA_EXEC_TGT
+*
+EXEC_TGT_PAR                DSECT
+EXEC_TGT_PTR                DS    A
+EXEC_TGT_PAR_LEN            EQU   *-EXEC_TGT_PAR
+*
+SHVBLOCK_DSECT              DSECT
+SHVBLOCK_SHVNEXT            DS    A
+SHVBLOCK_SHVUSER            DS    A
+SHVBLOCK_SHVCODE            DS    C
+SHVBLOCK_SHVRET             DS    C
+SHVBLOCK_RESERVED           DS    H
+SHVBLOCK_SHVBUFL            DS    F
+SHVBLOCK_SHVNAMA            DS    A
+SHVBLOCK_SHVNAML            DS    F
+SHVBLOCK_SHVVALA            DS    A
+SHVBLOCK_SHVVALL            DS    F
+SHVBLOCK_SHVBLEN            EQU   *-SHVBLOCK_DSECT
+*
+LWZMAKE  CSECT
+*
+* Get the date of a file
+*
+         DROP
+*
+LWZMAKE_GET_DATE DS    0F
+         STM   R14,R12,12(R13)   * Save callers registers
+         LR    R10,R15
+         LA    R11,4095(,R10)
+         LA    R11,1(,R11)
+         USING LWZMAKE_GET_DATE,R10,R11
+         GETMAIN RU,LV=GET_DATE_DSECT_SIZ
+         ST    R13,4(R1)         * Backward chain callers SA
+         ST    R1,8(R13)         * Forward chain my SA
+         LR    R13,R1            * Point R13 to my SA
+         USING GET_DATE_DSECT,R13 * Establish addressing of workarea
+         USING GLOBAL_DATA_DSECT,R9
+*
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_GET_DATE'
+*
+         MVC   G_SAVE_ALTER_DATE,=CL16' '
+*
+         MVI   G_CHECK_MVSDS_TOKEN,X'00'
+*
+         L     R15,LWZMAKE_CHECK_MVSDSA_GET_DATE
+         BASR  R14,R15
+*
+         CLI   G_CHECK_MVSDS_MVSDS,C'Y'
+         BNE   GET_DATE_NOT_MVSDS
+*
+         MLWZMRPT RPTLINE=CL133' ..................... Name is MVS dataX
+                set name'
+*
+         BAL   R8,GET_DATE_IGGCSI00
+*
+         CLC   G_RETCODE,=A(0)
+         BNE   GET_DATE_RET
+*
+         CLI   G_DSFOUND,C'Y'
+         BNE   GET_DATE_RET
+*
+         CLC   G_MVSDS_MEMBER_PTR,=A(0)
+         BE    GET_DATE_RET
+*
+         BAL   R8,GET_DATE_OBTAIN
+*
+         CLC   G_RETCODE,=A(0)
+         BNE   GET_DATE_RET
+*
+         IF (TM,OBTAIN_GD+(DS1RECFM-OBTAIN_DSECT),DS1RECFU,O) THEN
+            BAL   R8,GET_DATE_LOADMOD
+         ELSE
+            BAL   R8,GET_DATE_STATS
+         ENDIF
+*
+         B     GET_DATE_RET
+*
+GET_DATE_NOT_MVSDS EQU *
+         MLWZMRPT RPTLINE=CL133' ..................... Name is not MVS X
+               data set name'
+         MVC   G_SAVE_ALTER_DATE,=16X'FF'
+*
+         BAL   R8,GET_DATE_BPX1STA
+*
+GET_DATE_RET EQU *
+         L     R3,4(,R13)        * Restore address of callers SA
+         FREEMAIN RU,LV=GET_DATE_DSECT_SIZ,A=(R13)
+         LR    R13,R3
+         LM    R14,R12,12(R13)
+         BR    R14                    Return to caller
+*
+* Perform catalog search with IGGCSI00
+*
+GET_DATE_IGGCSI00 EQU *
+         MVI   G_DSFOUND,C'N'
+*
+         LA    R1,DAREA_GD
+         ST    R1,DAREAPTR_GD
+         L     R2,=A(DAREA_GD_SIZ)
+         ST    R2,0(,R1)
+*
+         LA    R2,CSIFIELD_GD
+         L     R3,=A(CSIFIELD_GD_LEN)
+         LA    R4,CONST_CSIFIELD_GD
+         L     R5,=A(CONST_CSIFIELD_GD_LEN)
+         MVCL  R2,R4
+*
+         LA    R2,CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSECT)
+         L     R3,G_SCAN_TOKENA
+         L     R4,G_SCAN_TOKEN_LEN
+         LT    R5,G_MVSDS_MEMBER_PTR
+         IF (NZ) THEN
+            SR    R5,R3
+            BCTR  R5,R0
+            LR    R4,R5
+         ENDIF
+         C     R4,=A(L'CSIFILTK)
+         IF (H)
+            L     R4,=A(L'CSIFILTK)
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+*
+         LA    R1,PARMLIST_GD
+         LA    R2,MODRSNRT_GD
+         ST    R2,0(R1)
+         LA    R2,CSIFIELD_GD
+         ST    R2,4(R1)
+         L     R2,DAREAPTR_GD
+         O     R2,=X'80000000'
+         ST    R2,8(R1)
+*
+         L     R15,G_IGGCSI00A
+         BASR  R14,R15
+*
+         C     R15,=F'4'
+         IF (H) THEN
+            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX
+               rror code'
+            MVC   G_RETCODE,=F'12'
+            BR    R8
+         ENDIF
+*
+         LA    R1,DAREA_GD
+         CLC   8(4,R1),=F'64'
+         IF (H) THEN
+            MVI   G_DSFOUND,C'Y'
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Found inX
+                catalog'
+         ELSE
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Not founX
+               d in catalog'
+         ENDIF
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+GET_DATE_IGGCSI00_RET EQU *
+         BR    R8
+*
+* Perform CAMLST OBTAIN
+*
+GET_DATE_OBTAIN EQU *
+         XR    R1,R1
+         ICM   R1,B'1000',=AL1(193)
+         ST    R1,DSCBPAR_GD
+         MVC   OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_GX
+               D+(CSIFILTK-CSIFIELD_DSECT)
+         LA    R1,OBTAIN_GD+(DS1DSNAM-OBTAIN_DSECT)
+         ST    R1,DSCBPAR_GD+4
+         LA    R1,DAREA_GD+110
+         CLC   0(2,R1),=H'12'   * Is volume name present
+         BL    GET_DATE_OBTAIN_RET
+         LA    R1,6(,R1)
+         ST    R1,DSCBPAR_GD+8
+         LA    R1,OBTAIN_GD+(DS1FMTID-OBTAIN_DSECT)
+         ST    R1,DSCBPAR_GD+12
+*
+         OBTAIN DSCBPAR_GD
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            CVD   R15,G_DEC8         * convert return value to packed
+            UNPK  G_ZONED8,G_DEC8    * convert return value to zoned
+            OI    G_ZONED8+7,X'F0'   * get rid of sign
+            MVC   G_LWZMRPT_LINE,=CL133'0CAMLST OBTAIN returned error cX
+               ode'
+            MVC   G_LWZMRPT_LINE+35(8),G_ZONED8
+            LA    R1,DAREA_GD+116
+            MVC   G_LWZMRPT_LINE+43(6),0(R1)
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+            MVC   G_RETCODE,=F'12'
+            BR    R8
+         ENDIF
+*
+         IF (TM,OBTAIN_GD+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN
+            MVC   G_LWZMRPT_LINE,=CL133'0Member specified on non-PDS daX
+               taset'
+            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFIELD_GD+(CSIFILTK-CX
+               SIFIELD_DSECT)
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+            MVC   G_RETCODE,=F'8'
+            BR    R8
+         ENDIF
+*
+GET_DATE_OBTAIN_RET EQU *
+         BR    R8
+*
+* Get the date from a load module
+*
+GET_DATE_LOADMOD EQU *
+         MLWZMRPT RPTLINE=CL133' ..................... Retrieving load X
+               module creation date/time'
+*
+         MVI   G_DSFOUND,C'N'
+*
+         MVC   MEM8_GD,=CL8' '
+         LA    R2,MEM8_GD
+         L     R3,G_MVSDS_MEMBER_PTR
+         L     R4,G_MVSDS_MEMBER_LEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+*
+         MVI   G_DYNALLOC_DSNAME,C' '
+         MVC   G_DYNALLOC_DSNAME+1(L'G_DYNALLOC_DSNAME-1),G_DYNALLOC_DSX
+               NAME
+         MVC   G_DYNALLOC_DSNAME(44),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSEX
+               CT)
+         MVC   G_DYNALLOC_MEMBER,=CL8' '
+         MVI   G_DYNALLOC_FUNC,C'A'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_DATE
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_DATE_LOADMOD_RET
+*
+         L     R1,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R1)
+         MVC   0(LEN_DCBPDS_BDR,R2),CDCBPDS_BDR
+         MVC   DCBDDNAM-IHADCB(8,R2),G_DYNALLOC_DDNAME
+*
+         OPEN  ((R2)),MODE=31,MF=(E,G_OPEND)
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for accessing PDS with X
+               load modules'
+            MVC   G_RETCODE,=F'8'
+            B     GET_DATE_LOADMOD_DEALLOC
+         ENDIF
+*
+         MVC   BLDLIST(2),=H'1'
+         MVC   BLDLIST+2(2),=H'62'
+         MVC   BLDL_DE,MEM8_GD
+         L     R14,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)
+         BLDL  (R2),BLDLIST
+*
+         LTR   R15,R15
+         BNZ   GET_DATE_LOADMOD_NOTFOUND
+*
+         IEWBIND FUNC=STARTD,DIALOG=IEWBIND_DIALOG
+*
+         C     R15,=A(0)
+         BE    GET_DATE_STARTD_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error starting binder dialog'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_STARTD_NOERR EQU *
+*
+         IEWBIND FUNC=CREATEW,WORKMOD=IEWBIND_WORKMOD,                 X
+               DIALOG=IEWBIND_DIALOG,INTENT=A
+*
+         C     R15,=A(0)
+         BE    GET_DATE_CREATEW_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error creating binder workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_CREATEW_NOERR EQU *
+*
+         L     R14,G_DCB_MEM_PTR
+         LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)
+         ST    R1,IEWBIND_DCBPTR
+         LA    R1,BLDL_DE
+         ST    R1,IEWBIND_DEPTR
+*
+         IEWBIND FUNC=INCLUDE,WORKMOD=IEWBIND_WORKMOD,                 X
+               INTYPE=POINTER,DCBPTR=IEWBIND_DCBPTR,                   X
+               DEPTR=IEWBIND_DEPTR
+*
+         C     R15,=A(0)
+         BE    GET_DATE_INCLUDE_NOERR
+         C     R15,=A(8)
+         IF (EQ) THEN
+            C     R0,=XL4'83000514'
+            BE    GET_DATE_DELETEW
+         ENDIF
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error including loadmod in workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_INCLUDE_NOERR EQU *
+*
+IEWBIDB_BASE EQU R6                      Base register for IDRB buffer.
+IDB_BASE     EQU R7                      Base register for IDRB entry.
+         IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.
+         IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.
+*
+         MVC   IEWBIND_CURSOR,=F'0'
+         MVC   IEWBIND_COUNT,=F'0'
+         MVC   IEWBIND_CLASS(2),=H'6'
+         MVC   IEWBIND_CLASS+2(6),=C'B_IDRB'
+*
+         IEWBIND FUNC=GETD,WORKMOD=IEWBIND_WORKMOD,CLASS=IEWBIND_CLASS,X
+               AREA=(R6),CURSOR=IEWBIND_CURSOR,COUNT=IEWBIND_COUNT
+*
+         C     R15,=A(0)
+         BE    GET_DATE_GETD_NOERR
+         C     R15,=A(4)
+         IF (EQ) THEN
+            C     R0,=XL4'83000800'
+            BE    GET_DATE_GETD_NOERR
+         ENDIF
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error getting IDRB data'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_GETD_NOERR EQU *
+         MVI   G_DSFOUND,C'Y'
+*
+GET_DATE_DELETEW EQU *
+*
+         IEWBIND FUNC=DELETEW,WORKMOD=IEWBIND_WORKMOD
+*
+         C     R15,=A(0)
+         BE    GET_DATE_DELETEW_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error deleting binder workmod'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_DELETEW_NOERR EQU *
+*
+         IEWBIND FUNC=ENDD,DIALOG=IEWBIND_DIALOG
+*
+         C     R15,=A(0)
+         BE    GET_DATE_ENDD_NOERR
+         BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+         MLWZMRPT RPTLINE=CL133'0Error ending binder dialog'
+         MVC   G_RETCODE,=F'12'
+         BR    R8
+GET_DATE_ENDD_NOERR EQU *
+*
+         CLI   G_DSFOUND,C'Y'
+         BNE   GET_DATE_LOADMOD_NOTFOUND
+*
+*        MVC   IEWBFDAT_SB_SB(2),=C'SB'
+*        MVC   IEWBFDAT_SB_SB+2(2),=X'0001'
+*        XC    IEWBFDAT_SB_MTOKEN,IEWBFDAT_SB_MTOKEN
+*        MVC   IEWBFDAT_SB_PGMNAME,MEM8_GD
+*
+*        LA    R1,IEWBFDAT_SB_SB
+*        ST    R1,IEWBFDAT_SB_PAR4A
+*        LA    R1,IEWBFDAT_SB_MTOKEN
+*        ST    R1,IEWBFDAT_SB_PAR4A+4
+*        L     R14,G_DCB_MEM_PTR
+*        LA    R1,DCBPDS_BDR-DCB_DSECT(,R14)
+*        ST    R1,IEWBFDAT_SB_PAR4A+8
+*        LA    R1,BLDL_DE
+*        O     R1,=X'80000000'
+*        ST    R1,IEWBFDAT_SB_PAR4A+12
+*        LA    R1,IEWBFDAT_SB_PAR4A
+*
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
+*
+*        C     R15,=A(0)
+*        BE    GET_DATE_LOADMOD_NOERR1
+*        C     R15,=A(4)
+*        BE    GET_DATE_LOADMOD_NOERR1
+*        C     R15,=A(12)
+*        IF (EQ) THEN
+*           C     R0,=XL4'10800032'
+*           BE    GET_DATE_LOADMOD_NOTFOUND
+*        ENDIF
+*        BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*        MLWZMRPT RPTLINE=CL133'0Error starting binder fast data accessX
+                session'
+*        MVC   G_RETCODE,=F'12'
+*        BR    R8
+*
+*GET_DATE_LOADMOD_NOERR1 EQU *
+*        MVI   G_DSFOUND,C'Y'
+*
+*IEWBIDB_BASE EQU R6                     Base register for IDRB buffer.
+*IDB_BASE     EQU R7                     Base register for IDRB entry.
+*        IEWBUFF FUNC=GETBUF,TYPE=IDRB   Get memory for IDRB buffer.
+*        IEWBUFF FUNC=INITBUF,TYPE=IDRB  Init IDRB buffer.
+*
+*        MVC   IEWBFDAT_GD_GD(2),=C'GD'
+*        MVC   IEWBFDAT_GD_GD+2(2),=X'0001'
+*        MVC   IEWBFDAT_GD_MTOKEN,IEWBFDAT_SB_MTOKEN
+*        MVC   IEWBFDAT_GD_B_IDRB(2),=H'6'
+*        MVC   IEWBFDAT_GD_B_IDRB+2(6),=C'B_IDRB'
+*        XC    IEWBFDAT_GD_CURSOR,IEWBFDAT_GD_CURSOR
+*
+*        LA    R1,IEWBFDAT_GD_GD
+*        ST    R1,IEWBFDAT_GD_PAR8A
+*        LA    R1,IEWBFDAT_GD_MTOKEN
+*        ST    R1,IEWBFDAT_GD_PAR8A+4
+*        LA    R1,IEWBFDAT_GD_B_IDRB
+*        ST    R1,IEWBFDAT_GD_PAR8A+8
+*        XR    R1,R1
+*        ST    R1,IEWBFDAT_GD_PAR8A+12
+*        ST    IEWBIDB_BASE,IEWBFDAT_GD_PAR8A+16
+*        LA    R1,IEWBFDAT_GD_CURSOR
+*        ST    R1,IEWBFDAT_GD_PAR8A+20
+*        LA    R1,IEWBFDAT_GD_COUNT
+*        ST    R1,IEWBFDAT_GD_PAR8A+24
+*        L     R1,=X'80000000'
+*        ST    R1,IEWBFDAT_GD_PAR8A+28
+*        LA    R1,IEWBFDAT_GD_PAR8A
+*
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
+*
+*        C     R15,=A(0)
+*        IF (NE) THEN
+*           C     R15,=A(4)
+*        ENDIF
+*        IF (NE) THEN
+*           BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*           MLWZMRPT RPTLINE=CL133'0Error during binder fast data accesX
+               s get data function'
+*           MVC   G_RETCODE,=F'12'
+*           BR    R8
+*        ENDIF
+*
+*        MVC   IEWBFDAT_EN_EN(2),=C'EN'
+*        MVC   IEWBFDAT_EN_EN+2(2),=X'0001'
+*        MVC   IEWBFDAT_EN_MTOKEN,IEWBFDAT_SB_MTOKEN
+*
+*        LA    R1,IEWBFDAT_EN_EN
+*        ST    R1,IEWBFDAT_EN_PAR2A
+*        LA    R1,IEWBFDAT_EN_MTOKEN
+*        ST    R1,IEWBFDAT_EN_PAR2A+4
+*        LA    R1,IEWBFDAT_EN_PAR2A
+*
+*        L     R15,G_IEWBFDATA
+*        BASR  R14,R15
+*
+*        LTR   R15,R15
+*        IF (NZ) THEN
+*           BAL   R7,GET_DATE_LOADMOD_BINDER_TRACE
+*           MLWZMRPT RPTLINE=CL133'0Error ending binder fast data accesX
+               s session'
+*           MVC   G_RETCODE,=F'12'
+*           BR    R8
+*        ENDIF
+*
+         MVI   CONVTOD_INAREA,X'00'
+         MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA
+         PACK  CONVTOD_INAREA(4),IDB_TIME_BOUND(L'IDB_TIME_BOUND+1)
+         MVI   CONVTOD_INAREA+4,X'00'
+         PACK  CONVTOD_INAREA+8(5),IDB_DATE_BOUND(L'IDB_DATE_BOUND+1)
+         MVI   CONVTOD_OUTAREA,X'00'
+         MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA
+         MVI   STCKCONV_OUTAREA,X'00'
+         MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA
+         CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIMETYPEX
+               =DEC,DATETYPE=YYYYDDD,MF=(E,CONVTOD_PLIST)
+         STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREA,TIMEX
+               TYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)
+         MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8
+         MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA
+         MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)
+         MVN   DATEWORK_DEC_2+7(1),=X'0F'
+         UNPK  DATEWORK_ZON,DATEWORK_DEC_2
+         MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON
+*
+         IEWBUFF FUNC=FREEBUF,TYPE=IDRB  Free IDRB buffer.
+*
+GET_DATE_LOADMOD_NOTFOUND EQU *
+*
+         IF (CLI,G_DSFOUND,EQ,C'Y') THEN
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Load modX
+               ule found in PDS, last altered on'
+            MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON
+            MVC   G_LWZMRPT_LINE+65(19),=C'0000-00-00 00:00:00'
+            MVC   G_LWZMRPT_LINE+65(4),G_SAVE_ALTER_DATE+2
+            MVC   G_LWZMRPT_LINE+70(2),G_SAVE_ALTER_DATE+6
+            MVC   G_LWZMRPT_LINE+73(2),G_SAVE_ALTER_DATE+8
+            MVC   G_LWZMRPT_LINE+76(2),G_SAVE_ALTER_DATE+10
+            MVC   G_LWZMRPT_LINE+79(2),G_SAVE_ALTER_DATE+12
+            MVC   G_LWZMRPT_LINE+82(2),G_SAVE_ALTER_DATE+14
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+         ELSE
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'
+            MLWZMRPT RPTLINE=CL133' ..................... Load module nX
+               ot found in PDS'
+         ENDIF
+*
+         DROP  R6
+         DROP  R7
+*
+GET_DATE_LOADMOD_CLOSE EQU *
+         L     R14,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_BDR-DCB_DSECT(,R14)
+         CLOSE ((R2)),MODE=31
+*
+GET_DATE_LOADMOD_DEALLOC EQU *
+         MVI   G_DYNALLOC_FUNC,C'U'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_DATE
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_DATE_LOADMOD_RET
+*
+GET_DATE_LOADMOD_RET EQU *
+         BR    R8
+*
+* Write trace record for binder error
+*
+GET_DATE_LOADMOD_BINDER_TRACE EQU *
+         CVD   R15,G_DEC8         * convert return value to packed
+         UNPK  G_ZONED8,G_DEC8    * convert return value to zoned
+         OI    G_ZONED8+7,X'F0'   * get rid of sign
+         MVC   G_HELPER_DATA(8),G_ZONED8
+         MVI   G_HELPER_DATA+8,C' '
+         ST    R0,G_DEC8          * Put ptr in area of at least 5 bytes
+         UNPK  G_ZONED8(9),G_DEC8(5)   * Turn into almost hex
+         TR    G_ZONED8,GETDATE_HEXTAB * Turn into hex
+         MVC   G_HELPER_DATA+9(8),G_ZONED8
+         LA    R14,G_HELPER_DATA
+         ST    R14,G_LWZMTRC_DATA_PTR
+         MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'010',DATA
+*
+         BR    R7
+*
+* Get the date from member stats
+*
+GET_DATE_STATS EQU *
+         MLWZMRPT RPTLINE=CL133' ..................... Retrieving PDS mX
+               ember stats'
+*
+         MVI   G_DSFOUND,C'N'
+*
+         MVC   MEM8_GD,=CL8' '
+         LA    R2,MEM8_GD
+         L     R3,G_MVSDS_MEMBER_PTR
+         L     R4,G_MVSDS_MEMBER_LEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+*
+         MVI   G_DYNALLOC_DSNAME,C' '
+         MVC   G_DYNALLOC_DSNAME+1(L'G_DYNALLOC_DSNAME-1),G_DYNALLOC_DSX
+               NAME
+         MVC   G_DYNALLOC_DSNAME(44),CSIFIELD_GD+(CSIFILTK-CSIFIELD_DSEX
+               CT)
+         MVC   G_DYNALLOC_MEMBER,=CL8' '
+         MVI   G_DYNALLOC_FUNC,C'A'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_DATE
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_DATE_STATS_RET
+*
+         L     R1,G_DCB_MEM_PTR
+         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_GD,R1),CDCBPDS_DIR_GX
+               D
+         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_GD,R1),CDCBEPDS_DIX
+               R_GD
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)
+         ST    R3,DCBDCBE-IHADCB(,R2)
+         LA    R4,PDSDIR_IS_EOF_GD
+         ST    R4,DCBEEODA-DCBE(,R3)
+         MVC   DCBDDNAM-IHADCB(8,R2),G_DYNALLOC_DDNAME
+*
+         MVI   PDSDIR_EOF_GD,C'N'
+*
+         LA    R6,GET_DATE_OPENPDS
+         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)
+GET_DATE_OPENPDS EQU *
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX
+               ry'
+            MVC   G_RETCODE,=F'8'
+            B     GET_DATE_DEALLOC
+         ENDIF
+*
+GET_DATE_GET_DIRREC EQU *
+         L     R1,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         LA    R6,GET_DATE_DIRREC_NOMORE
+         GET   (R2),DIRREC_GD
+*
+         LA    R3,DIRREC_GD
+         XR    R4,R4
+         LH    R4,0(,R3)
+         C     R4,=F'14'
+         BL    GET_DATE_DIRREC_END_OF_BLOCK
+         LA    R3,2(,R3)
+         S     R4,=F'2'
+GET_DATE_NEXT_DIRREC_ENTRY EQU *
+         CLC   0(8,R3),=8X'FF'
+         BE    GET_DATE_DIRREC_NOMORE
+         CLC   0(8,R3),MEM8_GD
+         IF (EQ) THEN
+            MVI   G_DSFOUND,C'Y'
+            L     R5,8(,R3)
+            N     R5,=X'0000001F'
+            SLL   R5,1
+            C     R5,=F'30'
+            IF (NL) THEN
+               MVI   CONVTOD_INAREA,X'00'
+               MVC   CONVTOD_INAREA+1(15),CONVTOD_INAREA
+               MVC   CONVTOD_INAREA(2),24(R3)
+               MVC   CONVTOD_INAREA+2(1),15(R3)
+               MVC   CONVTOD_INAREA+8(4),20(R3)
+               MVI   CONVTOD_OUTAREA,X'00'
+               MVC   CONVTOD_OUTAREA+1(7),CONVTOD_OUTAREA
+               MVI   STCKCONV_OUTAREA,X'00'
+               MVC   STCKCONV_OUTAREA+1(15),STCKCONV_OUTAREA
+               CONVTOD CONVVAL=CONVTOD_INAREA,TODVAL=CONVTOD_OUTAREA,TIX
+               METYPE=DEC,DATETYPE=YYDDD,MF=(E,CONVTOD_PLIST)
+               STCKCONV STCKVAL=CONVTOD_OUTAREA,CONVVAL=STCKCONV_OUTAREX
+               A,TIMETYPE=DEC,DATETYPE=YYYYMMDD,MF=(E,STCKCONV_PLIST)
+               MVC   G_LWZMRPT_LINE,=CL133' ..................... MembeX
+               r found in PDS directory, last altered on'
+               MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8
+               MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA
+               MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)
+               MVN   DATEWORK_DEC_2+7(1),=X'0F'
+               UNPK  DATEWORK_ZON,DATEWORK_DEC_2
+               MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON
+               MVC   G_LWZMRPT_LINE+70(19),=C'0000-00-00 00:00:00'
+               MVC   G_LWZMRPT_LINE+70(4),DATEWORK_ZON+2
+               MVC   G_LWZMRPT_LINE+75(2),DATEWORK_ZON+6
+               MVC   G_LWZMRPT_LINE+78(2),DATEWORK_ZON+8
+               MVC   G_LWZMRPT_LINE+81(2),DATEWORK_ZON+10
+               MVC   G_LWZMRPT_LINE+84(2),DATEWORK_ZON+12
+               MVC   G_LWZMRPT_LINE+87(2),DATEWORK_ZON+14
+               L     R15,G_LWZMAKE_RPTA
+               BASR  R14,R15
+            ELSE
+               MLWZMRPT RPTLINE=CL133' ..................... Member fouX
+               nd in PDS directory but without statistics!!!'
+            ENDIF
+            B     GET_DATE_DIRREC_NOMORE
+         ELSE
+            L     R5,8(,R3)
+            N     R5,=X'0000001F'
+            SLL   R5,1
+            LA    R3,12(,R3)
+            S     R4,=F'12'
+            AR    R3,R5
+            SR    R4,R5
+            BC    B'0010',GET_DATE_NEXT_DIRREC_ENTRY
+         ENDIF
+*
+GET_DATE_DIRREC_END_OF_BLOCK EQU *
+         B     GET_DATE_GET_DIRREC
+*
+GET_DATE_DIRREC_NOMORE EQU *
+*
+         L     R1,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         CLOSE ((R2)),MODE=31
+*
+GET_DATE_DEALLOC EQU *
+         MVI   G_DYNALLOC_FUNC,C'U'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_DATE
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_DATE_STATS_RET
+*
+         IF (CLI,G_DSFOUND,NE,C'Y') THEN
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'
+         ENDIF
+*
+GET_DATE_STATS_RET EQU *
+         BR    R8
+*
+* EODAD for DCBPDS
+*
+PDSDIR_IS_EOF_GD EQU *
+         MVI   PDSDIR_EOF_GD,C'Y'
+         BR    R6
+*
+*
+*
+GET_DATE_BPX1STA EQU *
+         MVI   G_DSFOUND,C'N'
+*
+         MVC   BPX1STA_PATH_LEN,G_SCAN_TOKEN_LEN
+         MVC   BPX1STA_PATH_PTR,G_SCAN_TOKENA
+         MVC   BPX1STA_STAT_LEN,=A(ST#LEN)
+         LA    R1,BPX1STA_STATAREA
+         ST    R1,BPX1STA_STAT_PTR
+*
+         LA    R1,BPX1STA_PATH_LEN
+         ST    R1,BPX1STA_PAR7A
+         L     R1,BPX1STA_PATH_PTR
+         ST    R1,BPX1STA_PAR7A+4
+         LA    R1,BPX1STA_STAT_LEN
+         ST    R1,BPX1STA_PAR7A+8
+         L     R1,BPX1STA_STAT_PTR
+         ST    R1,BPX1STA_PAR7A+12
+         LA    R1,BPX1STA_RETVAL
+         ST    R1,BPX1STA_PAR7A+16
+         LA    R1,BPX1STA_RETCODE
+         ST    R1,BPX1STA_PAR7A+20
+         LA    R1,BPX1STA_REASON
+         O     R1,=X'80000000'
+         ST    R1,BPX1STA_PAR7A+24
+         LA    R1,BPX1STA_PAR7A
+*
+         LINK  EP=BPX1STA,SF=(E,G_LINKD)
+*
+         IF (CLC,BPX1STA_RETVAL,EQ,=F'0') THEN
+            MVI   G_DSFOUND,C'Y'
+*
+            L     R15,BPX1STA_STATAREA+(ST_MTIME-STAT)
+*
+            USING PSA,0
+*
+HFSFMTTM    M     R14,=F'1000000'     Convert to microseconds
+            LA    R0,1                Get one
+            AL    R15,SEC70YRS+4      Change origin from 1970 to 1900
+            BC    12,HFSFMTL1
+            ALR   R14,R0              Carry one from overflow
+HFSFMTL1    AL    R14,SEC70YRS
+            SLDL  R14,12              Convert to STCK format
+            L     R1,FLCCVT           CVT
+            L     R1,CVTEXT2-CVT(,R1) OS/VS2 common extension
+            USING CVTXTNT2,R1
+            AL    R15,CVTLDTOR        Add CVTLDTO right word
+            BC    12,HFSFMTL2         CVTLDTO = Local Date/Time Offset
+            ALR   R14,R0              Carry one from overflow
+HFSFMTL2    AL    R14,CVTLDTOL        Add CVTLDTO left word
+            SL    R15,CVTLSOL         Subtract CVTLSO low word
+            BC    3,HFSFMTL3          CVTLSO = Leap Second Offset
+            SR    R14,R0              Borrow one from overflow
+HFSFMTL3    SL    R14,CVTLSOH         Subtract CVTLSO high word
+            DROP  R1                  CVTXTNT2
+            STM   R14,R15,CONVTOD_OUTAREA Save the STCK value
+            STCKCONV STCKVAL=CONVTOD_OUTAREA, Point to input STCK value+
+               CONVVAL=STCKCONV_OUTAREA, Point to output four words    +
+               TIMETYPE=DEC,         Get time decimal digits (default) +
+               DATETYPE=YYYYMMDD,    Specify date format               +
+               MF=(E,STCKCONV_PLIST) Specify parameter list
+*
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... Unix filX
+               e found, last altered on'
+            MVC   DATEWORK_DEC_1(4),STCKCONV_OUTAREA+8
+            MVC   DATEWORK_DEC_1+4(3),STCKCONV_OUTAREA
+            MVO   DATEWORK_DEC_2,DATEWORK_DEC_1(7)
+            MVN   DATEWORK_DEC_2+7(1),=X'0F'
+            UNPK  DATEWORK_ZON,DATEWORK_DEC_2
+            MVC   G_SAVE_ALTER_DATE,DATEWORK_ZON
+            MVC   G_LWZMRPT_LINE+56(19),=C'0000-00-00 00:00:00'
+            MVC   G_LWZMRPT_LINE+56(4),DATEWORK_ZON+2
+            MVC   G_LWZMRPT_LINE+61(2),DATEWORK_ZON+6
+            MVC   G_LWZMRPT_LINE+64(2),DATEWORK_ZON+8
+            MVC   G_LWZMRPT_LINE+67(2),DATEWORK_ZON+10
+            MVC   G_LWZMRPT_LINE+70(2),DATEWORK_ZON+12
+            MVC   G_LWZMRPT_LINE+73(2),DATEWORK_ZON+14
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+         ELSE
+            IF (CLC,BPX1STA_RETCODE,EQ,=F'129') THEN
+               MLWZMRPT RPTLINE=CL133' ..................... Unix file X
+               not found'
+            ELSE
+               MVC   G_DEC8(4),BPX1STA_RETCODE
+               UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
+               TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex
+               MVC   G_HELPER_DATA(8),G_ZONED8
+               MVI   G_HELPER_DATA+8,C' '
+               MVC   G_DEC8(4),BPX1STA_REASON
+               UNPK  G_ZONED8(9),G_DEC8(5)      * Turn into almost hex
+               TR    G_ZONED8,GETDATE_HEXTAB    * Turn into hex
+               MVC   G_HELPER_DATA+9(8),G_ZONED8
+               LA    R14,G_HELPER_DATA
+               ST    R14,G_LWZMTRC_DATA_PTR
+               MVC   G_LWZMTRC_DATA_SIZ,=AL2(17)
+               MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'011',DATA
+               MLWZMRPT RPTLINE=CL133'0Error getting unix file informatX
+               ion'
+               MVC   G_RETCODE,=F'12'
+               B     BPX1STA_RET
+            ENDIF
+         ENDIF
+*
+         IF (CLI,G_DSFOUND,NE,C'Y') THEN
+            MVC   G_SAVE_ALTER_DATE,=16X'FF'
+         ENDIF
+*
+BPX1STA_RET EQU *
+         BR    R8
+*
+         LTORG
+*
+LWZMAKE_CHECK_MVSDSA_GET_DATE DC    A(LWZMAKE_CHECK_MVSDS)
+LWZMAKE_DYNALLOCA_GET_DATE    DC    A(LWZMAKE_DYNALLOC)
+*
+*        MICROSECONDS FROM THE START OF 1900 TO THE START OF 1970
+*        =  ((70*365)+17)*24*3600*1000000  =  2208988800 * 1000000
+SEC70YRS DC    0D'0',FL8'2208988800E6'
+*
+* Translate table for conversion to hex
+                            DS    0F
+GETDATE_HEXTAB              EQU   *-C'0'
+                            DC    C'0123456789ABCDEF'
+*
+CONST_CSIFIELD_GD DS 0F
+         DC    CL44' '        CSIFILTK FILTER   KEY
+         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS
+         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS
+         DS    0CL16          CSIDTYPD ENTRY TYPES
+         DC    CL16'                ' CSIDTYPS
+         DS    0CL4           CSIOPTS  CSI OPTIONS
+         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' '
+         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' '
+         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' '
+         DC    XL1'00'        CSIRESRV RESERVED
+         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING
+         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES
+         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME
+CONST_CSIFIELD_GD_LEN EQU *-CONST_CSIFIELD_GD
+*
+CDCBPDS_DIR_GD              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX
+               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_GD
+LEN_DCBPDS_DIR_GD           EQU   *-CDCBPDS_DIR_GD
+CDCBEPDS_DIR_GD             DCBE  EODAD=0,RMODE31=BUFF
+LEN_DCBEPDS_DIR_GD          EQU   *-CDCBEPDS_DIR_GD
+*
+CDCBPDS_BDR                 DCB   MACRF=R,DSORG=PO,RECFM=U
+LEN_DCBPDS_BDR              EQU   *-CDCBPDS_BDR
+*
+CONVTOD_L                   CONVTOD MF=L
+CONVTOD_L_SIZ               EQU   *-CONVTOD_L
+STCKCONV_L                  STCKCONV MF=L
+STCKCONV_L_SIZ              EQU   *-STCKCONV_L
+*
+IDBBUF                      IEWBUFF FUNC=MAPBUF,TYPE=IDRB,VERSION=6,BYTX
+               ES=2048
+*
+GET_DATE_DSECT              DSECT
+                            DS    18F * My savearea
+*
+DAREAPTR_GD                 DS    A      DATA AREA POINTER (64K)
+*
+MODRSNRT_GD                 DS    0F
+PARMRC_GD                   DS    0CL4
+MODID_GD                    DS    CL2    MODULE ID
+RSNCODE_GD                  DS    CL1    REASON CODE
+RTNCODE_GD                  DS    CL1    RETURN CODE
+*
+CSIFIELD_GD                 DS    0F
+                            ORG   *+CSIFIELD_DSECT_SIZ
+CSIFIELD_GD_LEN             EQU   *-CSIFIELD_GD
+*
+PARMLIST_GD                 DS    0F
+                            DS    A
+                            DS    A
+                            DS    A
+*
+                            DS    0F
+CONVTOD_INAREA              DS    4F
+CONVTOD_OUTAREA             DS    2F
+CONVTOD_PLIST               DS    CL(CONVTOD_L_SIZ)
+*
+                            DS    0F
+STCKCONV_OUTAREA            DS    CL16
+STCKCONV_PLIST              DS    CL(STCKCONV_L_SIZ)
+*
+                            DS    0F
+DATEWORK_DEC_1              DS    CL8
+DATEWORK_DEC_2              DS    CL8
+DATEWORK_ZON                DS    CL16
+*
+                            DS    0F
+PDSDIR_EOF_GD               DS    C
+*
+                            DS    0F
+DSCBPAR_GD                  DS    4F
+OBTAIN_GD                   DS    0F
+                            ORG   *+OBTAIN_DSECT_SIZ
+*
+                            DS    0F
+DIRREC_GD                   DS    CL256
+*
+MEM8_GD                     DS    CL8
+*
+DAREA_GD                    DS    C
+                            ORG   *+1023
+DAREA_GD_SIZ                EQU   *-DAREA_GD
+*
+                            DS    0F
+IEWBIND_DIALOG              DS    CL8
+IEWBIND_WORKMOD             DS    CL8
+IEWBIND_DCBPTR              DS    CL4
+IEWBIND_DEPTR               DS    CL4
+IEWBIND_CURSOR              DS    CL4
+IEWBIND_COUNT               DS    CL4
+IEWBIND_CLASS               DS    HL2,CL16
+*
+                            DS    0F
+BLDLIST                     DS    F
+BLDL_DE                     DS    CL8
+                            DS    CL50
+*
+IEWBFDAT_SB_PAR4A           DS    4A
+IEWBFDAT_SB_SB              DS    CL4
+IEWBFDAT_SB_MTOKEN          DS    CL4
+IEWBFDAT_SB_PGMNAME         DS    CL8
+*
+IEWBFDAT_GD_PAR8A           DS    8A
+IEWBFDAT_GD_GD              DS    CL4
+IEWBFDAT_GD_MTOKEN          DS    CL4
+IEWBFDAT_GD_B_IDRB          DS    CL8
+IEWBFDAT_GD_CURSOR          DS    F
+IEWBFDAT_GD_COUNT           DS    F
+*
+IEWBFDAT_EN_PAR2A           DS    2A
+IEWBFDAT_EN_EN              DS    CL4
+IEWBFDAT_EN_MTOKEN          DS    CL4
+*
+                            DS    0F
+BPX1STA_STATAREA            DS    CL(ST#LEN)
+*
+                            DS    0F
+BPX1STA_PAR7A               DS    7A
+BPX1STA_PATH_LEN            DS    F
+BPX1STA_PATH_PTR            DS    A
+BPX1STA_STAT_LEN            DS    F
+BPX1STA_STAT_PTR            DS    A
+BPX1STA_RETVAL              DS    F
+BPX1STA_RETCODE             DS    F
+BPX1STA_REASON              DS    F
+*
+GET_DATE_DSECT_SIZ          EQU   *-GET_DATE_DSECT
+*
+         IEFZB4D0
+         IEFZB4D2
+*
+         BPXYSTAT
+*
+LWZMAKE  CSECT
+*
+* Get the member list of a data set
+*
+         DROP
+*
+LWZMAKE_GET_MEMLIST DS    0F
+         STM   R14,R12,12(R13)   * Save callers registers
+         LR    R10,R15
+         LA    R11,4095(,R10)
+         LA    R11,1(,R11)
+         USING LWZMAKE_GET_MEMLIST,R10,R11
+         GETMAIN RU,LV=GET_MEMLIST_DSECT_SIZ
+         ST    R13,4(R1)         * Backward chain callers SA
+         ST    R1,8(R13)         * Forward chain my SA
+         LR    R13,R1            * Point R13 to my SA
+         USING GET_MEMLIST_DSECT,R13 * Establish addressing of workarea
+         USING GLOBAL_DATA_DSECT,R9
+*
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_GET_MEMLIST'
+*
+         MVC   MEM8FILTER_LEN,=F'0'
+         LT    R2,G_SCAN_TOKEN3_LEN
+         IF (NZ) THEN
+            C     R2,=F'8'
+            IF (H) THEN
+               L     R2,=F'8'
+            ENDIF
+            ST    R2,MEM8FILTER_LEN
+            LA    R3,MEM8FILTER
+            L     R4,G_SCAN_TOKEN3A
+            BCTR  R2,R0
+            B     *+10
+            MVC   0(1,R3),0(R4)
+            EX    R2,*-6
+            MVC   G_SCAN_TOKEN3_LEN,=F'0'
+         ENDIF
+*
+         MVC   G_MVSDS_MEMBER_PTR,=A(0)
+         MVC   G_MVSDS_MEMBER_LEN,=A(0)
+*
+         L     R3,G_SCAN_TOKEN2A
+         L     R4,G_SCAN_TOKEN2_LEN
+         XR    R6,R6
+         XR    R7,R7
+*
+GET_MEMLIST_TEST_QUAL1 EQU *
+         LTR   R4,R4
+         BZ    GET_MEMLIST_NOT_MVSDS
+         TRT   0(1,R3),TRT_ALPHANAT_MEMLIST
+         BNZ   GET_MEMLIST_NOT_MVSDS
+         LA    R3,1(,R3)
+         BCT   R4,*+8
+         B     GET_MEMLIST_MVSDS
+         LR    R5,R4
+         C     R5,=F'7'
+         IF (H) THEN
+            L     R5,=F'7'
+         ENDIF
+         BCTR  R5,R0
+         B     *+10
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH_MEMLIST
+         EX    R5,*-6
+         IF (Z) THEN
+            LA    R5,1(,R5)
+         ELSE
+            LR    R5,R1
+            SR    R5,R3
+         ENDIF
+         AR    R3,R5
+         SR    R4,R5
+         BZ    GET_MEMLIST_MVSDS
+         IF (CLI,0(R3),EQ,C'.') THEN
+            LA    R3,1(,R3)
+            BCTR  R4,R0
+            B     GET_MEMLIST_TEST_QUAL1
+         ENDIF
+         B     GET_MEMLIST_NOT_MVSDS
+*
+GET_MEMLIST_MVSDS EQU *
+         BAL   R8,GET_MEMLIST_IGGCSI00
+*
+         CLC   G_RETCODE,=A(0)
+         BNE   GET_MEMLIST_RET
+*
+         CLI   G_DSFOUND,C'Y'
+         BNE   GET_MEMLIST_RET
+*
+         BAL   R8,GET_MEMLIST_OBTAIN
+*
+         CLC   G_RETCODE,=A(0)
+         BNE   GET_MEMLIST_RET
+*
+         BAL   R8,GET_MEMLIST_MEMS
+*
+         B     GET_MEMLIST_RET
+*
+GET_MEMLIST_NOT_MVSDS EQU *
+         MLWZMRPT RPTLINE=CL133'0Member list requested for non MVS fileX
+               '
+         MVC   G_RETCODE,=F'12'
+*
+GET_MEMLIST_RET EQU *
+         L     R3,4(,R13)        * Restore address of callers SA
+         FREEMAIN RU,LV=GET_MEMLIST_DSECT_SIZ,A=(R13)
+         LR    R13,R3
+         LM    R14,R12,12(R13)
+         BR    R14                    Return to caller
+*
+* Perform catalog search with IGGCSI00
+*
+GET_MEMLIST_IGGCSI00 EQU *
+         MVI   G_DSFOUND,C'N'
+*
+         LA    R1,DAREA_ML
+         ST    R1,DAREAPTR_ML
+         L     R2,=A(DAREA_ML_SIZ)
+         ST    R2,0(,R1)
+*
+         LA    R2,CSIFIELD_ML
+         L     R3,=A(CSIFIELD_ML_LEN)
+         LA    R4,CONST_CSIFIELD_ML
+         L     R5,=A(CONST_CSIFIELD_ML_LEN)
+         MVCL  R2,R4
+*
+         LA    R2,CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSECT)
+         L     R3,G_SCAN_TOKEN2A
+         L     R4,G_SCAN_TOKEN2_LEN
+         LT    R5,G_MVSDS_MEMBER_PTR
+         IF (NZ) THEN
+            SR    R5,R3
+            BCTR  R5,R0
+            LR    R4,R5
+         ENDIF
+         C     R4,=A(L'CSIFILTK)
+         IF (H)
+            L     R4,=A(L'CSIFILTK)
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+*
+         LA    R1,PARMLIST_ML
+         LA    R2,MODRSNRT_ML
+         ST    R2,0(R1)
+         LA    R2,CSIFIELD_ML
+         ST    R2,4(R1)
+         L     R2,DAREAPTR_ML
+         O     R2,=X'80000000'
+         ST    R2,8(R1)
+*
+         L     R15,G_IGGCSI00A
+         BASR  R14,R15
+*
+         C     R15,=F'4'
+         IF (H) THEN
+            MLWZMRPT RPTLINE=CL133'0Catalog search interface returned eX
+               rror code'
+            MVC   G_RETCODE,=F'12'
+            BR    R8
+         ENDIF
+*
+         LA    R1,DAREA_ML
+         CLC   8(4,R1),=F'64'
+         IF (H) THEN
+            MVI   G_DSFOUND,C'Y'
+         ENDIF
+*
+GET_MEMLIST_IGGCSI00_RET EQU *
+         BR    R8
+*
+* Perform CAMLST OBTAIN
+*
+GET_MEMLIST_OBTAIN EQU *
+         XR    R1,R1
+         ICM   R1,B'1000',=AL1(193)
+         ST    R1,DSCBPAR_ML
+         MVC   OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)(L'DS1DSNAM),CSIFIELD_MX
+               L+(CSIFILTK-CSIFIELD_DSECT)
+         LA    R1,OBTAIN_ML+(DS1DSNAM-OBTAIN_DSECT)
+         ST    R1,DSCBPAR_ML+4
+         LA    R1,DAREA_ML+110
+         CLC   0(2,R1),=H'12'   * Is volume name present
+         BL    GET_MEMLIST_OBTAIN_RET
+         LA    R1,6(,R1)
+         ST    R1,DSCBPAR_ML+8
+         LA    R1,OBTAIN_ML+(DS1FMTID-OBTAIN_DSECT)
+         ST    R1,DSCBPAR_ML+12
+*
+         OBTAIN DSCBPAR_ML
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0CAMLST OBTAIN returned error code'
+            MVC   G_RETCODE,=F'12'
+            BR    R8
+         ENDIF
+*
+         IF (TM,OBTAIN_ML+(DS1DSORG-OBTAIN_DSECT),DS1DSGPO,Z) THEN
+            MVC   G_LWZMRPT_LINE,=CL133'0Member list requested on non-PX
+               DS dataset'
+            LA    R2,CSIFIELD_ML
+            MVC   G_LWZMRPT_LINE+37(L'CSIFILTK),CSIFILTK-CSIFIELD_DSECTX
+               (R2)
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+            MVC   G_RETCODE,=F'8'
+            BR    R8
+         ENDIF
+*
+GET_MEMLIST_OBTAIN_RET EQU *
+         BR    R8
+*
+* Get the member list
+*
+GET_MEMLIST_MEMS EQU *
+         MVI   G_DYNALLOC_DSNAME,C' '
+         MVC   G_DYNALLOC_DSNAME+1(L'G_DYNALLOC_DSNAME-1),G_DYNALLOC_DSX
+               NAME
+         MVC   G_DYNALLOC_DSNAME(44),CSIFIELD_ML+(CSIFILTK-CSIFIELD_DSEX
+               CT)
+         MVC   G_DYNALLOC_MEMBER,=CL8' '
+         MVI   G_DYNALLOC_FUNC,C'A'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_MEMLIST
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_MEMLIST_MEMS_RET
+*
+         L     R1,G_DCB_MEM_PTR
+         MVC   DCBPDS_DIR-DCB_DSECT(LEN_DCBPDS_DIR_ML,R1),CDCBPDS_DIR_MX
+               L
+         MVC   DCBEPDS_DIR-DCB_DSECT(LEN_DCBEPDS_DIR_ML,R1),CDCBEPDS_DIX
+               R_ML
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         LA    R3,DCBEPDS_DIR-DCB_DSECT(,R1)
+         ST    R3,DCBDCBE-IHADCB(,R2)
+         LA    R4,PDSDIR_IS_EOF_ML
+         ST    R4,DCBEEODA-DCBE(,R3)
+         MVC   DCBDDNAM-IHADCB(8,R2),G_DYNALLOC_DDNAME
+*
+         MVI   PDSDIR_EOF_ML,C'N'
+*
+         LA    R6,GET_MEMLIST_OPENPDS
+         OPEN  ((R2),INPUT),MODE=31,MF=(E,G_OPEND)
+GET_MEMLIST_OPENPDS EQU *
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0OPEN failed for reading PDS directoX
+               ry'
+            MVC   G_RETCODE,=F'8'
+            B     GET_MEMLIST_DEALLOC
+         ENDIF
+*
+GET_MEMLIST_GET_DIRREC EQU *
+         L     R1,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         LA    R6,GET_MEMLIST_DIRREC_NOMORE
+         GET   (R2),DIRREC_ML
+*
+         LA    R3,DIRREC_ML
+         XR    R4,R4
+         LH    R4,0(,R3)
+         C     R4,=F'14'
+         BL    GET_MEMLIST_DIRREC_END_OF_BLOCK
+         LA    R3,2(,R3)
+         S     R4,=F'2'
+GET_MEMLIST_NEXT_DIRREC_ENTRY EQU *
+         CLC   0(8,R3),=8X'FF'
+         BE    GET_MEMLIST_DIRREC_NOMORE
+         LT    R6,MEM8FILTER_LEN
+         IF (NZ) THEN
+            LA    R5,MEM8FILTER
+            BCTR  R6,R0
+            B     *+10
+            CLC   0(1,R3),0(R5)
+            EX    R6,*-6
+            BNE   GET_MEMLIST_MEM_SKIP
+         ENDIF
+         L     R5,G_SCAN_TOKEN3A
+         LT    R6,G_SCAN_TOKEN3_LEN
+         IF (NZ) THEN
+            LA    R6,9(,R6)
+            C     R6,G_SCAN_TOKEN3_MAXLEN
+            IF (H) THEN
+               STM   R14,R12,GET_MEMLIST_SAVEAREA2+12
+               L     R3,G_SCAN_TOKEN3_MAXLEN * Get current max len
+               LR    R6,R3         * Save it for storage release
+               SLL   R3,1          * Multiply max length by 2
+               ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len
+               MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_OBTAINA_GET_MEMLIST
+               BASR  R14,R15
+               L     R0,G_STGOR_PTR * Have R0 point to new block
+               L     R1,G_SCAN_TOKEN3_LEN * Get length of token 3
+               L     R2,G_SCAN_TOKEN3A * Have R2 point to old block
+               LR    R5,R2         * Save it for storage release
+               LR    R3,R1         * Make sure no cropping/filling
+               ST    R0,G_SCAN_TOKEN3A * Save ptr to new block
+               MVCL  R0,R2            * Copy old to new block
+               ST    R6,G_STGOR_LEN
+               ST    R5,G_STGOR_PTR
+               MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+               L     R15,LWZMAKE_STG_RELEASEA_GET_MEMLIST
+               BASR  R14,R15
+               LM    R14,R12,GET_MEMLIST_SAVEAREA2+12
+               L     R5,G_SCAN_TOKEN3A
+            ENDIF
+            L     R6,G_SCAN_TOKEN3_LEN
+            AR    R5,R6
+            MVI   0(R5),C' '
+            LA    R5,1(,R5)
+            LA    R6,1(,R6)
+            ST    R6,G_SCAN_TOKEN3_LEN
+         ENDIF
+         LR    R1,R3
+         LA    R14,8
+GET_MEMLIST_MEM_CHAR EQU *
+         CLI   0(R1),C' '
+         BE    GET_MEMLIST_MEM_DONE
+         MVC   0(1,R5),0(R1)
+         LA    R5,1(,R5)
+         LA    R6,1(,R6)
+         LA    R1,1(,R1)
+         BCT   R14,GET_MEMLIST_MEM_CHAR
+GET_MEMLIST_MEM_DONE EQU *
+         ST    R6,G_SCAN_TOKEN3_LEN
+GET_MEMLIST_MEM_SKIP EQU *
+         L     R5,8(,R3)
+         N     R5,=X'0000001F'
+         SLL   R5,1
+         LA    R3,12(,R3)
+         S     R4,=F'12'
+         AR    R3,R5
+         SR    R4,R5
+         BC    B'0010',GET_MEMLIST_NEXT_DIRREC_ENTRY
+*
+GET_MEMLIST_DIRREC_END_OF_BLOCK EQU *
+         B     GET_MEMLIST_GET_DIRREC
+*
+GET_MEMLIST_DIRREC_NOMORE EQU *
+*
+         L     R1,G_DCB_MEM_PTR
+         LA    R2,DCBPDS_DIR-DCB_DSECT(,R1)
+         CLOSE ((R2)),MODE=31
+*
+GET_MEMLIST_DEALLOC EQU *
+         MVI   G_DYNALLOC_FUNC,C'U'
+*
+         L     R15,LWZMAKE_DYNALLOCA_GET_MEMLIST
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   GET_MEMLIST_MEMS_RET
+*
+GET_MEMLIST_MEMS_RET EQU *
+         BR    R8
+*
+* EODAD for DCBPDS
+*
+PDSDIR_IS_EOF_ML EQU *
+         MVI   PDSDIR_EOF_ML,C'Y'
+         BR    R6
+*
+         LTORG
+*
+LWZMAKE_STG_OBTAINA_GET_MEMLIST  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_GET_MEMLIST DC    A(LWZMAKE_STG_RELEASE)
+LWZMAKE_DYNALLOCA_GET_MEMLIST    DC    A(LWZMAKE_DYNALLOC)
+*
+TRT_ALPHANAT_MEMLIST DS    0F A-Z $ # @
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F
+*
+TRT_ALPHANUMNATDASH_MEMLIST DS    0F A-Z 0-9 $ # @ -
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5
+         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E
+         DC    X'00000000000000000000FFFFFFFFFFFF' F
+*
+CONST_CSIFIELD_ML DS 0F
+         DC    CL44' '        CSIFILTK FILTER   KEY
+         DC    CL44' '        CSICATNM CATALOG NAME OR BLANKS
+         DC    CL44' '        CSIRESNM RESUME NAME OR BLANKS
+         DS    0CL16          CSIDTYPD ENTRY TYPES
+         DC    CL16'                ' CSIDTYPS
+         DS    0CL4           CSIOPTS  CSI OPTIONS
+         DC    CL1'Y'         CSICLDI  RETURN D&I IF C A MATCH Y OR ' '
+         DC    CL1' '         CSIRESUM RESUME FLAG             Y OR ' '
+         DC    CL1'Y'         CSIS1CAT SEARCH CATALOG          Y OR ' '
+         DC    XL1'00'        CSIRESRV RESERVED
+         DC    H'1'           CSINUMEN NUMBER OF ENTRIES FOLLOWING
+         DS    0CL8           CSIENTS  VARIABLE NUMBER OF ENTRIES
+         DC    CL8'VOLSER  '  CSIFLDNM FIELD NAME
+CONST_CSIFIELD_ML_LEN EQU *-CONST_CSIFIELD_ML
+*
+CDCBPDS_DIR_ML              DCB   LRECL=256,BLKSIZE=256,MACRF=(GM),DEVDX
+               =DA,DSORG=PS,RECFM=F,DCBE=CDCBEPDS_DIR_ML
+LEN_DCBPDS_DIR_ML           EQU   *-CDCBPDS_DIR_ML
+CDCBEPDS_DIR_ML             DCBE  EODAD=0,RMODE31=BUFF
+LEN_DCBEPDS_DIR_ML          EQU   *-CDCBEPDS_DIR_ML
+*
+GET_MEMLIST_DSECT           DSECT
+                            DS    18F * My savearea
+GET_MEMLIST_SAVEAREA2       DS    18F
+*
+DAREAPTR_ML                 DS    A      DATA AREA POINTER (64K)
+*
+MODRSNRT_ML                 DS    0F
+PARMRC_ML                   DS    0CL4
+MODID_ML                    DS    CL2    MODULE ID
+RSNCODE_ML                  DS    CL1    REASON CODE
+RTNCODE_ML                  DS    CL1    RETURN CODE
+*
+CSIFIELD_ML                 DS    0F
+                            ORG   *+CSIFIELD_DSECT_SIZ
+CSIFIELD_ML_LEN             EQU   *-CSIFIELD_ML
+*
+PARMLIST_ML                 DS    0F
+                            DS    A
+                            DS    A
+                            DS    A
+*
+                            DS    0F
+PDSDIR_EOF_ML               DS    C
+*
+                            DS    0F
+DSCBPAR_ML                  DS    4F
+OBTAIN_ML                   DS    0F
+                            ORG   *+OBTAIN_DSECT_SIZ
+*
+                            DS    0F
+DIRREC_ML                   DS    CL256
+*
+MEM8_ML                     DS    CL8
+MEM8FILTER_LEN              DS    F
+MEM8FILTER                  DS    CL8
+*
+DAREA_ML                    DS    C
+                            ORG   *+1023
+DAREA_ML_SIZ                EQU   *-DAREA_ML
+*
+GET_MEMLIST_DSECT_SIZ       EQU   *-GET_MEMLIST_DSECT
+*
+LWZMAKE  CSECT
+*
+* Execute a REXX as a function that returns a string
+*
+         DROP
+*
+LWZMAKE_CALL_FUNC MLWZSAVE
+*        STM   R14,R12,12(R13)   * Save callers registers
+*        LR    R10,R15
+*        LA    R11,4095(,R10)
+*        LA    R11,1(,R11)
+*        USING LWZMAKE_CALL_FUNC,R10,R11
+*        GETMAIN RU,LV=CALL_FUNC_DSECT_SIZ
+*        ST    R13,4(R1)         * Backward chain callers SA
+*        ST    R1,8(R13)         * Forward chain my SA
+*        LR    R13,R1            * Point R13 to my SA
+*        USING CALL_FUNC_DSECT,R13 * Establish addressing of workarea
+*        USING GLOBAL_DATA_DSECT,R9
+*
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_CALL_FUNC'
+*
+*        MVC   G_LWZMRPT_LINE,=CL133' '
+*        MVC   G_LWZMRPT_LINE+1(4),G_SCAN_TOKEN2_LEN
+*        L     R2,G_SCAN_TOKEN2A
+*        MVC   G_LWZMRPT_LINE+6(80),0(R2)
+*        L     R15,G_LWZMAKE_RPTA
+*        BASR  R14,R15
+*
+*        MVC   G_LWZMRPT_LINE,=CL133' '
+*        MVC   G_LWZMRPT_LINE+1(4),G_SCAN_TOKEN3_LEN
+*        L     R2,G_SCAN_TOKEN3A
+*        MVC   G_LWZMRPT_LINE+6(80),0(R2)
+*        L     R15,G_LWZMAKE_RPTA
+*        BASR  R14,R15
+*
+         IF (CLI,G_USE_ISPEXEC,EQ,C' ') THEN
+            L     R15,LWZMAKE_IRXINITA_CALL_FUNC
+            BASR  R14,R15
+         ENDIF
+*
+         LA    R6,G_IRXEXEC_EXECBLK
+         USING EXECBLK,R6
+         MVC   EXEC_BLK_ACRYN,=CL8'IRXEXECB'
+         LA    R5,EXECBLEN
+         ST    R5,EXEC_BLK_LENGTH
+         MVC   EXEC_MEMBER,=CL8' '
+         LA    R2,EXEC_MEMBER
+         L     R3,G_SCAN_TOKEN2A
+         L     R4,G_SCAN_TOKEN2_LEN
+         C     R4,=F'8'
+         IF (H) THEN
+            L     R4,=F'8'
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         MVC   EXEC_DDNAME,=CL8' '
+         MVC   EXEC_SUBCOM,=CL8' '
+         XR    R5,R5
+         ST    R5,EXEC_BLK_LENGTH+4
+         ST    R5,EXEC_DSNPTR
+         ST    R5,EXEC_DSNLEN
+         DROP  R6
+*
+         L     R6,G_EVALBLOCK_PTR
+         USING EVALBLOCK,R6
+         XR    R5,R5
+         ST    R5,EVALBLOCK_EVPAD1
+         ST    R5,EVALBLOCK_EVPAD2
+         L     R5,G_EVALBLOCK_MAXLEN
+         SRA   R5,3
+         ST    R5,EVALBLOCK_EVSIZE
+         DROP  R6
+*
+         LA    R1,G_IRXEXEC_EXECBLK
+         ST    R1,G_IRXEXEC_EXECBLK_PTR
+         CLC   G_SCAN_TOKEN3_LEN,=F'0'
+         IF (NE) THEN
+            MVC   G_IRXEXEC_ARGS(4),G_SCAN_TOKEN3A
+            MVC   G_IRXEXEC_ARGS+4(4),G_SCAN_TOKEN3_LEN
+            MVC   G_IRXEXEC_ARGS+8(8),=X'FFFFFFFFFFFFFFFF'
+         ELSE
+            MVC   G_IRXEXEC_ARGS,=X'FFFFFFFFFFFFFFFF'
+         ENDIF
+         LA    R1,G_IRXEXEC_ARGS
+         ST    R1,G_IRXEXEC_ARGS_PTR
+         MVC   G_IRXEXEC_FLAGS,=X'40000000'
+         MVC   G_IRXEXEC_INSTBLK_PTR,=A(0)
+         MVC   G_IRXEXEC_CPPL_PTR,=A(0)
+         MVC   G_IRXEXEC_EVALBLK_PTR,G_EVALBLOCK_PTR
+         MVC   G_IRXEXEC_WORKAREA_PTR,=A(0)
+         MVC   G_IRXEXEC_USRFIELD_PTR,=X'8000000'
+         MVC   G_IRXEXEC_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR
+         LA    R1,G_IRXEXEC_REASON
+         ST    R1,G_IRXEXEC_REASON_PTR
+         XR    R0,R0
+         LA    R1,G_IRXEXEC_EXECBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A
+         LA    R1,G_IRXEXEC_ARGS_PTR
+         ST    R1,G_IRXEXEC_PAR10A+4
+         LA    R1,G_IRXEXEC_FLAGS
+         ST    R1,G_IRXEXEC_PAR10A+8
+         LA    R1,G_IRXEXEC_INSTBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+12
+         LA    R1,G_IRXEXEC_CPPL_PTR
+         ST    R1,G_IRXEXEC_PAR10A+16
+         LA    R1,G_IRXEXEC_EVALBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+20
+         LA    R1,G_IRXEXEC_WORKAREA_PTR
+         ST    R1,G_IRXEXEC_PAR10A+24
+         LA    R1,G_IRXEXEC_USRFIELD_PTR
+         ST    R1,G_IRXEXEC_PAR10A+28
+         LA    R1,G_IRXEXEC_ENVBLOCK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+32
+         LA    R1,G_IRXEXEC_REASON_PTR
+         O     R1,=X'80000000'
+         ST    R1,G_IRXEXEC_PAR10A+36
+         LA    R1,G_IRXEXEC_PAR10A
+*
+         LINK  EP=IRXEXEC,SF=(E,G_LINKD)
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'
+            MVC   G_RETCODE,=F'12'
+            B     CALL_FUNC_RET
+         ENDIF
+*
+         MVC   G_IRXINIT_ENVBLOCK_PTR,G_IRXEXEC_ENVBLOCK_PTR
+*
+         L     R6,G_EVALBLOCK_PTR
+         USING EVALBLOCK,R6
+*
+         LT    R2,EVALBLOCK_EVLEN
+         IF (L) THEN
+            X     R2,=X'FFFFFFFF'
+            LA    R2,25(,R2)      * Add 1 plus room for 4A + 8
+            ST    R2,G_STGOR_LEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+            L     R15,LWZMAKE_STG_OBTAINA_CALL_FUNC
+            BASR  R14,R15
+            L     R1,G_STGOR_PTR
+            XR    R5,R5
+            ST    R5,EVALBLOCK_EVPAD1-EVALBLOCK(,R1)
+            ST    R5,EVALBLOCK_EVPAD2-EVALBLOCK(,R1)
+            LR    R5,R2
+            SRA   R5,3
+            ST    R5,EVALBLOCK_EVSIZE-EVALBLOCK(,R1)
+            LR    R3,R1
+            L     R5,G_EVALBLOCK_MAXLEN
+            ST    R5,G_STGOR_LEN
+            ST    R6,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_EVAL
+            L     R15,LWZMAKE_STG_RELEASEA_CALL_FUNC
+            BASR  R14,R15
+            ST    R3,G_EVALBLOCK_PTR
+            ST    R2,G_EVALBLOCK_MAXLEN
+            L     R6,G_EVALBLOCK_PTR
+*
+            MVC   G_IRXRLT_FUNCTION,=CL8'GETRLTE'
+            ST    R6,G_IRXRLT_EVALBLK_PTR
+            S     R2,=F'16'
+            ST    R2,G_IRXRLT_EVALDATA_LEN
+            MVC   G_IRXRLT_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR
+            XR    R0,R0
+            LA    R1,G_IRXRLT_FUNCTION
+            ST    R1,G_IRXRLT_PAR5A
+            LA    R1,G_IRXRLT_EVALBLK_PTR
+            ST    R1,G_IRXRLT_PAR5A+4
+            LA    R1,G_IRXRLT_EVALDATA_LEN
+            ST    R1,G_IRXRLT_PAR5A+8
+            LA    R1,G_IRXRLT_ENVBLOCK_PTR
+            ST    R1,G_IRXRLT_PAR5A+12
+            LA    R1,G_IRXRLT_REASON
+            O     R1,=X'80000000'
+            ST    R1,G_IRXRLT_PAR5A+16
+            LA    R1,G_IRXRLT_PAR5A
+*
+            LINK  EP=IRXRLT,SF=(E,G_LINKD)
+*
+            LTR   R15,R15
+            IF (NZ) THEN
+               MVC   G_LWZMRPT_LINE,=CL133'0Error retrieving REXX returX
+               n value'
+               CVD   R15,G_DEC8
+               UNPK  G_ZONED8,G_DEC8
+               OI    G_ZONED8+7,X'F0'
+               MVC   G_LWZMRPT_LINE+36(8),G_ZONED8
+               L     R15,G_LWZMAKE_RPTA
+               BASR  R14,R15
+               MVC   G_RETCODE,=F'12'
+               B     CALL_FUNC_RET
+            ENDIF
+         ENDIF
+*
+         L     R1,EVALBLOCK_EVLEN
+         C     R1,G_SCAN_TOKEN3_MAXLEN
+         IF (H) THEN
+            L     R3,G_SCAN_TOKEN3_MAXLEN * Get current max len
+            LR    R4,R3           * Save it for storage release
+CALL_FUNC_ENLARGE_TOKEN EQU *
+            SLL   R3,1            * Multiply max length by 2
+            CR    R1,R3
+            BH    CALL_FUNC_ENLARGE_TOKEN
+            ST    R3,G_SCAN_TOKEN3_MAXLEN * Make it new max len
+            MVC   G_STGOR_LEN,G_SCAN_TOKEN3_MAXLEN
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_OBTAINA_CALL_FUNC
+            BASR  R14,R15
+            L     R0,G_STGOR_PTR  * Have R0 point to new block
+            L     R1,G_SCAN_TOKEN3_LEN * Get length of token
+            L     R2,G_SCAN_TOKEN3A * Have R2 point to old blk
+            LR    R5,R2           * Save it for storage release
+            LR    R3,R1           * Make sure no cropping/filling
+            ST    R0,G_SCAN_TOKEN3A * Save ptr to new block
+            MVCL  R0,R2      * Copy old to new block
+            ST    R4,G_STGOR_LEN
+            ST    R5,G_STGOR_PTR
+            MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+            L     R15,LWZMAKE_STG_RELEASEA_CALL_FUNC
+            BASR  R14,R15
+         ENDIF
+         L     R0,G_SCAN_TOKEN3A
+         L     R1,EVALBLOCK_EVLEN
+         LA    R2,EVALBLOCK_EVDATA
+         LR    R3,R1
+         MVCL  R0,R2
+         MVC   G_SCAN_TOKEN3_LEN,EVALBLOCK_EVLEN
+*
+         DROP  R6
+*
+CALL_FUNC_RET EQU *
+         MLWZTERM
+*        L     R3,4(,R13)        * Restore address of callers SA
+*        FREEMAIN RU,LV=CALL_FUNC_DSECT_SIZ,A=(R13)
+*        LR    R13,R3
+*        LM    R14,R12,12(R13)
+*        BR    R14                    Return to caller
+*
+         LTORG
+*
+LWZMAKE_IRXINITA_CALL_FUNC     DC    A(LWZMAKE_IRXINIT)
+LWZMAKE_STG_OBTAINA_CALL_FUNC  DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_CALL_FUNC DC    A(LWZMAKE_STG_RELEASE)
+*
+*CALL_FUNC_DSECT             DSECT
+*CALL_FUNC_SA                DS    18F
+*CALL_FUNC_DSECT_SIZ         EQU *-CALL_FUNC_DSECT
+*
+LWZMAKE  CSECT
+*
+*
+*
+LWZMAKE_CALL_REXX MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_CALL_REXX'
+*
+         L     R8,0(,R1)
+         L     R7,4(,R1)
+         USING TARGET_DSECT,R8
+         USING STMT_C_DSECT,R7
+*
+         XR    R2,R2
+         XR    R3,R3
+         IC    R3,G_SCAN_INPUT_STACK_IDX
+         C     R3,=A(MAX_SCAN_INPUT_STACK_ENTRY)
+         IF (NL) THEN
+            MLWZMRPT RPTLINE=CL133'0Internal error, state stack overfloX
+               w'
+            MVC   G_RETCODE,=F'12'
+            B     CALL_REXX_END
+         ENDIF
+         LA    R3,1(,R3)
+         STC   R3,G_SCAN_INPUT_STACK_IDX
+         BCTR  R3,R0
+         M     R2,=A(INPUT_DSECT_SIZ)
+         LA    R2,G_SCAN_INPUT_STACK
+         AR    R2,R3
+         USING INPUT_DSECT,R2
+         MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF
+         MVC   INPUTLEN,STMT_C_PARMLEN
+         LA    R6,STMT_C_EXEC
+         AH    R6,STMT_C_EXECLEN
+         ST    R6,INPUTPTR
+         MVC   INPUTPOS,=H'0'
+         MVI   G_MKFEOF,C'N'
+*
+         DROP  R2
+*
+*        Push current scan state on the stack before setting
+*        it to IN_EXPAND
+         LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+         XR    R2,R2                 * Clear R2
+         IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+         IC    R15,G_SCAN_STATE      * Get current scan state
+         STC   R15,0(R2,R1)          * and store it in the stack
+         LA    R2,1(,R2)             * Add 1 to stack index
+         C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
+         IF (H) THEN                 * Yep, write error and stop
+            MLWZMRPT RPTLINE=CL133'0Internal error, state stack overfloX
+               w',APND_LC=C'Y'
+            MVC   G_RETCODE,=F'12'   * Set return code 12
+            B     CALL_REXX_END      * Skip rest of CALL REXX
+         ENDIF
+         STC   R2,G_SCAN_STATE_STACK_IDX * Store new stack size
+*
+         MVI   G_SCAN_STATE,SCAN_STATE_IN_EXPAND
+         MVC   G_SCAN_TOKEN2_LEN,=F'0'
+*
+CALL_REXX_NEXT_TOKEN EQU *
+         L     R15,LWZMAKE_SCAN_TOKENA_CALL_REXX
+         BASR  R14,R15
+*
+         CLC   G_RETCODE,=F'0'
+         BNE   CALL_REXX_END
+*
+         IF (CLI,G_MKFEOF,EQ,C'Y') THEN
+            MVI   G_MKFEOF,C'N'
+            B     CALL_REXX_EXPANDED
+         ENDIF
+*
+         IC    R14,G_SCAN_STATE
+         N     R14,=X'0000007F'
+         C     R14,=A(SCAN_STATE_IN_VARIABLE)
+         IF (EQ) THEN
+            MVI   G_SCAN_APPEND_TO,X'00'
+            MVI   G_SCAN_VAR_PRESERVE_SPACES,C'1'
+            L     R15,LWZMAKE_SCAN_VARA_CALL_REXX
+            BASR  R14,R15
+*
+            CLC   G_RETCODE,=F'0'
+            BNE   CALL_REXX_END
+*
+            B     CALL_REXX_NEXT_TOKEN
+         ENDIF
+*
+         C     R8,=A(0)
+         IF (NE) THEN
+            L     R1,G_SCAN_TOKEN_LEN
+            C     R1,=F'2'
+            IF (EQ) THEN
+               L     R2,G_SCAN_TOKENA
+               CLC   0(2,R2),=C'$@'
+               IF (EQ) THEN
+                  LA    R3,TGTNAME-TARGET_DSECT(,R8)
+                  XR    R4,R4
+                  LH    R4,TGTNAMELEN-TARGET_DSECT(,R8)
+                  ST    R4,G_SCAN_TOKEN_LEN
+                  BCTR  R4,R0
+                  B     *+10
+                  MVC   0(1,R2),0(R3)
+                  EX    R4,*-6
+               ENDIF
+               CLC   0(2,R2),=C'$%'
+               IF (EQ) THEN
+                  LA    R3,TGTNAME-TARGET_DSECT(,R8)
+                  XR    R4,R4
+                  LH    R4,TGTNAMELEN-TARGET_DSECT(,R8)
+                  AR    R3,R4
+                  LH    R4,TGTNAMEMEMLEN-TARGET_DSECT(,R8)
+                  ST    R4,G_SCAN_TOKEN_LEN
+                  BCTR  R4,R0
+                  B     *+10
+                  MVC   0(1,R2),0(R3)
+                  EX    R4,*-6
+               ENDIF
+            ENDIF
+         ENDIF
+*
+         MVI   G_SCAN_APPEND_TO,X'01'
+         L     R15,LWZMAKE_APPEND_TOKENA_CALL_REXX
+         BASR  R14,R15         * Link to APPEND_TOKEN section
+*
+         B     CALL_REXX_NEXT_TOKEN
+*
+CALL_REXX_EXPANDED EQU *
+*
+         MVC   G_LWZMRPT_LINE,=CL133' ..................... Calling REXX
+               X'
+         LA    R2,G_LWZMRPT_LINE+36
+         LA    R3,STMT_C_EXEC
+         XR    R4,R4
+         LH    R4,STMT_C_EXECLEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         LT    R4,G_SCAN_TOKEN2_LEN
+         IF (NZ) THEN
+            AH    R2,STMT_C_EXECLEN
+            LA    R2,1(,R2)
+            LA    R3,G_LWZMRPT_LINE+133
+            SR    R3,R2
+            CR    R4,R3
+            IF (H) THEN
+               LR    R4,R3
+            ENDIF
+            BCTR  R4,R0
+            L     R3,G_SCAN_TOKEN2A
+            B     *+10
+            MVC   0(1,R2),0(R3)
+            EX    R4,*-6
+         ENDIF
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+*
+         IF (CLI,G_USE_ISPEXEC,EQ,C' ') THEN
+            L     R15,LWZMAKE_IRXINITA_CALL_REXX
+            BASR  R14,R15
+         ENDIF
+*
+         IF (CLI,G_USE_ISPEXEC,EQ,C'Y') THEN
+            L     R6,G_SCAN_TOKENA
+            MVC   0(12,R6),=C'SELECT CMD(%'
+            LA    R5,12
+            LA    R6,12(,R6)
+            LA    R3,STMT_C_EXEC
+            XR    R4,R4
+            LH    R4,STMT_C_EXECLEN
+            CH    R4,=H'8'
+            IF (H) THEN
+               LH    R4,=H'8'
+            ENDIF
+            BCTR  R4,R0
+            B     *+10
+            MVC   0(1,R6),0(R3)
+            EX    R4,*-6
+            LA    R4,1(,R4)
+            AR    R6,R4
+            AR    R5,R4
+            ST    R5,G_SCAN_TOKEN_LEN
+            CLC   G_SCAN_TOKEN2_LEN,=F'0'
+            IF (NE) THEN
+               LA    R1,1(,R5)
+               A     R1,G_SCAN_TOKEN2_LEN
+               C     R1,G_SCAN_TOKEN_MAXLEN
+               IF (H) THEN
+                  L     R3,G_SCAN_TOKEN_MAXLEN * Get current max len
+                  LR    R4,R3      * Save it for storage release
+ISPEXEC_ENLARGE_TOKEN EQU *
+                  SLL   R3,1       * Multiply max length by 2
+                  CR    R1,R3
+                  BH    ISPEXEC_ENLARGE_TOKEN
+                  ST    R3,G_SCAN_TOKEN_MAXLEN * Make it new max len
+                  MVC   G_STGOR_LEN,G_SCAN_TOKEN_MAXLEN
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_OBTAINA_CALL_REXX
+                  BASR  R14,R15
+                  L     R0,G_STGOR_PTR * Have R0 point to new block
+                  L     R1,G_SCAN_TOKEN_LEN * Get length of token
+                  L     R2,G_SCAN_TOKENA * Have R2 point to old blk
+                  LR    R14,R2     * Save it for storage release
+                  LR    R3,R1      * Make sure no cropping/filling
+                  ST    R0,G_SCAN_TOKENA * Save ptr to new block
+                  MVCL  R0,R2      * Copy old to new block
+                  LR    R2,R14
+                  ST    R4,G_STGOR_LEN
+                  ST    R2,G_STGOR_PTR
+                  MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
+                  L     R15,LWZMAKE_STG_RELEASEA_CALL_REXX
+                  BASR  R14,R15
+                  L     R6,G_SCAN_TOKENA
+                  AR    R6,R5
+               ENDIF
+               MVI   0(R6),C' '
+               LA    R6,1(,R6)
+               LA    R5,1(,R5)
+               LR    R0,R6
+               L     R2,G_SCAN_TOKEN2A
+               L     R1,G_SCAN_TOKEN2_LEN
+               LR    R3,R1
+               MVCL  R0,R2
+               A     R5,G_SCAN_TOKEN2_LEN
+               A     R6,G_SCAN_TOKEN2_LEN
+            ENDIF
+            MVI   0(R6),C')'
+            LA    R5,1(,R5)
+            ST    R5,G_SCAN_TOKEN_LEN
+            LA    R1,G_SCAN_TOKEN_LEN
+            ST    R1,G_ISPEXEC_PAR2A
+            L     R1,G_SCAN_TOKENA
+            O     R1,=X'80000000'
+            ST    R1,G_ISPEXEC_PAR2A+4
+            LA    R1,G_ISPEXEC_PAR2A
+*
+            LINK  EP=ISPEXEC,SF=(E,G_LINKD)
+*
+            LTR   R15,R15
+            IF (NZ) THEN
+               MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'
+               MVC   G_RETCODE,=F'12'
+               B     CALL_REXX_END
+            ENDIF
+*
+            B     CALL_REXX_NO_ERROR
+         ENDIF
+*
+         LA    R6,G_IRXEXEC_EXECBLK
+         USING EXECBLK,R6
+         MVC   EXEC_BLK_ACRYN,=CL8'IRXEXECB'
+         LA    R5,EXECBLEN
+         ST    R5,EXEC_BLK_LENGTH
+         MVC   EXEC_MEMBER,=CL8' '
+         LA    R2,EXEC_MEMBER
+         LA    R3,STMT_C_EXEC
+         XR    R4,R4
+         LH    R4,STMT_C_EXECLEN
+         CH    R4,=H'8'
+         IF (H) THEN
+            LH    R4,=H'8'
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         MVC   EXEC_DDNAME,=CL8' '
+         MVC   EXEC_SUBCOM,=CL8' '
+         XR    R5,R5
+         ST    R5,EXEC_BLK_LENGTH+4
+         ST    R5,EXEC_DSNPTR
+         ST    R5,EXEC_DSNLEN
+         DROP  R6
+*
+         L     R6,G_EVALBLOCK_PTR
+         USING EVALBLOCK,R6
+         XR    R5,R5
+         ST    R5,EVALBLOCK_EVPAD1
+         ST    R5,EVALBLOCK_EVPAD2
+         L     R5,G_EVALBLOCK_MAXLEN
+         SRA   R5,3
+         ST    R5,EVALBLOCK_EVSIZE
+         DROP  R6
+*
+         LA    R1,G_IRXEXEC_EXECBLK
+         ST    R1,G_IRXEXEC_EXECBLK_PTR
+         CLC   G_SCAN_TOKEN2_LEN,=F'0'
+         IF (NE) THEN
+            MVC   G_IRXEXEC_ARGS(4),G_SCAN_TOKEN2A
+            MVC   G_IRXEXEC_ARGS+4(4),G_SCAN_TOKEN2_LEN
+            MVC   G_IRXEXEC_ARGS+8(8),=X'FFFFFFFFFFFFFFFF'
+         ELSE
+            MVC   G_IRXEXEC_ARGS,=X'FFFFFFFFFFFFFFFF'
+         ENDIF
+         LA    R1,G_IRXEXEC_ARGS
+         ST    R1,G_IRXEXEC_ARGS_PTR
+         MVC   G_IRXEXEC_FLAGS,=X'40000000'
+         MVC   G_IRXEXEC_INSTBLK_PTR,=A(0)
+         MVC   G_IRXEXEC_CPPL_PTR,=A(0)
+         MVC   G_IRXEXEC_EVALBLK_PTR,G_EVALBLOCK_PTR
+         MVC   G_IRXEXEC_WORKAREA_PTR,=A(0)
+         MVC   G_IRXEXEC_USRFIELD_PTR,=X'8000000'
+         MVC   G_IRXEXEC_ENVBLOCK_PTR,G_IRXINIT_ENVBLOCK_PTR
+         LA    R1,G_IRXEXEC_REASON
+         ST    R1,G_IRXEXEC_REASON_PTR
+         XR    R0,R0
+         LA    R1,G_IRXEXEC_EXECBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A
+         LA    R1,G_IRXEXEC_ARGS_PTR
+         ST    R1,G_IRXEXEC_PAR10A+4
+         LA    R1,G_IRXEXEC_FLAGS
+         ST    R1,G_IRXEXEC_PAR10A+8
+         LA    R1,G_IRXEXEC_INSTBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+12
+         LA    R1,G_IRXEXEC_CPPL_PTR
+         ST    R1,G_IRXEXEC_PAR10A+16
+         LA    R1,G_IRXEXEC_EVALBLK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+20
+         LA    R1,G_IRXEXEC_WORKAREA_PTR
+         ST    R1,G_IRXEXEC_PAR10A+24
+         LA    R1,G_IRXEXEC_USRFIELD_PTR
+         ST    R1,G_IRXEXEC_PAR10A+28
+         LA    R1,G_IRXEXEC_ENVBLOCK_PTR
+         ST    R1,G_IRXEXEC_PAR10A+32
+         LA    R1,G_IRXEXEC_REASON_PTR
+         O     R1,=X'80000000'
+         ST    R1,G_IRXEXEC_PAR10A+36
+         LA    R1,G_IRXEXEC_PAR10A
+*
+         LINK  EP=IRXEXEC,SF=(E,G_LINKD)
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MLWZMRPT RPTLINE=CL133'0Error executing REXX exec'
+            MVC   G_RETCODE,=F'12'
+            B     CALL_REXX_END
+         ENDIF
+*
+         MVC   G_IRXINIT_ENVBLOCK_PTR,G_IRXEXEC_ENVBLOCK_PTR
+*
+         L     R5,G_EVALBLOCK_PTR
+         USING EVALBLOCK,R5
+*
+         CLC   EVALBLOCK_EVLEN,=F'1'
+         BNE   CALL_REXX_ERROR
+         CLI   EVALBLOCK_EVDATA,C'0'
+         BE    CALL_REXX_NO_ERROR
+CALL_REXX_ERROR EQU *
+         MVC   G_LWZMRPT_LINE,=CL133'0REXX exec returned'
+         LA    R2,G_LWZMRPT_LINE+20
+         LA    R3,EVALBLOCK_EVDATA
+         L     R4,EVALBLOCK_EVLEN
+         C     R4,=F'113'
+         IF (H) THEN
+            L     R4,=F'113'
+         ENDIF
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         L     R15,G_LWZMAKE_RPTA
+         BASR  R14,R15
+         MVC   G_RETCODE,=F'8'
+         B     CALL_REXX_END
+CALL_REXX_NO_ERROR EQU *
+*
+         DROP  R5
+*
+         LA    R1,G_SCAN_STATE_STACK * Point R1 to scan state stack
+         XR    R2,R2                 * Clear R2
+         IC    R2,G_SCAN_STATE_STACK_IDX * Get current stack index
+         BCTR  R2,R0                 * Subtract 1 from index
+         IC    R15,0(R2,R1)          * Get stack state in that idx
+         STC   R15,G_SCAN_STATE      * And save it as current state
+         STC   R2,G_SCAN_STATE_STACK_IDX * Also save new stack idx
+*
+CALL_REXX_END EQU *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+LWZMAKE_SCAN_TOKENA_CALL_REXX   DC    A(LWZMAKE_SCAN_TOKEN)
+LWZMAKE_SCAN_VARA_CALL_REXX     DC    A(LWZMAKE_SCAN_VAR)
+LWZMAKE_APPEND_TOKENA_CALL_REXX DC    A(LWZMAKE_APPEND_TOKEN)
+LWZMAKE_IRXINITA_CALL_REXX      DC    A(LWZMAKE_IRXINIT)
+LWZMAKE_STG_OBTAINA_CALL_REXX   DC    A(LWZMAKE_STG_OBTAIN)
+LWZMAKE_STG_RELEASEA_CALL_REXX  DC    A(LWZMAKE_STG_RELEASE)
+*
+*
+*
+LWZMAKE_IRXINIT MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_IRXINIT'
+*
+         MVI   G_USE_ISPEXEC,C'N'
+*
+         MVC   G_IRXINIT_FUNCTION,=CL8'FINDENVB'
+         MVC   G_IRXINIT_PARMMOD,=CL8' '
+         MVC   G_IRXINIT_INSTORPARM_PTR,=A(0)
+         MVC   G_IRXINIT_USRFIELD_PTR,=X'80000000'
+         MVC   G_IRXINIT_RESERVED_PTR,=A(0)
+         MVC   G_IRXINIT_ENVBLOCK_PTR,=A(0)
+         MVC   G_IRXINIT_REASON,=A(0)
+*
+         XR    R0,R0
+         LA    R1,G_IRXINIT_FUNCTION
+         ST    R1,G_IRXINIT_PAR7A
+         LA    R1,G_IRXINIT_PARMMOD
+         ST    R1,G_IRXINIT_PAR7A+4
+         LA    R1,G_IRXINIT_INSTORPARM_PTR
+         ST    R1,G_IRXINIT_PAR7A+8
+         LA    R1,G_IRXINIT_USRFIELD_PTR
+         ST    R1,G_IRXINIT_PAR7A+12
+         LA    R1,G_IRXINIT_RESERVED_PTR
+         ST    R1,G_IRXINIT_PAR7A+16
+         LA    R1,G_IRXINIT_ENVBLOCK_PTR
+         ST    R1,G_IRXINIT_PAR7A+20
+         LA    R1,G_IRXINIT_REASON
+         O     R1,=X'80000000'
+         ST    R1,G_IRXINIT_PAR7A+24
+         LA    R1,G_IRXINIT_PAR7A
+*
+         LINK  EP=IRXINIT,SF=(E,G_LINKD)
+*
+         C     R15,=A(0)
+         BE    IRXINIT_OK
+         C     R15,=A(4)
+         BE    IRXINIT_OK
+         C     R15,=A(28)
+         BE    IRXINIT_OK
+         MLWZMRPT RPTLINE=CL133'0Error finding REXX environment'
+         MVC   G_RETCODE,=F'12'
+         B     RET_IRXINIT
+IRXINIT_OK EQU *
+*
+         C     R15,=A(28)
+         IF (NE) THEN
+            L     R2,G_IRXINIT_ENVBLOCK_PTR
+            L     R2,16(,R2)
+            L     R2,20(,R2)
+            L     R3,8(,R2)
+            L     R4,12(,R2)
+            L     R2,0(,R2)
+FIND_ISPEXEC EQU  *
+            CLC   0(8,R2),=CL8'ISPEXEC'
+            BE    ISPEXEC_FOUND
+            AR    R2,R4
+            BCT   R3,FIND_ISPEXEC
+            B     ISPEXEC_NOT_FOUND
+ISPEXEC_FOUND EQU *
+            MVI   G_USE_ISPEXEC,C'Y'
+ISPEXEC_NOT_FOUND EQU *
+         ENDIF
+*
+RET_IRXINIT EQU  *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+*
+*
+LWZMAKE_CHECK_MVSDS MLWZSAVE
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_CHECK_MVSDS'
+*
+         MVI   G_CHECK_MVSDS_MVSDS,C'N'
+*
+         SELECT CLI,G_CHECK_MVSDS_TOKEN,EQ
+         WHEN X'00'
+            L     R3,G_SCAN_TOKENA
+            L     R4,G_SCAN_TOKEN_LEN
+         WHEN X'01'
+            L     R3,G_SCAN_TOKEN2A
+            L     R4,G_SCAN_TOKEN2_LEN
+         WHEN X'02'
+            L     R3,G_SCAN_TOKEN3A
+            L     R4,G_SCAN_TOKEN3_LEN
+         ENDSEL
+         XR    R6,R6
+         XR    R7,R7
+*
+CHECK_MVSDS_TEST_QUAL1 EQU *
+         LTR   R4,R4
+         BZ    CHECK_MVSDS_NOT_MVSDS
+         TRT   0(1,R3),TRT_ALPHANAT
+         BNZ   CHECK_MVSDS_NOT_MVSDS
+         LA    R3,1(,R3)
+         BCT   R4,*+8
+         B     CHECK_MVSDS_MVSDS
+         LR    R5,R4
+         C     R5,=F'7'
+         IF (H) THEN
+            L     R5,=F'7'
+         ENDIF
+         BCTR  R5,R0
+         B     *+10
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH
+         EX    R5,*-6
+         IF (Z) THEN
+            LA    R5,1(,R5)
+         ELSE
+            LR    R5,R1
+            SR    R5,R3
+         ENDIF
+         AR    R3,R5
+         SR    R4,R5
+         BZ    CHECK_MVSDS_MVSDS
+         IF (CLI,0(R3),EQ,C'.') THEN
+            LA    R3,1(,R3)
+            BCTR  R4,R0
+            B     CHECK_MVSDS_TEST_QUAL1
+         ENDIF
+         CLI   0(R3),C'('
+         BNE   CHECK_MVSDS_NOT_MVSDS
+         LR    R6,R3
+         LA    R3,1(,R3)
+         BCT   R4,*+8
+         B     CHECK_MVSDS_NOT_MVSDS
+         TRT   0(1,R3),TRT_ALPHANAT
+         BNZ   CHECK_MVSDS_NOT_MVSDS
+         LR    R6,R3
+         LA    R3,1(,R3)
+         BCT   R4,*+8
+         B     CHECK_MVSDS_NOT_MVSDS
+         LR    R5,R4
+         C     R5,=F'7'
+         IF (H) THEN
+            L     R5,=F'7'
+         ENDIF
+         BCTR  R5,R0
+         B     *+10
+         TRT   0(1,R3),TRT_ALPHANUMNATDASH
+         EX    R5,*-6
+         IF (Z) THEN
+            LA    R5,1(,R5)
+         ELSE
+            LR    R5,R1
+            SR    R5,R3
+         ENDIF
+         AR    R3,R5
+         SR    R4,R5
+         BZ    CHECK_MVSDS_NOT_MVSDS
+         CLI   0(R3),C')'
+         BNE   CHECK_MVSDS_NOT_MVSDS
+         LR    R7,R3
+         SR    R7,R6
+         LA    R3,1(,R3)
+         BCT   R4,CHECK_MVSDS_NOT_MVSDS
+*
+CHECK_MVSDS_MVSDS EQU *
+         ST    R6,G_MVSDS_MEMBER_PTR
+         ST    R7,G_MVSDS_MEMBER_LEN
+         MVI   G_CHECK_MVSDS_MVSDS,C'Y'
+*
+CHECK_MVSDS_NOT_MVSDS EQU *
+*
+RET_CHECK_MVSDS EQU  *
+         MLWZTERM                 * Return back to caller
+*
+         LTORG
+*
+TRT_ALPHANAT DS    0F A-Z $ # @
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' F
+*
+TRT_ALPHANUMNATDASH DS    0F A-Z 0-9 $ # @ -
+*                0 1 2 3 4 5 6 7 8 9 A B C D E F
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 0
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 1
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 2
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 3
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 4
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF00FFFFFFFF' 5
+         DC    X'00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 6
+         DC    X'FFFFFFFFFFFFFFFFFFFFFF0000FFFFFF' 7
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 8
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' 9
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' A
+         DC    X'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' B
+         DC    X'FF000000000000000000FFFFFFFFFFFF' C
+         DC    X'FF000000000000000000FFFFFFFFFFFF' D
+         DC    X'FFFF0000000000000000FFFFFFFFFFFF' E
+         DC    X'00000000000000000000FFFFFFFFFFFF' F
+*
+         DROP
+*
+LWZMAKE_DYNALLOC DS    0F
+         STM   R14,R12,12(R13)   * Save callers registers
+         LR    R10,R15
+         LA    R11,4095(,R10)
+         LA    R11,1(,R11)
+         USING LWZMAKE_DYNALLOC,R10,R11
+         GETMAIN RU,LV=DYNALLOC_DSECT_SIZ
+         ST    R13,4(R1)         * Backward chain callers SA
+         ST    R1,8(R13)         * Forward chain my SA
+         LR    R13,R1            * Point R13 to my SA
+         USING DYNALLOC_DSECT,R13 * Establish addressing of workarea
+         USING GLOBAL_DATA_DSECT,R9
+*
+*        Trace record to start section
+         MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
+               KE_DYNALLOC'
+*
+         IF (CLI,G_DYNALLOC_FUNC,EQ,C'A') THEN
+            BAL   R8,DYNALLOC_ALLOC
+         ENDIF
+*
+         IF (CLI,G_DYNALLOC_FUNC,EQ,C'U') THEN
+            BAL   R8,DYNALLOC_UNALLOC
+         ENDIF
+*
+DYNALLOC_RET EQU *
+         L     R3,4(,R13)        * Restore address of callers SA
+         FREEMAIN RU,LV=DYNALLOC_DSECT_SIZ,A=(R13)
+         LR    R13,R3
+         LM    R14,R12,12(R13)
+         BR    R14                    Return to caller
+*
+*
+*
+DYNALLOC_ALLOC EQU *
+         MVC   G_DYNALLOC_DDNAME,=8X'00'
+*
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            BAL   R7,DYNALLOC_FILL_TRACE_DATA
+*
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'660',DATA
+         ENDIF
+*
+         LA    R6,DYNALLOC_AREA
+         USING S99RBP,R6
+         LA    R4,S99RBPTR+4
+         USING S99RB,R4
+         ST    R4,S99RBPTR
+         OI    S99RBPTR,S99RBPND
+         XC    S99RB(S99RBEND-S99RB),S99RB
+         MVI   S99RBLN,S99RBEND-S99RB
+         MVI   S99VERB,S99VRBAL
+         OI    S99FLG11,S99MSGL0
+         LA    R5,S99RB+(S99RBEND-S99RB)+16
+         MVC   0(CDSNTU_L+CMEMBERTU_L+CSTATUSTU_L+CRETDDN_L,R5),CDSNTU
+         MVC   6(44,R5),G_DYNALLOC_DSNAME
+         LA    R3,S99RB+(S99RBEND-S99RB)
+         ST    R3,S99TXTPP
+         ST    R5,0(,R3)
+         LA    R3,4(,R3)
+         IF (CLC,G_DYNALLOC_MEMBER,NE,=CL8' ') THEN
+            LA    R5,CDSNTU_L(,R5)
+            MVC   6(8,R5),G_DYNALLOC_MEMBER
+            ST    R5,0(,R3)
+            LA    R3,4(,R3)
+            LA    R5,CMEMBERTU_L(,R5)
+            ST    R5,0(,R3)
+            LA    R3,4(,R3)
+         ELSE
+            LA    R5,CDSNTU_L+CMEMBERTU_L(,R5)
+            ST    R5,0(,R3)
+            LA    R3,4(,R3)
+         ENDIF
+         LA    R5,CSTATUSTU_L(,R5)
+         O     R5,=X'80000000'
+         ST    R5,0(,R3)
+         LA    R1,DYNALLOC_AREA
+         DYNALLOC
+*
+         LTR   R15,R15
+         IF (Z) THEN
+            LA    R5,S99RBEND+16+CDSNTU_L+CMEMBERTU_L+CSTATUSTU_L
+            MVC   G_DYNALLOC_DDNAME,6(R5)
+         ELSE
+            MVC   G_LWZMRPT_LINE,=CL133'0DYNALLOC allocation failed'
+            CVD   R15,G_DEC8
+            UNPK  G_ZONED8,G_DEC8
+            OI    G_ZONED8+7,X'F0'
+            MVC   G_LWZMRPT_LINE+28(8),G_ZONED8
+            XR    R15,R15
+            LH    R15,S99ERROR
+            CVD   R15,G_DEC8
+            UNPK  G_ZONED8,G_DEC8
+            OI    G_ZONED8+7,X'F0'
+            MVC   G_LWZMRPT_LINE+37(8),G_ZONED8
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+            MVC   G_RETCODE,=F'8'
+            B     DYNALLOC_ALLOC_RET
+         ENDIF
+*
+         DROP  R6
+         DROP  R4
+*
+DYNALLOC_ALLOC_RET EQU *
+         BR    R8
+*
+*
+*
+DYNALLOC_UNALLOC EQU *
+         IF (CLI,G_LWZMAKE_TRACE,NL,LWZMAKE_TRACE_DEBUG) THEN
+            BAL   R7,DYNALLOC_FILL_TRACE_DATA
+*
+            MLWZMTRC LEVEL=LWZMAKE_TRACE_INFO,MSGNR=C'661',DATA
+         ENDIF
+*
+         LA    R6,DYNALLOC_AREA
+         USING S99RBP,R6
+         LA    R4,S99RBPTR+4
+         USING S99RB,R4
+         ST    R4,S99RBPTR
+         OI    S99RBPTR,S99RBPND
+         XC    S99RB(S99RBEND-S99RB),S99RB
+         MVI   S99RBLN,S99RBEND-S99RB
+         MVI   S99VERB,S99VRBUN
+         OI    S99FLG11,S99MSGL0
+         LA    R5,S99RB+(S99RBEND-S99RB)+16
+         MVC   0(CDSNTU_L+CMEMBERTU_L,R5),CDSNTU
+         MVC   6(44,R5),G_DYNALLOC_DSNAME
+         LA    R3,S99RB+(S99RBEND-S99RB)
+         ST    R3,S99TXTPP
+         IF (CLC,G_DYNALLOC_MEMBER,NE,=CL8' ') THEN
+            ST    R5,0(,R3)
+            LA    R3,4(,R3)
+            LA    R5,CDSNTU_L(,R5)
+            MVC   6(8,R5),G_DYNALLOC_MEMBER
+         ENDIF
+         O     R5,=X'80000000'
+         ST    R5,0(,R3)
+         LA    R1,DYNALLOC_AREA
+         DYNALLOC
+*
+         LTR   R15,R15
+         IF (NZ) THEN
+            MVC   G_LWZMRPT_LINE,=CL133'0DYNALLOC deallocation failed'
+            CVD   R15,G_DEC8
+            UNPK  G_ZONED8,G_DEC8
+            OI    G_ZONED8+7,X'F0'
+            MVC   G_LWZMRPT_LINE+30(8),G_ZONED8
+            XR    R15,R15
+            LH    R15,S99ERROR
+            CVD   R15,G_DEC8
+            UNPK  G_ZONED8,G_DEC8
+            OI    G_ZONED8+7,X'F0'
+            MVC   G_LWZMRPT_LINE+39(8),G_ZONED8
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
+            MVC   G_RETCODE,=F'8'
+            B     DYNALLOC_ALLOC_RET
+         ENDIF
+*
+DYNALLOC_UNALLOC_RET EQU *
+         BR    R8
+*
+*
+*
+DYNALLOC_FILL_TRACE_DATA EQU *
+         MVI   G_HELPER_DATA,C' '
+         MVC   G_HELPER_DATA+1(L'G_HELPER_DATA-1),G_HELPER_DATA
+         LA    R2,G_HELPER_DATA
+         LA    R3,G_DYNALLOC_DSNAME
+         LA    R4,=A(L'G_DYNALLOC_DSNAME)
+TRACE_DYNALLOC_A_DSNAME_CHAR EQU *
+         IF (CLI,0(R3),NE,C' ') THEN
+            MVC   0(1,R2),0(R3)
+            LA    R2,1(,R2)
+            LA    R3,1(,R3)
+            BCT   R4,TRACE_DYNALLOC_A_DSNAME_CHAR
+         ENDIF
+         IF (CLI,G_DYNALLOC_MEMBER,NE,C' ') THEN
+            MVI   0(R2),C'('
+            LA    R2,1(,R2)
+            LA    R3,G_DYNALLOC_MEMBER
+            LA    R4,=A(L'G_DYNALLOC_MEMBER)
+TRACE_DYNALLOC_A_MEMBER_CHAR EQU *
+            IF (CLI,0(R3),NE,C' ') THEN
+               MVC   0(1,R2),0(R3)
+               LA    R2,1(,R2)
+               LA    R3,1(,R3)
+               BCT   R4,TRACE_DYNALLOC_A_MEMBER_CHAR
+            ENDIF
+            MVI   0(R2),C')'
+            LA    R2,1(,R2)
+         ENDIF
+         LA    R3,G_HELPER_DATA
+         SR    R2,R3
+         ST    R3,G_LWZMTRC_DATA_PTR * Save trace data ptr
+         STH   R2,G_LWZMTRC_DATA_SIZ * Set trace data size
+*
+         BR    R7
+*
+         LTORG
+*
+CDSNTU                      DC    AL2(DALDSNAM)
+                            DC    X'0001'
+                            DC    X'002C'
+                            DC    CL44' '
+CDSNTU_L                    EQU   *-CDSNTU
+*
+CMEMBERTU                   DC    AL2(DALMEMBR)
+                            DC    X'0001'
+                            DC    X'0008'
+                            DC    CL8' '
+CMEMBERTU_L                 EQU   *-CMEMBERTU
+*
+CSTATUSTU                   DC    AL2(DALSTATS)
+                            DC    X'0001'
+                            DC    X'0001'
+                            DC    X'08'
+CSTATUSTU_L                 EQU   *-CSTATUSTU
+*
+CRETDDN                     DC    AL2(DALRTDDN)
+                            DC    X'0001'
+                            DC    X'0008'
+                            DC    CL8' '
+CRETDDN_L                   EQU   *-CRETDDN
+*
+DYNALLOC_DSECT              DSECT
+DYNALLOC_SA                 DS    18F
+*
+DYNALLOC_AREA               DS    0F
+                            ORG   *+4
+                            ORG   *+(S99RBEND-S99RB)
+                            ORG   *+16
+                            ORG   *+CDSNTU_L+CMEMBERTU_L+CSTATUSTU_L+CRX
+               ETDDN_L
+DYNALLOC_DSECT_SIZ          EQU *-DYNALLOC_DSECT
+*
+LWZMAKE  CSECT
+*
+R0       EQU   0
+R1       EQU   1
+R2       EQU   2
+R3       EQU   3
+R4       EQU   4
+R5       EQU   5
+R6       EQU   6
+R7       EQU   7
+R8       EQU   8
+R9       EQU   9
+R10      EQU   10
+R11      EQU   11
+R12      EQU   12
+R13      EQU   13
+R14      EQU   14
+R15      EQU   15
+*
+         END   LWZMAKE
