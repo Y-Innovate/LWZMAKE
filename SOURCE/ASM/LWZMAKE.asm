@@ -4931,21 +4931,21 @@ CHECK_UNCONDITIONAL_OPERATOR EQU *
 *              Was it expected? If so, continue checking because the
 *              expected bitstring isn't complete
                IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_ACRO,O) THEN
+                  B     STORE_ACRO
 *                 Check if in recipe
-                  TM    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
-                  IF (Z) THEN     * Not in recipe, keep on checking
-*                    Check if in expand (resolving variables in rule
-*                    requisites during phase 2)
-                     TM    G_SCAN_STATE,SCAN_STATE_IN_EXPAND
-                  ENDIF
-*                 If either of the tests above gives CC ones
-                  IF (O) THEN
-                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
-                     L     R15,LWZMAKE_SCAN_CHARA_TOKEN
-                     BASR  R14,R15             * Link to SCAN_CHAR
-                     BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
-                     B     SCAN_TOKEN_VALID    * Skip to finish token
-                  ENDIF
+*                 TM    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
+*                 BO    STORE_ACRO
+*
+*                 IC    R14,G_SCAN_STATE   * Get the scan state
+*                 N     R14,=X'0000007F'   * Clear out bits 0-56
+*                 Check if in expand (resolving variables in rule
+*                 requisites during phase 2)
+*                 C     R14,=A(SCAN_STATE_IN_EXPAND)
+*                 BE    STORE_ACRO
+*                 C     R14,=A(SCAN_STATE_IN_RULE2)
+*                 BE    STORE_ACRO
+*                 C     R14,=A(SCAN_STATE_IN_RULE3)
+*                 BE    STORE_ACRO
                ENDIF
 *              If not expected or the other tests above fail, write
 *              error and stop
@@ -4953,6 +4953,13 @@ CHECK_UNCONDITIONAL_OPERATOR EQU *
                _LC=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+*
+STORE_ACRO EQU *
+               BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+               L     R15,LWZMAKE_SCAN_CHARA_TOKEN
+               BASR  R14,R15             * Link to SCAN_CHAR
+               BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
+               B     SCAN_TOKEN_VALID    * Skip to finish token
             ENDIF
 *
 *           Check if next char will be %
@@ -5358,7 +5365,7 @@ LWZMAKE_SCAN_CHARA_TOKEN     DC    A(LWZMAKE_SCAN_CHAR)
 SCAN_STATE_TABLEA_TOKEN      DC    A(SCAN_STATE_TABLE)
 *
 * Translate table for starting character for a normal token
-* Can be ía-zA-Zù
+* Can beía-zA-Zù
 NORMAL_TOKEN_STARTCHAR DS 0F
          DC    256X'FF'
          ORG   NORMAL_TOKEN_STARTCHAR+C'a'
@@ -5376,7 +5383,7 @@ NORMAL_TOKEN_STARTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a normal token except the first
-* Can be í$#@_a-zA-Z0-9ù
+* Can beí$#@_a-zA-Z0-9ù
 NORMAL_TOKEN_NEXTCHAR DS 0F
          DC    256X'FF'
          ORG   NORMAL_TOKEN_NEXTCHAR+C'$'
@@ -5404,7 +5411,7 @@ NORMAL_TOKEN_NEXTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a special token
-* Can be í_A-Zù
+* Can beí_A-Zù
 SPECIAL_TOKEN_NEXTCHAR DS 0F
          DC    256X'FF'
          ORG   SPECIAL_TOKEN_NEXTCHAR+C'_'
@@ -5418,7 +5425,7 @@ SPECIAL_TOKEN_NEXTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a number token
-* Can be í0-9ù
+* Can beí0-9ù
 NUMBER_TOKEN_CHAR DS 0F
          DC    256X'FF'
          ORG   NUMBER_TOKEN_CHAR+C'0'
