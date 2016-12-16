@@ -7154,6 +7154,7 @@ EXEC_ASSIGN_EXPANDED EQU *
             L     R5,G_STGOR_PTR
 *
             MVC   0(STMT_A_DSECT_LEN,R5),0(R7)
+            MVC   0(4,R5),G_STGOR_LEN
             LR    R7,R5
 *
 *           Fill in source text (token 3) in assignment block
