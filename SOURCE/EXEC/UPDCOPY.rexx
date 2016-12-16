@@ -176,27 +176,35 @@ DO WHILE g.error = 0 & QUEUED() > 0
 
    _linelength = LENGTH(_line)
 
-   DO j = 1 TO g.updValues.0 WHILE g.error = 0
-      _newline = ""
+   _replacementDone = 1
 
-      _start = 1
+   DO i = 1 TO 100 WHILE g.error = 0 & _replacementDone = 1
+      _replacementDone = 0
 
-      _found = INDEX(_line, g.updValues.j.replaceWhat, _start)
+      DO j = 1 TO g.updValues.0 WHILE g.error = 0
+         _newline = ""
 
-      DO WHILE g.error = 0 & _found > 0
-         IF _found > 1 THEN DO
-            _newline = _newline || SUBSTR(_line,_start,_found-1)
-         END
-         _newline = _newline || g.updValues.j.replaceWith
-
-         _start = _found + LENGTH(g.updValues.j.replaceWhat)
+         _start = 1
 
          _found = INDEX(_line, g.updValues.j.replaceWhat, _start)
-      END
 
-      IF g.error = 0 THEN DO
-         _newline = _newline || SUBSTR(_line,_start)
-         _line = _newline
+         DO WHILE g.error = 0 & _found > 0
+            _replacementDone = 1
+
+            IF _found > 1 THEN DO
+               _newline = _newline || SUBSTR(_line,_start,_found-1)
+            END
+            _newline = _newline || g.updValues.j.replaceWith
+
+            _start = _found + LENGTH(g.updValues.j.replaceWhat)
+
+            _found = INDEX(_line, g.updValues.j.replaceWhat, _start)
+         END
+
+         IF g.error = 0 THEN DO
+            _newline = _newline || SUBSTR(_line,_start)
+            _line = _newline
+         END
       END
    END
 
@@ -280,7 +288,7 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error /= 0   | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
