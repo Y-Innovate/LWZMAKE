@@ -3222,18 +3222,24 @@ STMT_P_FIRST_TOKEN EQU *
          ENDIF
 *
          IF (CLI,G_SCAN_TOKENTYPE,NE,SCAN_TOKENTYPE_NORMAL) THEN
-            MLWZMRPT RPTLINE=CL133'0.PHONY must be followed by a constaX
-               nt target name',APND_LC=C'Y'
+            MLWZMRPT RPTLINE=CL133'0.PHONY must be followed by a targetX
+                name',APND_LC=C'Y'
             MVC   G_RETCODE,=F'8' * Set return code 8
             BR    R8              * and return
          ENDIF
+*
+*        Copy token 1 to token 2
+         MVC   G_SCAN_TOKEN2_LEN,=F'0'
+         MVC   G_SCAN_SPACE_COUNT,=A(0)
+         MVI   G_SCAN_APPEND_TO,X'01'
+         L     R15,LWZMAKE_APPEND_TOKENA_STMT * Get addr APPEND_TOKEN
+         BASR  R14,R15            * Link to APPEND_TOKEN section
+         MVC   G_SCAN_TOKENTYPE2,G_SCAN_TOKENTYPE * Copy token type
 *
 *        Clear scan state except for left most bit indicating in recipe
          NI    G_SCAN_STATE,SCAN_STATE_IN_RECIPE
 *        Set scan state bits to IN_PHONY2
          OI    G_SCAN_STATE,SCAN_STATE_IN_PHONY2
-*
-         B     STMT_P_CREATE
 *
 STMT_P_NEXT_TOKEN EQU *
          L     R15,LWZMAKE_SCAN_TOKENA_STMT * Get address of SCAN_TOKEN
@@ -3249,7 +3255,10 @@ STMT_P_NEXT_TOKEN EQU *
 *                                 * the high order bit in the scan
 *                                 * state for 'in recipe'
          C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check for not in stmt
-         BE    STMT_P_FINISH      * If so, finished
+         BE    STMT_P_CREATE      * If so, create last phony
+*
+         CLC   G_SCAN_SPACE_COUNT,=A(0)
+         BNE   STMT_P_CREATE
 *
 *        Check if we've hit a $() variable
          C     R14,=A(SCAN_STATE_IN_VARIABLE) * Check if we're in $()
@@ -3261,17 +3270,15 @@ STMT_P_NEXT_TOKEN EQU *
 *
             CLC   G_RETCODE,=F'0' * Did an error occur?
             BNE   STMT_PHONY_RET  * Yes, stop parsing statement
-            B     STMT_P_NEXT_TOKEN * Loop around to get next token
          ENDIF
 *
-STMT_P_CREATE EQU *
-*        Copy token 1 to token 2
-         MVC   G_SCAN_TOKEN2_LEN,=F'0'
-         MVC   G_SCAN_SPACE_COUNT,=A(0)
          MVI   G_SCAN_APPEND_TO,X'01'
          L     R15,LWZMAKE_APPEND_TOKENA_STMT * Get addr APPEND_TOKEN
          BASR  R14,R15            * Link to APPEND_TOKEN section
-         MVC   G_SCAN_TOKENTYPE2,G_SCAN_TOKENTYPE * Copy token type
+*
+         B     STMT_P_NEXT_TOKEN * Loop around to get next token
+*
+STMT_P_CREATE EQU *
 *
 *        Allocate a new memory block for this PHONY
          L     R1,=A(STMT_P_DSECT_LEN) * Size of block without tokens
@@ -3314,7 +3321,22 @@ STMT_P_CREATE EQU *
 *
          DROP  R7
 *
-         B     STMT_P_NEXT_TOKEN * Loop around to get next token
+         IC    R14,G_SCAN_STATE   * Get the scan state
+         N     R14,=X'0000007F'   * Clear out bits 0-56, so including
+*                                 * the high order bit in the scan
+*                                 * state for 'in recipe'
+         C     R14,=A(SCAN_STATE_NOT_IN_STMT) * Check for not in stmt
+         BE    STMT_P_FINISH      * If so, finish
+*
+*        Copy token 1 to token 2
+         MVC   G_SCAN_TOKEN2_LEN,=F'0'
+         MVC   G_SCAN_SPACE_COUNT,=A(0)
+         MVI   G_SCAN_APPEND_TO,X'01'
+         L     R15,LWZMAKE_APPEND_TOKENA_STMT * Get addr APPEND_TOKEN
+         BASR  R14,R15            * Link to APPEND_TOKEN section
+         MVC   G_SCAN_TOKENTYPE2,G_SCAN_TOKENTYPE * Copy token type
+*
+         B     STMT_P_NEXT_TOKEN  * Loop around for next token
 *
 STMT_P_FINISH EQU *
 *        Write trace record that statement is finished
