@@ -1062,6 +1062,7 @@ G_SCAN_SPACE_COUNT          DS    F    * Spaces since last token
 G_SAVE_SPACE_COUNT          DS    F    * Place to remember space count
 G_SCAN_CURRCHAR             DS    C    * Scanner current character
 G_SCAN_PEEKCHAR             DS    C    * Scanner next character
+G_SCAN_PEEKCHAR2            DS    C    * Scanner next character + 1
 G_SCAN_NEWLINE              DS    C    * Switch ind new line
 G_SCAN_CONTINUED_LINE       DS    C    * Switch ind continued line (\)
 G_SCAN_TOKENTYPE            DS    C    * Token type for G_SCAN_TOKEN
@@ -5018,20 +5019,6 @@ STORE_ACRO EQU *
                ENDIF
             ENDIF
 *
-*           So it's not $@ or $%, continue checking normal variable
-*           If we're at pos 71 or more, no sense checking the rest
-*           because there's not enough room for a variable
-            CLI   G_SCAN_TOKEN_72,C'Y'
-            BNE   CHECK_VAR_BRACKET
-            L     R6,G_SCAN_CURRCOL * Get current column
-            C     R6,=F'70'         * Check for pos 71 or above
-            IF (NL) THEN            * If so write error and stop
-               MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
-               MVC   G_RETCODE,=F'8' * Set return code 8
-               B     SCAN_TOKEN_RET  * Skip rest of tokenizer
-            ENDIF
-*
-CHECK_VAR_BRACKET EQU *
 *           Check if next char will be either ( or {
             IF (CLI,G_SCAN_PEEKCHAR,EQ,C'(') THEN
 *              Save matching close bracket to check later
@@ -5041,10 +5028,7 @@ CHECK_VAR_BRACKET EQU *
 *                 Save matching close bracket to check later
                   MVI   G_SCAN_CLOSE_BRACKET,C'}'
                ELSE
-*                 Neither ( nor { is a syntax error
-                  MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
-                  MVC   G_RETCODE,=F'8' * Set return code 8
-                  B     SCAN_TOKEN_RET  * Skip rest of tokenizer
+                  B     SKIP_VAR
                ENDIF
             ENDIF
 *
@@ -5101,6 +5085,7 @@ CHECK_VAR_BRACKET EQU *
             ENDIF
             B     SCAN_TOKEN_VALID * Skip to finishing valid token
          ENDIF
+SKIP_VAR EQU   *
 *
 *        Check for a closing bracket
          CLI   0(R5),C')'          * Is it a )
@@ -5260,8 +5245,12 @@ STORE_NEXT_NORMAL_TOKEN_CHAR EQU *
 *
 CHECK_NORMAL_PEEKCHAR EQU *
             LA    R2,G_SCAN_PEEKCHAR * Point R2 to peek char
-            CLI   0(R2),C'$'
-            BE    SCAN_TOKEN_VALID
+            IF (CLI,0(R2),EQ,C'$') THEN
+               IF (CLI,1(R2),EQ,C'('),OR,                              X
+               (CLI,1(R2),EQ,C'{') THEN
+                  B     SCAN_TOKEN_VALID
+               ENDIF
+            ENDIF
             TRT   0(1,R2),NORMAL_TOKEN_NEXTCHAR * Check for valid char
             BNZ   SCAN_TOKEN_VALID   * If not, skip to finish token
 *           Ending up here means the char is valid, to scan it and
@@ -5387,9 +5376,15 @@ LWZMAKE_SCAN_CHARA_TOKEN     DC    A(LWZMAKE_SCAN_CHAR)
 SCAN_STATE_TABLEA_TOKEN      DC    A(SCAN_STATE_TABLE)
 *
 * Translate table for starting character for a normal token
-* Can beía-zA-Zù
+* Can be [$#@a-zA-Z]
 NORMAL_TOKEN_STARTCHAR DS 0F
          DC    256X'FF'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'$'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'#'
+         DC    X'00'
+         ORG   NORMAL_TOKEN_STARTCHAR+C'@'
+         DC    X'00'
          ORG   NORMAL_TOKEN_STARTCHAR+C'a'
          DC    X'000000000000000000'
          ORG   NORMAL_TOKEN_STARTCHAR+C'j'
@@ -5405,7 +5400,7 @@ NORMAL_TOKEN_STARTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a normal token except the first
-* Can beí$#@_a-zA-Z0-9ù
+* Can be [$#@_a-zA-Z0-9]
 NORMAL_TOKEN_NEXTCHAR DS 0F
          DC    256X'FF'
          ORG   NORMAL_TOKEN_NEXTCHAR+C'$'
@@ -5433,7 +5428,7 @@ NORMAL_TOKEN_NEXTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a special token
-* Can beí_A-Zù
+* Can be [_A-Z]
 SPECIAL_TOKEN_NEXTCHAR DS 0F
          DC    256X'FF'
          ORG   SPECIAL_TOKEN_NEXTCHAR+C'_'
@@ -5447,7 +5442,7 @@ SPECIAL_TOKEN_NEXTCHAR DS 0F
          ORG
 *
 * Translate table for any character for a number token
-* Can beí0-9ù
+* Can be [0-9]
 NUMBER_TOKEN_CHAR DS 0F
          DC    256X'FF'
          ORG   NUMBER_TOKEN_CHAR+C'0'
@@ -5469,7 +5464,7 @@ LWZMAKE_SCAN_CHAR MLWZSAVE
                AKE_SCAN_CHAR'
 *
          MVI   G_SCAN_NEWLINE,C'N' * Initialize newline
-         MVC   G_SCAN_CURRCHAR(2),=X'0000' * Init CURRCHAR + PEEKCHAR
+         MVC   G_SCAN_CURRCHAR(3),=X'000000' * Init CURRCHAR + PEEKCHAR
 *
 SCAN_CHAR_CHECK_INPUT_STACK EQU *
 *        Check for empty input stack, of so set EOF and skip the rest
@@ -5520,6 +5515,12 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
                IF (L) THEN        * If not, also get PEEKCHAR
                   IC    R5,0(R3,R4) * Get the next char + 1 from input
                   STC   R5,G_SCAN_PEEKCHAR * and put it in PEEKCHAR
+                  LA    R3,1(,R3) * Advance next position
+                  CH    R3,INPUTLEN * Was this the last char?
+                  IF (L) THEN
+                     IC    R5,0(R3,R4)
+                     STC   R5,G_SCAN_PEEKCHAR2
+                  ENDIF
                ENDIF
                B     SCAN_CHAR_RET * Skip rest of scanner
             ELSE                  * Else, input exhausted

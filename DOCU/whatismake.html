@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LWZMAKE documentation</title>
+<link href="styles.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="div_all">
+<h1>What is <span class="clsMonospaceBold">make</span>?</h1>
+<p>
+<span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms make can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
+</p>
+<p>
+A basic example of the makefile syntax:
+<div class="clsDivCode" style="padding: 5px 20px;"><pre>helloworld.o: helloworld.c
+	gcc -c -o helloword.o helloworld.c</pre></div>
+</p>
+<p>
+Or in a more generic form:
+<div class="clsDivCode" style="padding: 5px 20px;"><pre>target: component
+&lt;tab&gt;command</pre></div>
+</p>
+<p>
+On the first sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">helloworld.o</span>. After the <span class="clsMonospace">:</span> follow prerequisites to the building of this target, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>.<br/>
+The second line in the example defines the recipe, in this example a single line, but a recipe can contain multiple lines that each start with a recipe prefix, the default is a tab character. Each recipe line is a command line that is executed to build the target.
+</p>
+<p>
+
+</p>
+</div>
+</body>
+</html>
