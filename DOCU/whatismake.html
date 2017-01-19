@@ -7,23 +7,40 @@
 </head>
 <body>
 <div id="div_all">
-<h1>What is <span class="clsMonospaceBold">make</span>?</h1>
+<h1>What is <span class="clsMonospaceBold">(z)make</span>?</h1>
 <p>
-<span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms make can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
+<span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms <span class="clsMonospace">make</span> can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
 </p>
 <p>
-A basic example of the makefile syntax:
-<div class="clsDivCode" style="padding: 5px 20px;"><pre>helloworld.o: helloworld.c
-	gcc -c -o helloword.o helloworld.c</pre></div>
+There's plenty of information on the web about <span class="clsMonospace">make</span>, so I won't go into more detail and immediately skip to <span class="clsMonospace">zmake</span>.
+</p>
+<p>
+<span class="clsMonospace">zmake</span> is a similar utility but for z/OS, or to be more specific the 'old' MVS part of z/OS (because the unix <span class="clsMonospace">make</span> is already available under z/OS Unix System Services). <span class="clsMonospace">zmake</span> works more or less the same as <span class="clsMonospace">make</span> and its <span class="clsMonospace">makefile</span> syntax is loosely based on <span class="clsMonospace">make's</span> but there are some differences.
+</p>
+<p>
+A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
+<div class="clsDivCode" style="padding: 5px 20px;"><pre>.RECIPEPREFIX = -
+
+# Copy SOMEJOB, but only if it changed
+MYUSR.PDS.JCL(SOMEJOB) : SOMEUSR.PDS.JCL(SOMEJOB)
+- CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
+-      MEMBER(SOMEJOB)</pre></div>
 </p>
 <p>
 Or in a more generic form:
-<div class="clsDivCode" style="padding: 5px 20px;"><pre>target: component
-&lt;tab&gt;command</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><pre>target: prerequisite
+- recipe command</pre></div>
 </p>
 <p>
-On the first sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">helloworld.o</span>. After the <span class="clsMonospace">:</span> follow prerequisites to the building of this target, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>.<br/>
-The second line in the example defines the recipe, in this example a single line, but a recipe can contain multiple lines that each start with a recipe prefix, the default is a tab character. Each recipe line is a command line that is executed to build the target.
+On the first line a special variable <span class="clsMonospace">.REFIPEPREFIX</span> is set to a <span class="clsMonospace">-</span> character to specify that recipe lines will start with a <span class="clsMonospace">-</span>.<br/>
+<br/>
+The second line is blank.<br/>
+<br/>
+The third line is a comment line since it starts with a <span class="clsMonospace">#</span> character.<br/>
+<br/>
+On the fourth sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">MYUSR.PDS.JCL(SOMEJOB)</span>. After the <span class="clsMonospace">:</span> follow prerequisites to the building of this target, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>. In the example that's <span class="clsMonospace">SOMEUSR.PDS.JCL(SOMEJOB)</span>.<br/>
+<br/>
+The fifth and sixth line in the example define the recipe, in this example a single command that wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
 </p>
 <p>
 
