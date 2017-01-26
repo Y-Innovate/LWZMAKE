@@ -5594,6 +5594,11 @@ SCAN_CHAR_READ_FROM_MAKEFILE EQU *
          IF (LT) THEN             * Only pos < 80 there's a PEEKCHAR
             IC    R5,1(R3,R4)     * Get the next char + 1 from input
             STC   R5,G_SCAN_PEEKCHAR * and put it in PEEKCHAR
+            C     R3,=F'78'
+            IF (LT) THEN
+               IC    R5,2(R3,R4)
+               STC   R5,G_SCAN_PEEKCHAR2
+            ENDIF
          ENDIF
 *
 *        The rest of this scanner code is for writing a deeebug trace
@@ -8282,6 +8287,19 @@ LWZMAKE_GET_MEMLIST DS    0F
 *
          MVC   G_MVSDS_MEMBER_PTR,=A(0)
          MVC   G_MVSDS_MEMBER_LEN,=A(0)
+*
+         MVC   G_WTOTEXT(4),G_SCAN_TOKEN2_LEN
+         LA    R2,G_WTOTEXT+4
+         L     R3,G_SCAN_TOKEN2A
+         L     R4,G_SCAN_TOKEN2_LEN
+         BCTR  R4,R0
+         B     *+10
+         MVC   0(1,R2),0(R3)
+         EX    R4,*-6
+         LA    R4,9(,R4)
+         STH   R4,G_WTOLEN
+         MVC   G_WTOFIL,=H'0'
+         WTO   MF=(E,G_WTOBLOCK)
 *
          L     R3,G_SCAN_TOKEN2A
          L     R4,G_SCAN_TOKEN2_LEN
