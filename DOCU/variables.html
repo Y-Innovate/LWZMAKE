@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LWZMAKE documentation</title>
+<link href="styles.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="div_all">
+<h1>Variables</h1>
+<p>
+When using <span class="clsMonospace">Make</span> you'll make heavy use of variables and it's important to know when variable resolution (replacing the variable with its value) takes place.
+</p>
+<p>
+A <span class="clsMonospace">Make</span> variable is created by an assignment statement, some examples:
+<div class="clsDivCode" style="padding: 5px 20px;"><pre># immediate assignment:
+hlq    := USER1
+
+# delayed assignment
+jclds   = $(hlq).JCL
+
+# immediate assignment, referring to a variable with delayed assignment
+someds := $(jclds)
+
+hlq     = USER2
+
+someds := $(jclds)</pre>
+</div>
+Note the assignment operator <span class="clsMonospace">:=</span> which means it's an immediate assignment, or in other words, following this statement the variable myvar will contain the text 'some value'.
+</p>
+</div>
+</body>
+</html>
