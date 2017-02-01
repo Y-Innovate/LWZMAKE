@@ -13,28 +13,28 @@ When using <span class="clsMonospace">zmake</span> you'll make heavy use of vari
 </p>
 <p>
 A <span class="clsMonospace">Make</span> variable is created by an assignment statement, some examples:
-<div class="clsDivCode" style="padding: 5px 20px;"># immediate assignment using :=<br/>
-hlq    := USER1<br/>
-<br/>
-# delayed assignment using =<br/>
-# the $(hlq) variable referred to doesn't get resolved here, but later whenever $(jclds)<br/>
-# is used in another statement with immediate variable resolution<br/>
-jclds   = $(hlq).JCL<br/>
-<br/>
-# immediate assignment using :=<br/>
-# this statement refers to a variable with delayed assignment which means $(jclds) is<br/>
-# expanded to $(hlq).JCL which then gets resolved to USER1.JCL<br/>
-someds := $(jclds)<br/>
-<br/>
-# delayed assignment using =<br/>
-hlq     = USER2<br/>
-<br/>
-# immediate conditional assignment using ?=</br>
-# a conditional assignment only assigns a value if the variable doesn't exist,<br/>
-# or already exists but has no value<br/>
-# this statement again refers to $(jclds) which again is expanded to $(hlq).JCL<br/>
-# but since $(hlq) has been assigned a new value, the result is now USER1.JCL<br/>
-anotherds ?= $(jclds)
+<div class="clsDivCode" style="padding: 5px 20px;"><font color="#008000"># immediate assignment using :=</font>
+<font color="0000FF">hlq    </font>:=<font color="0000FF"> USER1</font>
+
+<font color="008000"># delayed assignment using =
+# the $(hlq) variable referred to doesn't get resolved here, but later whenever $(jclds)
+# is used in another statement with immediate variable resolution</font>
+<font color="0000FF">jclds   </font>=<font color="0000FF"> $(hlq).JCL</font>
+
+<font color="008000"># immediate assignment using :=
+# this statement refers to a variable with delayed assignment which means $(jclds) is
+# expanded to $(hlq).JCL which then gets resolved to USER1.JCL</font>
+<font color="0000FF">someds </font>:=<font color="0000FF"> $(jclds)</font>
+
+<font color="008000"># delayed assignment using =</font>
+<font color="0000FF">hlq     </font>=<font color="0000FF"> USER2</font>
+
+<font color="008000"># immediate conditional assignment using ?=
+# a conditional assignment only assigns a value if the variable doesn't exist,
+# or already exists but has no value
+# this statement again refers to $(jclds) which again is expanded to $(hlq).JCL
+# but since $(hlq) has been assigned a new value, the result is now USER1.JCL</font>
+<font color="0000FF">anotherds </font>?=<font color="0000FF"> $(jclds)</font>
 </div>
 Note the assignment operator <span class="clsMonospace">:=</span> which means it's an immediate assignment, or in other words, following this statement the variable myvar will contain the text 'some value'.
 </p>
