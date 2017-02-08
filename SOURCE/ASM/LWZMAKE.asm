@@ -271,6 +271,8 @@ INIT     EQU   *
          MVC   G_DEFAULT_TARGET+1(L'G_DEFAULT_TARGET-1),G_DEFAULT_TARGEX
                T
 *
+         MVC   G_CURR_TARGET,=A(0)
+*
          MVC   G_SCAN_CURRCOL,=F'0'   '
          MVC   G_SCAN_CURRLINE,=F'0'     * so current line goes 0 > 1
          MVI   G_SCAN_CONTINUED_LINE,C'N' * Initial no continued line
@@ -1189,7 +1191,7 @@ SCAN_EXPECTED_MEMBERLIST3   EQU   B'00001100000010110000000000000000'
 SCAN_EXPECTED_MEMBERLIST4   EQU   B'00001101100010110100000000000000'
 SCAN_EXPECTED_FUNCTION      EQU   B'00001100000010100000000000000000'
 SCAN_EXPECTED_FUNCTION2     EQU   B'00001101000010100100000000000000'
-SCAN_EXPECTED_FUNCTION3     EQU   B'00001100000010110000000000000000'
+SCAN_EXPECTED_FUNCTION3     EQU   B'00001100000010110010000000000000'
 SCAN_EXPECTED_FUNCTION4     EQU   B'00001101100010110110000000000000'
 SCAN_EXPECTED_INCLUDE       EQU   B'00001110100010000000000000000000'
 SCAN_EXPECTED_INCLUDE2      EQU   B'01111111100010000000000000000000'
@@ -1224,6 +1226,7 @@ G_FIRST_TGT_PTR             DS    A
 *
 * Default target to build starting phase 2
 G_DEFAULT_TARGET            DS    CL72
+G_CURR_TARGET               DS    A
 *
 * Return value for LWZMAKE_FINDTGT (takes input from G_SCAN_TOKEN)
 G_FOUND_TGT_PTR             DS    A
@@ -4382,6 +4385,45 @@ FUNCTION_PARAMETER_NEXT_TOKEN EQU *
             CLI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_CLOSEBRACKET
             BE    FUNCTION_FINISH
 *
+            IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_ACRO) THEN
+               CLC   G_CURR_TARGET,=A(0)
+               BE    FUNCTION_PARAMETER_NEXT_TOKEN
+*
+*              Push target on to input stack
+               XR    R2,R2        * Clear R2
+               XR    R3,R3        * Clear R3
+               IC    R3,G_SCAN_INPUT_STACK_IDX * Get current stack idx
+               C     R3,=A(MAX_SCAN_INPUT_STACK_ENTRY) * Will an extra
+*                                 * entry fit?
+               IF (NL) THEN       * If not write error
+                  MLWZMRPT RPTLINE=CL133'0Internal error, state stack oX
+               verflow',APND_LC=C'Y'
+                  MVC   G_RETCODE,=F'12'  * Set return code 12
+                  B     SCAN_FUNCTION_RET * and return
+               ENDIF
+               LA    R3,1(,R3)    * Add 1 to stack size
+               STC   R3,G_SCAN_INPUT_STACK_IDX * And store it
+               BCTR  R3,R0        * Subtract 1 to calculate offset
+               M     R2,=A(INPUT_DSECT_SIZ) * Calc offset to new ntry
+               LA    R2,G_SCAN_INPUT_STACK * Point R2 to input stack
+               AR    R2,R3        * Add calculated offset
+*
+               USING INPUT_DSECT,R2  * Address with INPUT DSECT
+*
+               L     R3,G_CURR_TARGET
+*
+               MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF * Type of input
+               MVC   INPUTLEAD,G_SAVE_SPACE_COUNT
+               MVC   INPUTLEN,TGTNAMELEN-TARGET_DSECT(R3)
+               LA    R4,TGTNAME-TARGET_DSECT(,R3)
+               ST    R4,INPUTPTR
+               MVC   INPUTPOS,=H'0'  * Set initial scan pos to start
+*
+               DROP  R2
+*
+               B     FUNCTION_PARAMETER_NEXT_TOKEN
+            ENDIF
+*
             MVI   G_SCAN_APPEND_TO,X'02'
             LT    R1,G_SCAN_TOKEN3_LEN * Get current length token 3
             IF (Z) THEN             * Is this the first part of token 3
@@ -6544,6 +6586,9 @@ LWZMAKE_EXEC_TGT DS    0F
          USING STMT_R_DSECT,R7    * Address it with R7
 *
 *
+         MVC   SAVE_G_CURR_TARGET,G_CURR_TARGET
+         ST    R6,G_CURR_TARGET
+*
          MVC   G_LWZMRPT_LINE,=CL133' Processing target ...'
          LA    R2,G_LWZMRPT_LINE+23
          LA    R3,TGTNAME
@@ -6930,6 +6975,8 @@ EXEC_TGT_PREREQ_DONE EQU *
          DROP  R7
 *
 EXEC_TGT_RET EQU *
+         MVC   G_CURR_TARGET,SAVE_G_CURR_TARGET
+*
          L     R2,RETCODE_EXEC_TGT * Save return value
          L     R3,4(,R13)        * Restore address of callers SA
          FREEMAIN RU,LV=WORKAREA_EXEC_TGT_LEN,A=(R13)
@@ -7263,6 +7310,9 @@ EXEC_NEXTTGT_PAR            DS    CL(EXEC_TGT_PAR_LEN)
 *
                             DS    0F
 TARGET_ALTER_DATE           DS    CL16
+*
+                            DS    0F
+SAVE_G_CURR_TARGET          DS    A
 *
                             DS    0F
 EXEC_WORD_SPLIT_PTR         DS    A
