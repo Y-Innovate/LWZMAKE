@@ -256,6 +256,9 @@ INIT     EQU   *
 *
          MVI   G_RECIPEPREFIX,X'05' * Default recipe prefix is tab
 *
+         MVI   G_BUILDWHEN,BUILDWHEN_TOM * Default build when target
+*                                    * old or missing
+*
          MVI   G_PREV_STMT_TYPE,X'00' * Initial no prev statement type
 *
          MVI   G_SCAN_CLOSE_BRACKET,X'00' * Set no close bracket check
@@ -907,6 +910,14 @@ G_DO_ASSIGN                 DS    C
 * RECIPEPREFIX, initialized to X'05', can be set in MAKEFILE script
 G_RECIPEPREFIX              DS    C
 *
+* BUILDWHEN, initialized to TOM (target old or missing)
+G_BUILDWHEN                 DS    C
+BUILDWHEN_TOM               EQU   B'00000011'
+BUILDWHEN_TUM               EQU   B'00000101'
+BUILDWHEN_TM                EQU   B'00000001'
+BUILDWHEN_TO                EQU   B'00000010'
+BUILDWHEN_TU                EQU   B'00000100'
+*
 * LWZMAKE trace level
 G_LWZMAKE_TRACE             DS    C
 LWZMAKE_TRACE_NONE          EQU   C'0'
@@ -918,9 +929,10 @@ LWZMAKE_TRACE_DEEBUG        EQU   C'6'
 LWZMAKE_TRACE_DEEEBUG       EQU   C'8'
 *
 * Trace message number '000' - '999'
-G_LWZMTRC_MSGNR             DS    CL3
+G_LWZMTRC_MSGNR             DS    CL2
 *
 * Trace record
+                            DS    0F
 G_LWZMTRC_RECORD            DS    CL133
 *
 * Trace record data pointer and size
@@ -979,16 +991,16 @@ G_IRXINIT_USRFIELD_PTR      DS    CL4
 G_IRXINIT_RESERVED_PTR      DS    CL4
 G_IRXINIT_ENVBLOCK_PTR      DS    CL4
 G_IRXINIT_REASON            DS    CL4
-*
-* ISPF ISPLINK parameters
-G_ISPLINK_PAR5A             DS    5A
-G_ISPLINK_FUNCTION          DS    CL8
-G_ISPLINK_VARNAME           DS    CL8
-G_ISPLINK_VARPTR            DS    A
-G_ISPLINK_FORMAT            DS    CL8
-G_ISPLINK_VARLEN            DS    F
-G_ISPLINK_VAR               DS    CL250
-                            DS    CL2
+*-
+*- ISPF ISPLINK parameters
+*-G_ISPLINK_PAR5A             DS    5A
+*-G_ISPLINK_FUNCTION          DS    CL8
+*-G_ISPLINK_VARNAME           DS    CL8
+*-G_ISPLINK_VARPTR            DS    A
+*-G_ISPLINK_FORMAT            DS    CL8
+*-G_ISPLINK_VARLEN            DS    F
+*-G_ISPLINK_VAR               DS    CL250
+*-                            DS    CL2
 *
 * REXX execute ISPEXEC parameters
 G_USE_ISPEXEC               DS    C
@@ -1490,6 +1502,9 @@ TGTHIGH                     DS    A    * pointer to target with name
 *                                      * higher than this one
 TGTSTMT                     DS    A    * pointer to stmt that resulted
 *                                      * in this target
+TGTBUILDWHEN                DS    C    * build when condition
+                            DS    CL3  * reserved
+*
 TGTNAMELEN                  DS    H    * length of target name
 TGTNAMEMEMLEN               DS    H    * length of target member name
 TGTNAME                     DS    0C   * target name starts here
@@ -2713,18 +2728,43 @@ STMT_A_FINISH EQU *
 *        Check for assignment of special var
          L     R14,G_SCAN_TOKEN2A * Point R14 to token 2
          IF (CLI,0(R14),EQ,C'.') THEN * If token 2 starts with .
-            CLC   G_SCAN_TOKEN2_LEN,=F'13' * Is length 13?
-            IF (EQ) THEN              * Yes, so it can be recipepref
-               CLC   0(13,R14),=C'.RECIPEPREFIX' * Is it?
+            IF (CLC,G_SCAN_TOKEN2_LEN,EQ,=F'10') THEN * Is length 10?
+               CLC   0(10,R14),=C'.BUILDWHEN' * Is it .BUILDWHEN?
+               BNE   STMT_ASSIGNMENT_UNKNOWN_SPECIAL * No, error
+               MVI   G_BUILDWHEN,X'00'
+               L     R14,G_SCAN_TOKEN3A    * Point R14 to token 3
+               IF (CLC,G_SCAN_TOKEN3_LEN,EQ,=F'3') THEN
+                  SELECT CLC,0(3,R14),EQ
+                     WHEN =C'TOM' * Target is old or missing
+                        MVI   G_BUILDWHEN,BUILDWHEN_TOM
+                     WHEN =C'TUM' * Target alter date unequal/missing
+                        MVI   G_BUILDWHEN,BUILDWHEN_TUM
+                  ENDSEL
+               ENDIF
+               IF (CLC,G_SCAN_TOKEN3_LEN,EQ,=F'2') THEN
+                  SELECT CLC,0(2,R14),EQ
+                     WHEN =C'TM' * Target is missing
+                        MVI   G_BUILDWHEN,BUILDWHEN_TM
+                     WHEN =C'TO' * Target is old
+                        MVI   G_BUILDWHEN,BUILDWHEN_TO
+                     WHEN =C'TU' * Target alter date unequal
+                        MVI   G_BUILDWHEN,BUILDWHEN_TU
+                  ENDSEL
+               ENDIF
+               CLI   G_BUILDWHEN,X'00'
+               BNE   STMT_ASSIGNMENT_RET
+               B     STMT_ASSIGNMENT_WRONG_BUILDWHEN
+            ENDIF
+            IF (CLC,G_SCAN_TOKEN2_LEN,EQ,=F'13') THEN * Is length 13?
+               CLC   0(13,R14),=C'.RECIPEPREFIX' * Is it .RECIPEPREFIX?
                BNE   STMT_ASSIGNMENT_UNKNOWN_SPECIAL * No, error
                CLC   G_SCAN_TOKEN3_LEN,=F'1' * Was source text 1 pos?
                BNE   STMT_ASSIGNMENT_WRONG_REPPREFLEN * No, error
                L     R14,G_SCAN_TOKEN3A    * Point R14 to token 3
                MVC   G_RECIPEPREFIX,0(R14) * Copy recipeprefix
                B     STMT_ASSIGNMENT_RET   * Skip the rest
-            ELSE                      * Length is not 13
-               B     STMT_ASSIGNMENT_UNKNOWN_SPECIAL * so error
             ENDIF
+            B     STMT_ASSIGNMENT_UNKNOWN_SPECIAL
          ENDIF
 *
 *        Add/update the variable to binary search tree for vars
@@ -2752,6 +2792,12 @@ STMT_ASSIGNMENT_UNKNOWN_SPECIAL EQU *
 STMT_ASSIGNMENT_WRONG_REPPREFLEN EQU *
          MLWZMRPT RPTLINE=CL133'0Recipeprefix can only be 1 character',X
                APND_LN=C'Y'
+         MVC   G_RETCODE,=F'8'
+         BR    R8
+*
+STMT_ASSIGNMENT_WRONG_BUILDWHEN EQU *
+         MLWZMRPT RPTLINE=CL133'0Wrong value for BUILDWHEN',APND_LN=C'YX
+               '
          MVC   G_RETCODE,=F'8'
          BR    R8
 *
@@ -6090,6 +6136,7 @@ ALLOC_TGT EQU  *
          MVCL  R2,R4              * Zero out memory
 *
 *        Fill in new target block
+         MVC   TGTBUILDWHEN,G_BUILDWHEN * Copy current BUILDWHEN val
          L     R3,=A(TARGET_DSECT_LEN) * Get size of fixed part of tgt
          A     R3,G_SCAN_TOKEN_LEN  * Add target name length
          A     R3,=A(8)           * Add length for optional member name
@@ -6633,10 +6680,15 @@ LWZMAKE_EXEC_TGT DS    0F
          ENDIF
 *
          MVC   TARGET_ALTER_DATE,G_SAVE_ALTER_DATE
-         CLC   TARGET_ALTER_DATE,=16X'FF'
-         IF (EQ) THEN
-            MLWZMRPT RPTLINE=CL133' ..................... Target has noX
-                last altered date, build required'
+         IF (CLC,TARGET_ALTER_DATE,EQ,=16X'FF') THEN
+            IF (TM,TGTBUILDWHEN,BUILDWHEN_TM,Z) THEN
+               MLWZMRPT RPTLINE=CL133' ..................... Target hasX
+                no last altered date'
+               NI    TARGET_ALTER_DATE+15,X'FE'
+            ELSE
+               MLWZMRPT RPTLINE=CL133' ..................... Target hasX
+                no last altered date, build required'
+            ENDIF
          ENDIF
 *
 EXEC_TGT_PREREQ EQU *
@@ -6864,7 +6916,12 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
             L     R15,G_LWZMAKE_RPTA
             BASR  R14,R15
 *
-            MVC   G_LWZMRPT_LINE,=CL133' Continuing prereq ...'
+            IF (CLC,G_SAVE_ALTER_DATE,NE,=XL16'FFFFFFFFFFFFFFFFFFFFFFFFX
+               FFFFFFFE') THEN
+               MVC   G_LWZMRPT_LINE,=CL133' Continuing prereq ...'
+            ELSE
+               MVC   G_LWZMRPT_LINE,=CL133' Skipping prereq .....'
+            ENDIF
             LA    R2,G_LWZMRPT_LINE+23
             L     R3,G_SCAN_TOKENA
             L     R4,=F'110'
@@ -6878,6 +6935,11 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
             EX    R4,*-6
             L     R15,G_LWZMAKE_RPTA
             BASR  R14,R15
+*
+            IF (CLC,G_SAVE_ALTER_DATE,EQ,=XL16'FFFFFFFFFFFFFFFFFFFFFFFFX
+               FFFFFFFE') THEN
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            ENDIF
          ENDIF
 *
          L     R15,LWZMAKE_FINDPNYA_EXEC
@@ -6902,12 +6964,23 @@ EXEC_TGT_PREREQ_NONBLANK EQU *
          CLC   TARGET_ALTER_DATE,=16X'00'
          BE    EXEC_TGT_PREREQ_CHECK_LOOP
 *
-         CLC   TARGET_ALTER_DATE,=16X'FF'
+         CLC   TARGET_ALTER_DATE(15),=16X'FF'
          IF (NE) THEN
+            IF (TM,TGTBUILDWHEN,BUILDWHEN_TU,Z),AND,                   X
+               (TM,TGTBUILDWHEN,BUILDWHEN_TO,Z) THEN
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            ENDIF
             CLC   TARGET_ALTER_DATE,G_SAVE_ALTER_DATE
             IF (LT) THEN
                MLWZMRPT RPTLINE=CL133' ..................... Target is X
                older than prereq, build required'
+               MVC   TARGET_ALTER_DATE,=16X'FF'
+               B     EXEC_TGT_PREREQ_CHECK_LOOP
+            ENDIF
+            IF (GT),AND,                                               X
+               (TM,TGTBUILDWHEN,BUILDWHEN_TU,O) THEN
+               MLWZMRPT RPTLINE=CL133' ..................... Target is X
+               older or newer than prereq, build required'
                MVC   TARGET_ALTER_DATE,=16X'FF'
             ENDIF
          ENDIF
@@ -6925,8 +6998,22 @@ EXEC_TGT_PREREQ_DONE EQU *
          IF (EQ) THEN
             BAL   R8,EXEC_TGT_BUILD
          ELSE
-            MLWZMRPT RPTLINE=CL133' ..................... No need to buX
-               ild target'
+            MVC   G_LWZMRPT_LINE,=CL133' ..................... No need X
+               to build target ('
+            SELECT CLI,TGTBUILDWHEN,EQ
+               WHEN BUILDWHEN_TOM
+                  MVC   G_LWZMRPT_LINE+48(4),=C'TOM)'
+               WHEN BUILDWHEN_TUM
+                  MVC   G_LWZMRPT_LINE+48(4),=C'TUM)'
+               WHEN BUILDWHEN_TM
+                  MVC   G_LWZMRPT_LINE+48(3),=C'TM)'
+               WHEN BUILDWHEN_TO
+                  MVC   G_LWZMRPT_LINE+48(3),=C'TO)'
+               WHEN BUILDWHEN_TU
+                  MVC   G_LWZMRPT_LINE+48(3),=C'TU)'
+            ENDSEL
+            L     R15,G_LWZMAKE_RPTA
+            BASR  R14,R15
             B     EXEC_TGT_RET
          ENDIF
 *
@@ -6935,6 +7022,7 @@ EXEC_TGT_PREREQ_DONE EQU *
 *
 EXEC_TGT_RET EQU *
          MVC   G_CURR_TARGET,SAVE_G_CURR_TARGET
+         MVC   G_SAVE_ALTER_DATE,TARGET_ALTER_DATE
 *
          L     R2,RETCODE_EXEC_TGT * Save return value
          L     R3,4(,R13)        * Restore address of callers SA
