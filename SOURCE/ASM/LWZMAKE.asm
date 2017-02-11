@@ -129,11 +129,11 @@
 * Macro MLWZMRPT for generating a snippet to write a report line
 *
          MACRO
-         MLWZMRPT &RPTLINE=,&APND_LC=
+         MLWZMRPT &RPTLINE=,&APND_LN=
          MVC   G_LWZMRPT_LINE,=&RPTLINE * Copy report line to glb var
-         AIF   ('&APND_LC' EQ '').NO_APND_LC
-         MVI   G_LWZMRPT_APND_LC,&APND_LC
-.NO_APND_LC ANOP
+         AIF   ('&APND_LN' EQ '').NO_APND_LN
+         MVI   G_LWZMRPT_APND_LN,&APND_LN
+.NO_APND_LN ANOP
          L     R15,G_LWZMAKE_RPTA * Get address of report section
          BASR  R14,R15            * Link to report section
          MEND
@@ -273,7 +273,7 @@ INIT     EQU   *
 *
          MVC   G_CURR_TARGET,=A(0)
 *
-         MVC   G_SCAN_CURRCOL,=F'0'   '
+         MVC   G_SCAN_CURRCOL,=F'0'
          MVC   G_SCAN_CURRLINE,=F'0'     * so current line goes 0 > 1
          MVI   G_SCAN_CONTINUED_LINE,C'N' * Initial no continued line
          MVI   G_SCAN_APPEND_TO,X'00'    * Initial append to scratch
@@ -295,7 +295,7 @@ INIT     EQU   *
          MVC   G_LWZMRPT_CURRLINE,=H'999' * Make sure first report line
 *                                         * causes next line
          MVC   G_LWZMRPT_CURRPAGE,=F'0'   * so current page goes 0 > 1
-         MVC   G_LWZMRPT_APND_LC,=C'N'    * Initial no append line/col
+         MVC   G_LWZMRPT_APND_LN,=C'N'    * Initial no append line/col
 *
 *                                         * Initialize page hader in
          MVC   G_PAGE_HEADER,CPAGE_HEADER * global var
@@ -1258,7 +1258,7 @@ G_LWZMRPT_CURRPAGE          DS    F
 G_LWZMRPT_CURRLINE          DS    H
 *
 * Switch indicating whether line n column m should be added to rpt line
-G_LWZMRPT_APND_LC           DS    C
+G_LWZMRPT_APND_LN           DS    C
 *
 * Line to write to LWZMRPT next
                             DS    0F
@@ -1388,6 +1388,9 @@ STMT_TYPE_INCLUDE           EQU   C'I' * INCLUDE, use STMT_I_DSECT
 STMT_IN_RECIPE              DS    C    * switch (Y/N) indicating stmt
 *                                      * found in recipe
                             DS    CL2  * reserved
+*
+STMT_LINE                   DS    F    * source line nr of this stmt
+*
 STMT_NEXT_PTR               DS    A    * forward chain to next stmt
 STMT_PREV_PTR               DS    A    * backward chain to prev stmt
 STMT_DSECT_LEN              EQU   *-STMT_DSECT
@@ -1871,8 +1874,8 @@ LWZ699I  DC    C'LWZMAKE TRACE ENDED'
 *          Mostly invoked using the macro MLWZMRPT at the top of this *
 *          source file.                                               *
 *          On entry, G_LWZMRPT_LINE contains the line to be written.  *
-*          If G_LWZMRPT_APND_LC is set to 'Y', G_SCAN_CURRLINE and    *
-*          G_SCAN_CURRCOL are appended to the report line.            *
+*          If G_LWZMRPT_APND_LN is set to 'Y', G_SCAN_CURRLINE is     *
+*          appended to the report line.                               *
 *          R9 should point to global data.                            *
 ***********************************************************************
 LWZMAKE_RPT MLWZSAVE
@@ -1880,10 +1883,10 @@ LWZMAKE_RPT MLWZSAVE
          MLWZMTRC LEVEL=LWZMAKE_TRACE_DEEBUG,MSGNR=C'604',CONST=C'LWZMAX
                KE_RPT'
 *
-*        If G_LWZMRPT_APND_LC = 'Y', append line and column nr to line
-         IF (CLI,G_LWZMRPT_APND_LC,EQ,C'Y') THEN
-            BAL   R8,RPT_APPEND_LC  * Perform append line and column nr
-            MVI   G_LWZMRPT_APND_LC,C'N' * Reset switch to 'N'
+*        If G_LWZMRPT_APND_LN = 'Y', append line and column nr to line
+         IF (CLI,G_LWZMRPT_APND_LN,EQ,C'Y') THEN
+            BAL   R8,RPT_APPEND_LN  * Perform append line and column nr
+            MVI   G_LWZMRPT_APND_LN,C'N' * Reset switch to 'N'
          ENDIF
 *
 WRITE    EQU   *
@@ -1943,9 +1946,9 @@ RET_RPT  EQU   *
          MLWZTERM                 * Return back to caller
 *
 * Append ' at line x column y' to print line, only performed when
-* G_LWZMRPT_APND_LC is set to 'Y'
+* G_LWZMRPT_APND_LN is set to 'Y'
 *
-RPT_APPEND_LC EQU *
+RPT_APPEND_LN EQU *
 *        Initialize helper var
          MVC   G_LWZMRPT_HELPER,=CL80' at line'
          LA    R7,G_LWZMRPT_HELPER+9 * Point R7 to where line nr starts
@@ -1972,30 +1975,30 @@ RPT_TRIM_NR1_END EQU *
          LA    R3,1(,R3)          * R3 = R3 + 1
          AR    R7,R3              * Advance R7 past line number
 *
-         MVC   0(8,R7),=C' column ' * Append constant
-         LA    R7,8(,R7)          * Advance R7 to point after constant
+*        MVC   0(8,R7),=C' column ' * Append constant
+*        LA    R7,8(,R7)          * Advance R7 to point after constant
 *
-         L     R15,G_SCAN_CURRCOL * Get the current column number
-         CVD   R15,G_DEC8         * Convert it to packed decimal
-         UNPK  G_ZONED8,G_DEC8    * Convert it to zoned
-         OI    G_ZONED8+7,X'F0'   * Get rid of sign nibble
+*        L     R15,G_SCAN_CURRCOLS * Get the current column number
+*        CVD   R15,G_DEC8         * Convert it to packed decimal
+*        UNPK  G_ZONED8,G_DEC8    * Convert it to zoned
+*        OI    G_ZONED8+7,X'F0'   * Get rid of sign nibble
 *
 *        Left trim the column number of leading zeros
-         LA    R2,G_ZONED8        * Point R2 to column number
-         LA    R3,L'G_ZONED8-1    * Put byte counter - 1 in R3, so
+*        LA    R2,G_ZONED8        * Point R2 to column number
+*        LA    R3,L'G_ZONED8-1    * Put byte counter - 1 in R3, so
 *                                 * we're always left with min. 1 byte
 *                                 * and R3 is ready to use with EX
-RPT_TRIM_NR2 EQU *
-         CLI   0(R2),C'0'         * Is this a zero?
-         BNE   RPT_TRIM_NR2_END   * Nope, stop trimming
-         LA    R2,1(,R2)          * R2 = R2 + 1
-         BCT   R3,RPT_TRIM_NR2    * R3 = R3 - 1 until R3 = 0
-RPT_TRIM_NR2_END EQU *
-         B     *+10               * Skip MVC constant for EX
-         MVC   0(1,R7),0(R2)      * MVC constant for EX
-         EX    R3,*-6             * EX previous MVC statement with R3
-         LA    R3,1(,R3)          * R3 = R3 + 1
-         AR    R7,R3              * Advance R7 past column number
+*RPT_TRIM_NR2 EQU *
+*        CLI   0(R2),C'0'         * Is this a zero?
+*        BNE   RPT_TRIM_NR2_END   * Nope, stop trimming
+*        LA    R2,1(,R2)          * R2 = R2 + 1
+*        BCT   R3,RPT_TRIM_NR2    * R3 = R3 - 1 until R3 = 0
+*RPT_TRIM_NR2_END EQU *
+*        B     *+10               * Skip MVC constant for EX
+*        MVC   0(1,R7),0(R2)      * MVC constant for EX
+*        EX    R3,*-6             * EX previous MVC statement with R3
+*        LA    R3,1(,R3)          * R3 = R3 + 1
+*        AR    R7,R3              * Advance R7 past column number
 *
 *        Calculate actual length of helper var
          LA    R6,G_LWZMRPT_HELPER * Point R6 to helper var
@@ -2016,7 +2019,7 @@ RPT_TRIM_LINE_DONE EQU *
          LA    R5,G_LWZMRPT_LINE+L'G_LWZMRPT_LINE * Point R5 past end
 *                                 * of report line
          SR    R5,R2              * Calculate room left
-         BO    RPT_APPEND_LC_END  * No room left, skip rest of append
+         BO    RPT_APPEND_LN_END  * No room left, skip rest of append
          CR    R5,R7              * Check if room left is more than
          IF (H) THEN              * the room needed for append string
             LR    R5,R7           * If so, use length of append string
@@ -2026,7 +2029,7 @@ RPT_TRIM_LINE_DONE EQU *
          MVC   0(1,R2),G_LWZMRPT_HELPER * MVC constant for EX
          EX    R5,*-6             * EX previous MVC statement with R5
 *
-RPT_APPEND_LC_END EQU *
+RPT_APPEND_LN_END EQU *
          BR    R8                 * Return
 *
          LTORG
@@ -2513,7 +2516,7 @@ LWZMAKE_SCAN_STMT MLWZSAVE
 *
 *        No valid combination of keywords found, so report syntax error
 *        and give off return code 8
-         MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LC=C'Y'
+         MLWZMRPT RPTLINE=CL133'0Syntax error',APND_LN=C'Y'
          MVC   G_RETCODE,=F'8'
 *
 SCAN_STMT_RET EQU *
@@ -2548,7 +2551,7 @@ STMT_ASSIGNMENT EQU *
          C     R6,=A(L'STMT_A_DEST) * Check if it fits
          IF (H) THEN                * If not, write error and stop
             MLWZMRPT RPTLINE=CL133'0Internal error, variable name longeX
-               r than 72',APND_LC=C'Y'
+               r than 72',APND_LN=C'Y'
             MVC   G_RETCODE,=F'12'  * Set return code 12
             BR    R8                * and return
          ENDIF
@@ -2742,13 +2745,13 @@ STMT_ASSIGNMENT_RET EQU *
          BR    R8
 *
 STMT_ASSIGNMENT_UNKNOWN_SPECIAL EQU *
-         MLWZMRPT RPTLINE=CL133'0Unknown special variable',APND_LC=C'Y'
+         MLWZMRPT RPTLINE=CL133'0Unknown special variable',APND_LN=C'Y'
          MVC   G_RETCODE,=F'8'
          BR    R8
 *
 STMT_ASSIGNMENT_WRONG_REPPREFLEN EQU *
          MLWZMRPT RPTLINE=CL133'0Recipeprefix can only be 1 character',X
-               APND_LC=C'Y'
+               APND_LN=C'Y'
          MVC   G_RETCODE,=F'8'
          BR    R8
 *
@@ -3044,7 +3047,7 @@ STMT_CALL EQU  *
          C     R2,=A(8)           * Longer than 8 positions?
          IF (H) THEN              * If so...
             MLWZMRPT RPTLINE=CL133'0REXX exec cannot be longer than 8 cX
-               haracters',APND_LC=C'Y'
+               haracters',APND_LN=C'Y'
             MVC   G_RETCODE,=F'8' * Set return code 8
             BR    R8              * and return
          ENDIF
@@ -3227,7 +3230,7 @@ STMT_P_FIRST_TOKEN EQU *
 *
          IF (CLI,G_SCAN_TOKENTYPE,NE,SCAN_TOKENTYPE_NORMAL) THEN
             MLWZMRPT RPTLINE=CL133'0.PHONY must be followed by a targetX
-                name',APND_LC=C'Y'
+                name',APND_LN=C'Y'
             MVC   G_RETCODE,=F'8' * Set return code 8
             BR    R8              * and return
          ENDIF
@@ -3410,7 +3413,7 @@ STMT_I_NEXT_TOKEN EQU *
             LT    R14,G_SCAN_SPACE_COUNT
             IF (NZ) THEN
                MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as data setX
-                name in INCLUDE',APND_LC=C'Y'
+                name in INCLUDE',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     STMT_INCLUDE_RET * and return
             ENDIF
@@ -3441,7 +3444,7 @@ STMT_I_FINISH EQU *
 *
          IF (CLI,G_CHECK_MVSDS_MVSDS,NE,C'Y') THEN
             MLWZMRPT RPTLINE=CL133'0INCLUDE parameter is not an mvs datX
-               a set name',APND_LC=C'Y'
+               a set name',APND_LN=C'Y'
             MVC   G_RETCODE,=F'8'  * Set return code 8
             B     STMT_INCLUDE_RET * and return
          ENDIF
@@ -3685,7 +3688,7 @@ LWZMAKE_SCAN_VAR DS    0F
             C     R14,=A(SCAN_STATE_IN_VARIABLER)
          ENDIF
          IF (NE) THEN
-            MLWZMRPT RPTLINE=CL133'0Empty $()',APND_LC=C'Y'
+            MLWZMRPT RPTLINE=CL133'0Empty $()',APND_LN=C'Y'
             MVC   G_RETCODE,=F'8' * Set return code 8
             B     SCAN_VAR_RET    * and return
          ENDIF
@@ -3730,7 +3733,7 @@ LWZMAKE_SCAN_VAR DS    0F
             C     R1,=A(L'G_SRCH_VAR) * If should always fit, but just
             IF (H) THEN               * in case check anyway
                MLWZMRPT RPTLINE=CL133'0Internal error, variable name loX
-               nger than 72',APND_LC=C'Y'
+               nger than 72',APND_LN=C'Y'
                MVC   G_RETCODE,=F'12' * Set return code 12
                B     SCAN_VAR_RET     * and return
             ENDIF
@@ -3769,7 +3772,18 @@ LWZMAKE_SCAN_VAR DS    0F
 *
             LT    R4,G_FOUND_VAR_PTR * Check if a pointer was returned
             IF (Z) THEN           * If not write error and stop
-               MLWZMRPT RPTLINE=CL133'0Variable not found',APND_LC=C'Y'
+               MVC   G_LWZMRPT_LINE,=CL133'0Variable not found'
+               LA    R2,G_LWZMRPT_LINE+20
+               LA    R3,G_SRCH_VAR
+               XR    R4,R4
+               LH    R4,G_SRCH_VAR_LEN
+               BCTR  R4,R0
+               B     *+10
+               MVC   0(1,R2),0(R3)
+               EX    R4,*-6
+               MVI   G_LWZMRPT_APND_LN,C'Y'
+               L     R15,G_LWZMAKE_RPTA
+               BASR  R14,R15
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_VAR_RET    * and return
             ENDIF
@@ -3787,7 +3801,7 @@ LWZMAKE_SCAN_VAR DS    0F
 *                                 * entry fit?
             IF (NL) THEN          * If not write error
                MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
-               flow',APND_LC=C'Y'
+               flow',APND_LN=C'Y'
                MVC   G_RETCODE,=F'12' * Set return code 12
                B     SCAN_VAR_RET     * and return
             ENDIF
@@ -3857,7 +3871,7 @@ ADDPDSNAME_PDSNAME_NEXT_TOKEN EQU *
             LT    R14,G_SCAN_SPACE_COUNT
             IF (NZ) THEN
                MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as pds nameX
-                in addpdsname function',APND_LC=C'Y'
+                in addpdsname function',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                BR    R8             * and return
             ENDIF
@@ -4074,7 +4088,7 @@ MEMBERLIST_PDSNAME_NEXT_TOKEN EQU *
             LT    R14,G_SCAN_SPACE_COUNT
             IF (NZ) THEN
                MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as pds nameX
-                in memberlist function',APND_LC=C'Y'
+                in memberlist function',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                BR    R8             * and return
             ENDIF
@@ -4273,8 +4287,8 @@ FUNCTION_REXXNAME_NEXT_TOKEN EQU *
          IF (NZ) THEN
             LT    R14,G_SCAN_SPACE_COUNT
             IF (NZ) THEN
-               MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as REXX nameX
-                in function',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Only 1 token allowed as REXX name
+                in function',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                BR    R8             * and return
             ENDIF
@@ -4498,7 +4512,7 @@ SCAN_VAR_RESTORE EQU *
 *                                 * entry fit?
             IF (NL) THEN          * If not write error
                MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
-               flow',APND_LC=C'Y'
+               flow',APND_LN=C'Y'
                MVC   G_RETCODE,=F'12' * Set return code 12
                B     SCAN_VAR_RET     * and return
             ENDIF
@@ -4605,7 +4619,7 @@ SCAN_FOR_WHITESPACE EQU *
          IF (CLI,G_MKFEOF,EQ,C'Y') THEN * Is EOF switch on?
 *                                 * And was it expected?
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_EOF,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected end of file',APND_LC=X
+               MLWZMRPT RPTLINE=CL133'0Unexpected end of file',APND_LN=X
                C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
             ENDIF
@@ -4617,7 +4631,7 @@ SCAN_FOR_WHITESPACE EQU *
          IF (CLI,G_SCAN_NEWLINE,EQ,C'Y') THEN * Is new line switch on?
 *                                 * And was it expected?
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_NEWLINE,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected new line',APND_LC=C'YX
+               MLWZMRPT RPTLINE=CL133'0Unexpected new line',APND_LN=C'YX
                '
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4688,7 +4702,7 @@ CHECK_IGNORE EQU *
                ST    R14,G_LWZMTRC_DATA_PTR * Set it as trace data ptr
                MVC   G_LWZMTRC_DATA_SIZ,=AL2(29) * Set trace data len
                MLWZMTRC LEVEL=LWZMAKE_TRACE_ERROR,MSGNR=C'003',DATA
-               MLWZMRPT RPTLINE=CL133'0Unexpected end of line',APND_LC=X
+               MLWZMRPT RPTLINE=CL133'0Unexpected end of line',APND_LN=X
                C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4740,6 +4754,9 @@ SKIP_IGNORE EQU *
 *        so we can start checking token types.
 *        Point R5 to current char to start checking.
          LA    R5,G_SCAN_CURRCHAR
+*-       L     R14,G_SCAN_CURRCOL
+*-       LA    R14,1(,R14)
+*-       ST    R14,G_SCAN_CURRCOLS
 *
 *        Check for comments
          IF (CLI,0(R5),EQ,C'#') THEN
@@ -4750,7 +4767,7 @@ SKIP_IGNORE EQU *
                MMENT'
 *           Was comment expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_COMMENT,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected comment',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Unexpected comment',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -4792,7 +4809,7 @@ CHECK_NEXT_COMMENT_CHAR EQU *
 *        character, anything other than comment is a syntax error
          IF (CLI,G_SCAN_CONTINUED_LINE,EQ,C'Y') THEN
             MLWZMRPT RPTLINE=CL133'0Syntax error, only comments allowedX
-                after continuation character',APND_LC=C'Y'
+                after continuation character',APND_LN=C'Y'
             MVC   G_RETCODE,=F'8' * Set return code 8
             B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
          ENDIF
@@ -4823,7 +4840,7 @@ CHECK_NEXT_COMMENT_CHAR EQU *
 *              Was it expected? If not, write error and stop
                IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_RECIPREF,Z) THEN
 UNEXPECTED_RECIPE EQU *
-                  MLWZMRPT RPTLINE=CL133'0Unexpected recipe',APND_LC=C'X
+                  MLWZMRPT RPTLINE=CL133'0Unexpected recipe',APND_LN=C'X
                Y'
                   MVC   G_RETCODE,=F'8' * Set return code 8
                   B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4857,7 +4874,7 @@ SKIP_RECIPE_PREFIX EQU *
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_OPERATOR
 *           Was it expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=C'YX
+               MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LN=C'YX
                '
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4882,7 +4899,7 @@ SET_CONDITIONAL_OPERATOR EQU *
 *                 Was it expected? If not, write error and stop
                IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
                      MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_X
-               LC=C'Y'
+               LN=C'Y'
                      MVC   G_RETCODE,=F'8' * Set return code 8
                      B     SCAN_TOKEN_RET  * Skip rest of tokenizer
                   ENDIF
@@ -4892,7 +4909,7 @@ SET_CONDITIONAL_OPERATOR EQU *
                   BAL   R8,STORE_TOKEN_CHAR * Add char to token 1
                   B     SCAN_TOKEN_VALID   * Skip to finishing
                ELSE
-                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=X
+                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LN=X
                C'Y'
                   MVC   G_RETCODE,=F'8'    * Set return code 8
                   B     SCAN_TOKEN_RET     * Skip rest of tokenizer
@@ -4908,7 +4925,7 @@ SET_CONDITIONAL_OPERATOR EQU *
             IF (CLI,G_SCAN_PEEKCHAR,EQ,C'=') THEN
 *              Check if an operator is expected, if not error and stop
                IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_OPERATOR,Z) THEN
-                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LC=X
+                  MLWZMRPT RPTLINE=CL133'0Unexpected operator',APND_LN=X
                C'Y'
                   MVC   G_RETCODE,=F'8' * Set return code 8
                   B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4917,7 +4934,7 @@ SET_CONDITIONAL_OPERATOR EQU *
 *              If next char is not =, so it's a rule
 *              Check if a rule is expected, if not error and stop
                IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_RULE,Z) THEN
-                  MLWZMRPT RPTLINE=CL133'0Unexpected colon',APND_LC=C'YX
+                  MLWZMRPT RPTLINE=CL133'0Unexpected colon',APND_LN=C'YX
                '
                   MVC   G_RETCODE,=F'8' * Set return code 8
                   B     SCAN_TOKEN_RET  * Skip rest of tokenizer
@@ -4951,7 +4968,7 @@ CHECK_UNCONDITIONAL_OPERATOR EQU *
 *           Was it expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_OPENVAR,Z) THEN
                MLWZMRPT RPTLINE=CL133'0Unexpected variable or function'X
-               ,APND_LC=C'Y'
+               ,APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -4966,7 +4983,7 @@ CHECK_UNCONDITIONAL_OPERATOR EQU *
                   B     STORE_ACRO_OR_PERCENT
                ENDIF
                MLWZMRPT RPTLINE=CL133'0Unexpected target variable',APNDX
-               _LC=C'Y'
+               _LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -4981,7 +4998,7 @@ CHECK_UNCONDITIONAL_OPERATOR EQU *
                   B     STORE_ACRO_OR_PERCENT
                ENDIF
                MLWZMRPT RPTLINE=CL133'0Unexpected target member variablX
-               e',APND_LC=C'Y'
+               e',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -5007,7 +5024,7 @@ STORE_ACRO_OR_PERCENT EQU *
 *                                 * entry fit?
                IF (NL) THEN       * If not write error
                   MLWZMRPT RPTLINE=CL133'0Internal error, state stack oX
-               verflow',APND_LC=C'Y'
+               verflow',APND_LN=C'Y'
                   MVC   G_RETCODE,=F'12' * Set return code 12
                   B     SCAN_TOKEN_RET   * and return
                ENDIF
@@ -5097,7 +5114,7 @@ TOKEN_NOT_ACRO_OR_PERCENT EQU *
             C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
             IF (H) THEN                 * Yep, write error and stop
                MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
-               flow',APND_LC=C'Y'
+               flow',APND_LN=C'Y'
                MVC   G_RETCODE,=F'12'   * Set return code 12
                B     SCAN_TOKEN_RET     * Skip rest of tokenizer
             ENDIF
@@ -5129,7 +5146,7 @@ SKIP_VAR EQU   *
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_CLOSEBRC,Z) THEN
 UNEXPECTED_CLOSE_BRACKET EQU *
                MLWZMRPT RPTLINE=CL133'0Unexpected close bracket',APND_LX
-               C=C'Y'
+               N=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -5171,7 +5188,7 @@ UNEXPECTED_CLOSE_BRACKET EQU *
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_COMMA
 *           Was if expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_COMMA,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected comma',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Unexpected comma',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -5187,7 +5204,7 @@ UNEXPECTED_CLOSE_BRACKET EQU *
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_SLASH
 *           Was if expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+2,SCAN_EXPECTED3_SLASH,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected slash',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Unexpected slash',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip rest of tokenizer
             ENDIF
@@ -5215,7 +5232,7 @@ UNEXPECTED_CLOSE_BRACKET EQU *
 *           Was it expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_SPECIAL,Z) THEN
                MLWZMRPT RPTLINE=CL133'0Unexpected special variable',APNX
-               D_LC=C'Y'
+               D_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
             ENDIF
@@ -5254,7 +5271,7 @@ SKIP_SCAN_SPECIAL EQU *
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_NORMAL
 *           Was it expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED,SCAN_EXPECTED1_NORMAL,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected token',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Unexpected token',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
             ENDIF
@@ -5297,7 +5314,7 @@ CHECK_NORMAL_PEEKCHAR EQU *
             MVI   G_SCAN_TOKENTYPE,SCAN_TOKENTYPE_NUMBER
 *           Was it expected? If not, write error and stop
             IF (TM,G_SCAN_EXPECTED+1,SCAN_EXPECTED2_NUMBER,Z) THEN
-               MLWZMRPT RPTLINE=CL133'0Unexpected number',APND_LC=C'Y'
+               MLWZMRPT RPTLINE=CL133'0Unexpected number',APND_LN=C'Y'
                MVC   G_RETCODE,=F'8' * Set return code 8
                B     SCAN_TOKEN_RET  * Skip the rest of tokenizer
             ENDIF
@@ -5384,7 +5401,7 @@ STORE_TOKEN_CHAR EQU *
          C     R7,=A(SCAN_TOKEN_MAXLEN) * Have we exhausted token 1?
          IF (GT) THEN             * If so, write error and stop
             MLWZMRPT RPTLINE=CL133'0Internal error, no more room left iX
-               n 4K token space',APND_LC=C'Y'
+               n 4K token space',APND_LN=C'Y'
             MVC   G_RETCODE,=F'12' * Set return code 12
             B     SCAN_TOKEN_RET   * Dirty jump to end of tokenizer
          ENDIF                     * but quicker than check retcode
@@ -5796,6 +5813,8 @@ FIND_STMT_SLOT EQU *
          ELSE
             MVI   STMT_IN_RECIPE-STMT_DSECT(R1),C'N'
          ENDIF
+*        Fill in line number
+         MVC   STMT_LINE-STMT_DSECT(4,R1),G_SCAN_CURRLINE
 *        Fill in back chain statement pointer
          MVC   STMT_PREV_PTR-STMT_DSECT(4,R1),G_STMT_SAVE_PTR
 *
@@ -6551,6 +6570,8 @@ LWZMAKE_EXEC_TGT DS    0F
          MVC   SAVE_G_CURR_TARGET,G_CURR_TARGET
          ST    R6,G_CURR_TARGET
 *
+         MVC   G_SCAN_CURRLINE,STMT_LINE-STMT_DSECT(R7)
+*
          MVC   G_LWZMRPT_LINE,=CL133' Processing target ...'
          LA    R2,G_LWZMRPT_LINE+23
          LA    R3,TGTNAME
@@ -6959,6 +6980,8 @@ EXEC_TGT_BUILD EQU *
 NEXT_RECIPE_STMT EQU *
          ST    R7,EXEC_TGT_CURR_STMT
 *
+         MVC   G_SCAN_CURRLINE,STMT_LINE-STMT_DSECT(R7)
+*
          IF (CLI,STMT_TYPE,EQ,STMT_TYPE_CALL) THEN
             MVC   EXEC_SAVE_SCAN_TOKENA,G_SCAN_TOKENA
             MVC   EXEC_SAVE_SCAN_TOKEN_MAXLEN,G_SCAN_TOKEN_MAXLEN
@@ -7079,7 +7102,7 @@ EXEC_ASSIGN_START EQU *
             C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
             IF (H) THEN                 * Yep, write error and stop
                MLWZMRPT RPTLINE=CL133'0Internal error, state stack overX
-               flow',APND_LC=C'Y'
+               flow',APND_LN=C'Y'
                MVC   G_RETCODE,=F'12'   * Set return code 12
                BR    R8                 * Skip rest
             ENDIF
@@ -8845,7 +8868,7 @@ LWZMAKE_CALL_REXX MLWZSAVE
          C     R2,=A(L'G_SCAN_STATE_STACK) * Is stack full?
          IF (H) THEN                 * Yep, write error and stop
             MLWZMRPT RPTLINE=CL133'0Internal error, state stack overfloX
-               w',APND_LC=C'Y'
+               w',APND_LN=C'Y'
             MVC   G_RETCODE,=F'12'   * Set return code 12
             B     CALL_REXX_END      * Skip rest of CALL REXX
          ENDIF
