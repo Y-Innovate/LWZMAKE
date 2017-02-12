@@ -17,6 +17,7 @@ li {
 }
 
 .clsMonospace {
+	color: #0000FF;
 	font-family: monospace;
 	font-size: 120%;
 }

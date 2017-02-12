@@ -9,7 +9,7 @@
 <div id="div_all">
 <h1>What is <span class="clsMonospaceBold">(z)make</span>?</h1>
 <p>
-<span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms <span class="clsMonospace">make</span> can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
+<span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms <span class="clsMonospace">make</span> can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, such a script is called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
 </p>
 <p>
 There's plenty of information on the web about <span class="clsMonospace">make</span>, so I won't go into more detail and immediately skip to <span class="clsMonospace">zmake</span>.
@@ -19,17 +19,17 @@ There's plenty of information on the web about <span class="clsMonospace">make</
 </p>
 <p>
 A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
-<div class="clsDivCode" style="padding: 5px 20px;"><pre>.RECIPEPREFIX = -
+<div class="clsDivCode" style="padding: 5px 20px;"><font color="0000FF">.RECIPEPREFIX</font> = <font color="0000FF">-</font>
 
-# Copy SOMEJOB, but only if it changed
-MYUSR.PDS.JCL(SOMEJOB) : SOMEUSR.PDS.JCL(SOMEJOB)
+<font color="#008000"># Copy SOMEJOB, but only if it changed</font>
+<font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
 - CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
 -      MEMBER(SOMEJOB)</pre></div>
 </p>
 <p>
 Or in a more generic form:
-<div class="clsDivCode" style="padding: 5px 20px;"><pre>target: prerequisite
-- recipe command</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
+- recipe command</div>
 </p>
 <p>
 On the first line a special variable <span class="clsMonospace">.REFIPEPREFIX</span> is set to a <span class="clsMonospace">-</span> character to specify that recipe lines will start with a <span class="clsMonospace">-</span>.<br/>
