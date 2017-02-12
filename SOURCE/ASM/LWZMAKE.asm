@@ -967,6 +967,10 @@ G_CHECK_MVSDS_MVSDS         DS    C
 G_MVSDS_MEMBER_PTR          DS    A
 G_MVSDS_MEMBER_LEN          DS    F
 *
+* Pointer and length of member name in MVS data set string
+G_UNIX_FILE_PTR             DS    A
+G_UNIX_FILE_LEN             DS    F
+*
 * DYNALLOC section input and output
                             DS    0F
 G_DYNALLOC_FUNC             DS    C
@@ -6679,6 +6683,7 @@ LWZMAKE_EXEC_TGT DS    0F
             EX    R3,*-6
          ENDIF
 *
+*
          MVC   TARGET_ALTER_DATE,G_SAVE_ALTER_DATE
          IF (CLC,TARGET_ALTER_DATE,EQ,=16X'FF') THEN
             IF (TM,TGTBUILDWHEN,BUILDWHEN_TM,Z) THEN
@@ -7982,6 +7987,26 @@ GET_DATE_BPX1STA EQU *
 *
          IF (CLC,BPX1STA_RETVAL,EQ,=F'0') THEN
             MVI   G_DSFOUND,C'Y'
+*
+            L     R2,G_SCAN_TOKENA
+            L     R3,G_SCAN_TOKEN_LEN
+            BCTR  R3,R0
+            IF (CLI,0(R2),EQ,C'/') THEN
+               BCTR  R3,R0
+            ENDIF
+            LR    R4,R3
+            AR    R2,R3
+FIND_SLASH  CLI   0(R2),C'/'
+            BE    FIND_SLASH_DONE
+            BCTR  R2,R0
+            BCT   R3,FIND_SLASH
+FIND_SLASH_DONE EQU *
+            IF (CLI,0(R2),EQ,C'/') THEN
+               LA    R2,1(,R2)
+            ENDIF
+            ST    R2,G_UNIX_FILE_PTR
+            SR    R4,R3
+            ST    R4,G_UNIX_FILE_LEN
 *
             L     R15,BPX1STA_STATAREA+(ST_MTIME-STAT)
 *
@@ -9340,6 +9365,11 @@ LWZMAKE_CHECK_MVSDS MLWZSAVE
                KE_CHECK_MVSDS'
 *
          MVI   G_CHECK_MVSDS_MVSDS,C'N'
+*
+         MVC   G_MVSDS_MEMBER_PTR,=A(0)
+         MVC   G_MVSDS_MEMBER_LEN,=A(0)
+         MVC   G_UNIX_FILE_PTR,=A(0)
+         MVC   G_UNIX_FILE_LEN,=A(0)
 *
          SELECT CLI,G_CHECK_MVSDS_TOKEN,EQ
          WHEN X'00'
