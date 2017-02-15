@@ -929,7 +929,7 @@ LWZMAKE_TRACE_DEEBUG        EQU   C'6'
 LWZMAKE_TRACE_DEEEBUG       EQU   C'8'
 *
 * Trace message number '000' - '999'
-G_LWZMTRC_MSGNR             DS    CL2
+G_LWZMTRC_MSGNR             DS    CL3
 *
 * Trace record
                             DS    0F
