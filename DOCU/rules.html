@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LWZMAKE documentation</title>
+<link href="styles.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="div_all">
+<a href="index.html">Index</a>&nbsp;&nbsp;&gt;&nbsp;&nbsp;Rules
+<h1>Rules</h1>
+<p>
+A <span class="clsMonospace">rule</span> is a statement that defines one or more <span class="clsMonospace">targets</span> that share the same <span class="clsMonospace">recipe</span> to build them, followed by the optional <span class="clsMonospace">prerequisites</span> that <i>might</i> need to be built beforehand. Target(s) and prerequisite(s) are separated by a <span class="clsMonospace">:</span> character which is an easy way to recognize a rule statement.
+</p>
+<p>
+Here's another simple example makefile to help explain how rules work:
+<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<span class="clsLineNumber">02|</span>
+<span class="clsLineNumber">03|</span><font color="#0000FF">srchlq</font> := <font color="#0000FF">SOMEUSR</font>
+<span class="clsLineNumber">04|</span><font color="#0000FF">tgthlq</font> := <font color="#0000FF">MYUSR</font>
+<span class="clsLineNumber">05|</span>
+<span class="clsLineNumber">06|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
+<span class="clsLineNumber">07|</span><font color="#800000">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%)</font>
+<span class="clsLineNumber">08|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+<span class="clsLineNumber">09|</span>-              MEMBER($%)</pre></div>
+</p>
+</div>
+</body>
+</html>

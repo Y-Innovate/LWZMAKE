@@ -7,6 +7,7 @@
 </head>
 <body>
 <div id="div_all">
+<a href="index.html">Index</a>&nbsp;&nbsp;&gt;&nbsp;&nbsp;What is (z)make?
 <h1>What is <span class="clsMonospaceBold">(z)make</span>?</h1>
 <p>
 <span class="clsMonospace">Make</span> is a utility originally from the unix/linux world used primarily for build automation. In general terms <span class="clsMonospace">make</span> can automatically update some files from others whenever the others change. The utility takes a script as input, written in <span class="clsMonospace">make</span>&apos;s own script language, such a script is called a <span class="clsMonospace">makefile</span>. In such a script you define <i>build targets</i>, their <i>dependencies</i> and the <i>recipes</i> to build the targets.
@@ -19,17 +20,17 @@ There's plenty of information on the web about <span class="clsMonospace">make</
 </p>
 <p>
 A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
-<div class="clsDivCode" style="padding: 5px 20px;"><font color="0000FF">.RECIPEPREFIX</font> = <font color="0000FF">-</font>
-
-<font color="#008000"># Copy SOMEJOB, but only if it changed</font>
-<font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
-- CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
--      MEMBER(SOMEJOB)</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<span class="clsLineNumber">02|</span>
+<span class="clsLineNumber">03|</span><font color="#008000"># Copy SOMEJOB, but only if it changed</font>
+<span class="clsLineNumber">04|</span><font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
+<span class="clsLineNumber">05|</span>- CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
+<span class="clsLineNumber">06|</span>-              MEMBER(SOMEJOB)</pre></div>
 </p>
 <p>
 Or in a more generic form:
-<div class="clsDivCode" style="padding: 5px 20px;"><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
-- recipe command</div>
+<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
+<span class="clsLineNumber">02|</span>- recipe command</div>
 </p>
 <p>
 On the first line a special variable <span class="clsMonospace">.REFIPEPREFIX</span> is set to a <span class="clsMonospace">-</span> character to specify that recipe lines will start with a <span class="clsMonospace">-</span>.<br/>
@@ -38,9 +39,9 @@ The second line is blank.<br/>
 <br/>
 The third line is a comment line since it starts with a <span class="clsMonospace">#</span> character.<br/>
 <br/>
-On the fourth sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">MYUSR.PDS.JCL(SOMEJOB)</span>. After the <span class="clsMonospace">:</span> follow prerequisites to the building of this target, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>. In the example that's <span class="clsMonospace">SOMEUSR.PDS.JCL(SOMEJOB)</span>.<br/>
+On the fourth sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">MYUSR.PDS.JCL(SOMEJOB)</span>. After the <span class="clsMonospace">:</span> follow <span class="clsMonospace">prerequisites</span> to the building of this <span class="clsMonospace">target</span>, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>. In the example that's <span class="clsMonospace">SOMEUSR.PDS.JCL(SOMEJOB)</span>. The combination of the targets and prerequisites is called a <span class="clsMonospace">rule</span>.<br/>
 <br/>
-The fifth and sixth line in the example define the recipe, in this example a single command that wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
+The fifth and sixth line in the example define the <span class="clsMonospace">recipe</span>, in this example a single command that wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
 </p>
 </div>
 </body>

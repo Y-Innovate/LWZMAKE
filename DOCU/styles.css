@@ -26,9 +26,14 @@ li {
 	background-color: #DDDDDD;
 	border: 1px solid #999999;
 	font-family: monospace;
-	padding: 20px 20px;
 	white-space: pre-wrap;
 	white-space: -moz-pre-wrap;
 	white-space: -o-pre-wrap;
 	word-wrap: break-word;
+}
+
+.clsLineNumber {
+	background-color: #FFFFFF;
+	color: #000;
+	margin-right: 5px;
 }
