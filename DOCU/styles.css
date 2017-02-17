@@ -22,6 +22,24 @@ li {
 	font-size: 120%;
 }
 
+.clsMonospaceRed {
+	color: #800000;
+	font-family: monospace;
+	font-size: 120%;
+}
+
+.clsMonospaceCyan {
+	color: #388D9A;
+	font-family: monospace;
+	font-size: 120%;
+}
+
+.clsMonospaceBlack {
+	color: #000;
+	font-family: monospace;
+	font-size: 120%;
+}
+
 .clsDivCode {
 	background-color: #DDDDDD;
 	border: 1px solid #999999;

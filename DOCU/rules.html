@@ -16,13 +16,65 @@ A <span class="clsMonospace">rule</span> is a statement that defines one or more
 Here's another simple example makefile to help explain how rules work:
 <div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
 <span class="clsLineNumber">02|</span>
-<span class="clsLineNumber">03|</span><font color="#0000FF">srchlq</font> := <font color="#0000FF">SOMEUSR</font>
-<span class="clsLineNumber">04|</span><font color="#0000FF">tgthlq</font> := <font color="#0000FF">MYUSR</font>
-<span class="clsLineNumber">05|</span>
-<span class="clsLineNumber">06|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
-<span class="clsLineNumber">07|</span><font color="#800000">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%)</font>
-<span class="clsLineNumber">08|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
-<span class="clsLineNumber">09|</span>-              MEMBER($%)</pre></div>
+<span class="clsLineNumber">03|</span><font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
+<span class="clsLineNumber">04|</span><font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
+<span class="clsLineNumber">05|</span><font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
+<span class="clsLineNumber">06|</span>
+<span class="clsLineNumber">07|</span>.PHONY ALL
+<span class="clsLineNumber">08|</span><font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
+<span class="clsLineNumber">09|</span>
+<span class="clsLineNumber">10|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
+<span class="clsLineNumber">11|</span><font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%)</font>
+<span class="clsLineNumber">12|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+<span class="clsLineNumber">13|</span>-              MEMBER($%)</pre></div>
+</p>
+<p>
+There are 2 rules in this example, the first one on line 8 is a single <span class="clsMonospace">PHONY</span> target (more on PHONY later) with 2 prerequisites.<br/>
+<br/>
+The second rule is on line 11 and defines 2 targets with a single prerequisite followed by a two line recipe.
+</p>
+<h3>Immediate and delayed variable resolution</h3>
+<p>
+<span class="clsMonospace">zmake</span> executes a <span class="clsMonospace">makefile</span> in 2 phases. During the first phase <span class="clsMonospace">zmake</span> parses the complete makefile, putting whichever variables, rules and recipes it finds into memory in an internal format. Only the lefthand sides of rules, the parts before the <span class="clsMonospace">:</span> characters, are <span class="clsMonospace">resolved immediately</span>. Variables found in the righthand side of rules are remembered as-is and recipe lines are also remembered unaltered, in other words for those parts <span class="clsMonospace">variable resolution</span> is <span class="clsMonospace">delayed</span>.
+</p>
+<p>
+So after the sample above has gone through phase 1, the variable <span class="clsMonospace">targets</span> contains the text: <span class="clsMonospace">MYUSR.PDS.JCL(MEM1) MYUSR.PDS.JCL(MEM2)</span>.<br/>
+That <span class="clsMonospace">targets</span> variable is used in both rules. In the first to define the prerequisites to the <span class="clsMonospaceRed">ALL</span> target, but because it's right of the <span class="clsMonospace">:</span> character, it's as of yet unresolved.<br/>
+In the second rule on line 11, <span class="clsMonospaceRed">$(targets)</span> appears before the <span class="clsMonospace">:</span> character so it's resolved immediately and thus defines the 2 PDS members as targets that share the same prerequisite and recipe, which for the time being are remembered untouched.
+</p>
+<p>
+During the second phase <span class="clsMonospace">zmake</span> finds the target it's supposed to process, which unless specified otherwise is the first target found, in this case <span class="clsMonospaceRed">ALL</span>. For every target that gets processed <span class="clsMonospace">zmake</span> first resolves the prerequisite(s). So at this point <span class="clsMonospaceCyan">$(targets)</span> in line 08 is expanded. <span class="clsMonospace">zmake</span> will separate the prerequisites space delimited and process them them one by one before continuing with <span class="clsMonospaceRed">ALL</span>.
+</p>
+<h3>Processing prerequisites</h3>
+<p>
+Processing a prerequisite means 2 things: 1) try to find it as another target in the same makefile and, if found, processing that target recursively. 2) compare the prerequisite to the current target and figure out if the current target should be built.<br/>
+In the case when one prerequisite's comparison already flags the current target to be built when there are other prerequisites left, all of them are still processed.
+</p>
+<p>
+In our example, as stated above, <span class="clsMonospaceCyan">$(targets)</span> in line 08 is expanded to <span class="clsMonospace">MYUSR.PDS.JCL(MEM1) MYUSR.PDS.JCL(MEM2)</span> and for each prerequisite PDS member another target is found and processed. So the rule for target <span class="clsMonospaceRed">$(targets)</span> is actually processed twice: once for <span class="clsMonospace">MYUSR.PDS.JCL(MEM1)</span> and once more for <span class="clsMonospace">MYUSR.PDS.JCL(MEM2)</span>.
+</p>
+<p>
+Now the process repeats itself, so first for target <span class="clsMonospace">MYUSR.PDS.JCL(MEM1)</span> the prerequisites, in our case <span class="clsMonospaceCyan">$(srchlq).PDS.JCL($%)</span>, are resolved. Note the <span class="clsMonospaceCyan">$%</span>, which is a special variable that for <span class="clsMonospace">zmake</span> means the membername of the current target. Knowing that you can see that this prerequisite expands to <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM1)</span>. Again the process repeats itself, so <span class="clsMonospace">zmake</span> will try to find this prerequisite as another target in the same makefile. In our example there is none so this time no recursively processing a target.
+</p>
+<h3>Comparing target with prerequisite</h3>
+<p>
+Whether a prerequisite was built as another target or not, unless it's a <span class="clsMonospace">PHONY</span> target, it's always compared to the target it's prerequisite to. This comparison is done based on the last alter date and by default a target is flagged to be built when it's last alter date is older than any of its prerequisites or when the target is missing. If the prerequisite is missing, <span class="clsMonospace">zmake</span> will terminate with an error.
+</p>
+<p>
+In the sample the last alter date of target <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> is compared to the last alter date of prerequisite <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM1)</span>. If either <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM1)</span> was altered more recently than <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> or if <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> doesn't exit, the target is flagged to be built.
+</p>
+<p>
+When <span class="clsMonospace">zmake</span> is done with <span class="clsMonospaceRed">ALL</span>'s prerequisite <span class="clsMonospaceCyan">MYUSR.PDS.JCL(MEM1)</span> it continues with the next one, <span class="clsMonospaceCyan">MYUSR.PDS.JCL(MEM2)</span>, which is also found as another target and processed. Again <span class="clsMonospaceCyan">$(srchlq).PDS.JCL($%)</span> is expanded, but this time <span class="clsMonospaceCyan">$%</span> results in <span class="clsMonospaceCyan">MEM2</span>, resolving the next prerequisite to <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM2)</span>.
+</p>
+<p>
+The end result is that one by one <span class="clsMonospace">MEM1</span> and <span class="clsMonospace">MEM2</span> in <span class="clsMonospace">SOMEUSR.PDS.JCL</span> are compared to <span class="clsMonospace">MEM1</span> and <span class="clsMonospace">MEM2</span> in <span class="clsMonospace">MYUSR.PDS.JCL</span> and when the either of them in <span class="clsMonospace">SOMEUSR.PDS.JCL</span> are altered more recently, the recipe is executed for that member.
+</p>
+<h3>PHONY targets</h3>
+<p>
+For a <span class="clsMonospace">PHONY</span> target no last alter date is determined and no comparison is performed. A <span class="clsMonospace">PHONY</span> target's prerequisites are processed just like any other target's. Furthermore a <span class="clsMonospace">PHONY</span> target's recipe is always performed.
+</p>
+<p>
+A target is marked as <span class="clsMonospace">PHONY</span> by using a separate statement that begins with <span class="clsMonospaceBlack">.PHONY</span> followed by the target name. Multiple targets can be designated <span class="clsMonospace">PHONY</span> in one statement, and variables are allowed to name them.
 </p>
 </div>
 </body>
