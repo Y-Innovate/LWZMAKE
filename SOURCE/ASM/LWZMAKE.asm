@@ -5099,6 +5099,13 @@ STORE_ACRO_OR_PERCENT EQU *
                   MVC   INPUTLEN,TGTNAMEMEMLEN-TARGET_DSECT(R3)
                   LA    R4,TGTNAME-TARGET_DSECT(,R3)
                   AH    R4,TGTNAMELEN-TARGET_DSECT(,R3)
+                  BCTR  R4,R0
+                  IF (CLI,0(R4),EQ,C')') THEN
+                     SH    R4,TGTNAMEMEMLEN-TARGET_DSECT(R3)
+                  ELSE
+                     SH    R4,TGTNAMEMEMLEN-TARGET_DSECT(R3)
+                     LA    R4,1(,R4)
+                  ENDIF
                   ST    R4,INPUTPTR
                ENDIF
                MVC   INPUTPOS,=H'0'  * Set initial scan pos to start
@@ -6123,7 +6130,7 @@ STORE_TGT_RET EQU *
 ALLOC_TGT EQU  *
          L     R3,=A(TARGET_DSECT_LEN) * Get size of fixed part of tgt
          A     R3,G_SCAN_TOKEN_LEN  * Add target name length
-         A     R3,=A(8)           * Add length for optional member name
+*        A     R3,=A(8)           * Add length for optional member name
 *
          ST    R3,G_STGOR_LEN
          MVI   G_STGOR_TYPE,STGOR_TYPE_TGT
@@ -6143,7 +6150,7 @@ ALLOC_TGT EQU  *
          MVC   TGTBUILDWHEN,G_BUILDWHEN * Copy current BUILDWHEN val
          L     R3,=A(TARGET_DSECT_LEN) * Get size of fixed part of tgt
          A     R3,G_SCAN_TOKEN_LEN  * Add target name length
-         A     R3,=A(8)           * Add length for optional member name
+*        A     R3,=A(8)           * Add length for optional member name
          ST    R3,TGTLEN          * Store total block length
          L     R2,G_SCAN_TOKEN_LEN * Get length of target name
          STH   R2,TGTNAMELEN      * Store target name length in block
@@ -6674,13 +6681,18 @@ LWZMAKE_EXEC_TGT DS    0F
          LT    R3,G_MVSDS_MEMBER_LEN
          IF (NZ) THEN
             STH   R3,TGTNAMEMEMLEN
-            LA    R2,TGTNAME
-            AH    R2,TGTNAMELEN
-            L     R4,G_MVSDS_MEMBER_PTR
-            BCTR  R3,R0
-            B     *+10
-            MVC   0(1,R2),0(R4)
-            EX    R3,*-6
+*           LA    R2,TGTNAME
+*           AH    R2,TGTNAMELEN
+*           L     R4,G_MVSDS_MEMBER_PTR
+*           BCTR  R3,R0
+*           B     *+10
+*           MVC   0(1,R2),0(R4)
+*           EX    R3,*-6
+         ELSE
+            LT    R3,G_UNIX_FILE_LEN
+            IF (NZ) THEN
+               STH   R3,TGTNAMEMEMLEN
+            ENDIF
          ENDIF
 *
 *
@@ -8006,6 +8018,7 @@ FIND_SLASH_DONE EQU *
             ENDIF
             ST    R2,G_UNIX_FILE_PTR
             SR    R4,R3
+            LA    R4,1(,R4)
             ST    R4,G_UNIX_FILE_LEN
 *
             L     R15,BPX1STA_STATAREA+(ST_MTIME-STAT)
