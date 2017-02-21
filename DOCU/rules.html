@@ -76,6 +76,26 @@ For a <span class="clsMonospace">PHONY</span> target no last alter date is deter
 <p>
 A target is marked as <span class="clsMonospace">PHONY</span> by using a separate statement that begins with <span class="clsMonospaceBlack">.PHONY</span> followed by the target name. Multiple targets can be designated <span class="clsMonospace">PHONY</span> in one statement, and variables are allowed to name them.
 </p>
+<h3>Unconditional targets</h3>
+<p>
+A target can become unconditional when the value <span class="clsMonospace">1</span> is found among the prerequisites. This causes the target to be flagged to be built even if no prerequisite comparison would. The value <span class="clsMonospace">1</span> doesn't have to be a constant, a variable or function that resolves to <span class="clsMonospace">0</span> or <span class="clsMonospace">1</span> is also allowed, <span class="clsMonospace">0</span> is ignored. Below is the same sample script, but altered slightly to make it unconditional:
+<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<span class="clsLineNumber">02|</span>
+<span class="clsLineNumber">03|</span><font color="#0000FF">uncond</font>  := <font color="#0000FF">1</font>&nbsp;&nbsp;<font color="#008000"># this variable indicates unconditional</font>
+<span class="clsLineNumber">04|</span>
+<span class="clsLineNumber">05|</span><font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
+<span class="clsLineNumber">06|</span><font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
+<span class="clsLineNumber">07|</span><font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
+<span class="clsLineNumber">08|</span>
+<span class="clsLineNumber">09|</span>.PHONY ALL
+<span class="clsLineNumber">10|</span><font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
+<span class="clsLineNumber">11|</span>
+<span class="clsLineNumber">12|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
+<span class="clsLineNumber">13|</span><font color="#008000"># uncond variable was added, if value 1 then always build</font>
+<span class="clsLineNumber">14|</span><font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%) $(uncond)</font>
+<span class="clsLineNumber">15|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+<span class="clsLineNumber">16|</span>-              MEMBER($%)</pre></div>
+</p>
 </div>
 </body>
 </html>
