@@ -568,7 +568,8 @@ NEXT_PARMS_ROUND EQU *
             BNE   PARMS_ERROR     * If not, then error
 *
             L     R14,G_SCAN_TOKENA * Point R14 to token 1
-            IF (CLI,0(R14),EQ,C't') THEN * Check for target sw?
+            IF (CLI,0(R14),EQ,C't'),OR,                                X
+               (CLI,0(R14),EQ,C'T') THEN * Check for target sw?
                OI    G_SCAN_STATE,SCAN_STATE_IN_PARMTARGET
 *
                L     R15,LWZMAKE_SCAN_TOKENA * Get address SCAN_TOKEN
