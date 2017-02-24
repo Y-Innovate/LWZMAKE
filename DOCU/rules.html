@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
 <div id="div_all">
@@ -14,19 +15,19 @@ A <span class="clsMonospace">rule</span> is a statement that defines one or more
 </p>
 <p>
 Here's another simple example makefile to help explain how rules work:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
-<span class="clsLineNumber">02|</span>
-<span class="clsLineNumber">03|</span><font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
-<span class="clsLineNumber">04|</span><font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
-<span class="clsLineNumber">05|</span><font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
-<span class="clsLineNumber">06|</span>
-<span class="clsLineNumber">07|</span>.PHONY ALL
-<span class="clsLineNumber">08|</span><font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
-<span class="clsLineNumber">09|</span>
-<span class="clsLineNumber">10|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
-<span class="clsLineNumber">11|</span><font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%)</font>
-<span class="clsLineNumber">12|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
-<span class="clsLineNumber">13|</span>-              MEMBER($%)</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+
+<font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
+<font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
+<font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
+
+.PHONY ALL
+<font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
+
+<font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
+<font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%)</font>
+- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+-              MEMBER($%)</td></tr></table></div>
 </p>
 <p>
 There are 2 rules in this example, the first one on line 8 is a single <span class="clsMonospace">PHONY</span> target (more on PHONY later) with 2 prerequisites.<br/>
@@ -79,23 +80,30 @@ A target is marked as <span class="clsMonospace">PHONY</span> by using a separat
 <h3>Unconditional targets</h3>
 <p>
 A target can become unconditional when the value <span class="clsMonospace">1</span> is found among the prerequisites. This causes the target to be flagged to be built even if no prerequisite comparison would. The value <span class="clsMonospace">1</span> doesn't have to be a constant, a variable or function that resolves to <span class="clsMonospace">0</span> or <span class="clsMonospace">1</span> is also allowed, <span class="clsMonospace">0</span> is ignored. Below is the same sample script, but altered slightly to make it unconditional:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
-<span class="clsLineNumber">02|</span>
-<span class="clsLineNumber">03|</span><font color="#0000FF">uncond</font>  := <font color="#0000FF">1</font>&nbsp;&nbsp;<font color="#008000"># this variable indicates unconditional</font>
-<span class="clsLineNumber">04|</span>
-<span class="clsLineNumber">05|</span><font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
-<span class="clsLineNumber">06|</span><font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
-<span class="clsLineNumber">07|</span><font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
-<span class="clsLineNumber">08|</span>
-<span class="clsLineNumber">09|</span>.PHONY ALL
-<span class="clsLineNumber">10|</span><font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
-<span class="clsLineNumber">11|</span>
-<span class="clsLineNumber">12|</span><font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
-<span class="clsLineNumber">13|</span><font color="#008000"># uncond variable was added, if value 1 then always build</font>
-<span class="clsLineNumber">14|</span><font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%) $(uncond)</font>
-<span class="clsLineNumber">15|</span>- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
-<span class="clsLineNumber">16|</span>-              MEMBER($%)</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+
+<font color="#0000FF">uncond</font>  := <font color="#0000FF">1</font>&nbsp;&nbsp;<font color="#008000"># this variable indicates unconditional</font>
+
+<font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
+<font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
+<font color="#0000FF">targets</font> := <font color="#0000FF">$(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)</font>
+
+.PHONY ALL
+<font color="#800000">ALL</font> : <font color="#388D9A">$(targets)</font>
+
+<font color="#008000"># Copy MEM1 and MEM2, but only if they changed</font>
+<font color="#008000"># uncond variable was added, if value 1 then always build</font>
+<font color="#800000">$(targets)</font> : <font color="#388D9A">$(srchlq).PDS.JCL($%) $(uncond)</font>
+- CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+-              MEMBER($%)</td></tr></table></div>
 </p>
 </div>
+<script type="text/javascript">
+var nrCol1 = document.getElementById("nrCol1");
+var nrCol2 = document.getElementById("nrCol2");
+
+NumberLines(nrCol1, 13);
+NumberLines(nrCol2, 16);
+</script>
 </body>
 </html>

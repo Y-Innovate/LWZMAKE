@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LWZMAKE documentation</title>
+<link href="styles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="scripts.js"></script>
+</head>
+<body>
+<div id="div_all">
+<a href="index.html">Index</a>&nbsp;&nbsp;&gt;&nbsp;&nbsp;Getting zmake
+<h1>Getting zmake</h1>
+<p>
+<span class="clsMonospace">zmake</span> is available both in source and binary form, so you can choose to either download the binary and run with that or download the source, assemble it yourself and then run it.
+</p>
+<h3>Download the binary</h3>
+<p>
+The binary is available on GitHub here: <a target="_blank" href="https://github.com/btjassenskeiser/LWZMAKE/tree/master/BINARY/LOAD/LWZMAKE.xmit">https://github.com/btjassenskeiser/LWZMAKE/tree/master/BINARY/LOAD/LWZMAKE.xmit<a>.
+</p>
+<p>
+Download it from GitHub and transfer it to a sequential data set on z/OS with record length 80 and record format FB.<br/>
+Then use TSO RECEIVE INDA('&lt;your sequential data set name&gt;') to restore it to a load module in a PDS.
+</p>
+<h3>Download the source and assemble it</h3>
+<p>
+The source is available on GitHub here: <a target="_blank" href="https://github.com/btjassenskeiser/LWZMAKE/tree/master/SOURCE/ASM/LWZMAKE.asm">https://github.com/btjassenskeiser/LWZMAKE/tree/master/SOURCE/ASM/LWZMAKE.asm</a>.
+</p>
+<p>
+Download it from GitHub and transfer it to a sequential data set or PDS member on z/OS with record length 80 and record format FB and assemble and link-edit it.<br/>
+You can use the following sample JCL for that:
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol1" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
+<font color="#388D9A">//*</font>
+//ASM     <font color="#800000">EXEC</font> PGM<font color="#D0D000">=</font>ASMA90<font color="#D0D000">,</font>PARM<font color="#D0D000">=</font><font color="#D0D0D0">'GOFF,LIST(133)'</font>
+//SYSLIB    <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>SYS1.MACLIB        <font color="#388D9A">&lt;&lt; check</font>
+//          <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>SYS1.MODGEN        <font color="#388D9A">&lt;&lt; check</font>
+//          <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>CEE.SCEEMAC        <font color="#388D9A">&lt;&lt; check</font>
+//          <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>HLA.SASMMAC2       <font color="#388D9A">&lt;&lt; check</font>
+//SYSIN     <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>&lt;source data set&gt;  <font color="#388D9A">&lt;&lt; check</font>
+//SYSLIN    <font color="#800000">DD</font> DISP<font color="#D0D000">=(,</font>PASS<font color="#D0D000">),</font>DSN<font color="#D0D000">=&&</font>OBJ<font color="#D0D000">(</font>LWZMAKE<font color="#D0D000">),</font>RECFM<font color="#D0D000">=</font>FB<font color="#D0D000">,</font>LRECL<font color="#D0D000">=</font>80<font color="#D0D000">,</font>
+//             DSORG<font color="#D0D000">=</font>PO<font color="#D0D000">,</font>UNIT<font color="#D0D000">=</font>SYSDA<font color="#D0D000">,</font>SPACE<font color="#D0D000">=(</font>TRK<font color="#D0D000">,(</font>1<font color="#D0D000">,</font>1<font color="#D0D000">,</font>1<font color="#D0D000">))</font>
+//SYSUT1    <font color="#800000">DD</font> DSN<font color="#D0D000">=&&</font>SYSUT1<font color="#D0D000">,</font>SPACE<font color="#D0D000">=(</font>4096<font color="#D0D000">,(</font>120<font color="#D0D000">,</font>120<font color="#D0D000">),,,</font>ROUND<font color="#D0D000">),</font>
+//             UNIT<font color="#D0D000">=</font>SYSALLDA<font color="#D0D000">,</font>DCB<font color="#D0D000">=</font>BUFNO<font color="#D0D000">=</font>1
+//SYSPRINT  <font color="#800000">DD</font> SYSOUT<font color="#D0D000">=</font>* 
+<font color="#388D9A">//*</font>
+//LKED    <font color="#800000">EXEC</font> PGM<font color="#D0D000">=</font>IEWL<font color="#D0D000">,</font>COND<font color="#D0D000">=(</font>0<font color="#D0D000">,</font>NE<font color="#D0D000">),</font>
+//             PARM<font color="#D0D000">=</font><font color="#D0D0D0">'LIST,XREF,RENT,REUS'</font>
+//SYSLIB    <font color="#800000">DD</font> DISP<font color="#D0D000">=(</font>SHR<font color="#D0D000">,</font>DELETE<font color="#D0D000">),</font>DSN=<font color="#D0D000">&&</font>OBJ
+//SYSLIN    <font color="#800000">DD</font> *
+<font color="#388D9A">  MODE AMODE(31),RMODE(ANY)
+  INCLUDE SYSLIB(LWZMAKE)
+  NAME LWZMAKE(R)</font>
+/*
+//SYSLMOD   <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>&lt;load module data set&gt;   <font color="#388D9A">&lt;&lt; check</font>
+//SYSUT1    <font color="#800000">DD</font> UNIT<font color="#D0D000">=</font>SYSDA<font color="#D0D000">,</font>DCB<font color="#D0D000">=</font>BLKSIZE<font color="#D0D000">=</font>1024<font color="#D0D000">,</font>
+//             SPACE<font color="#D0D000">=(</font>1024<font color="#D0D000">,(</font>200<font color="#D0D000">,</font>20<font color="#D0D000">))</font>
+//SYSPRINT  <font color="#800000">DD</font> SYSOUT<font color="#D0D000">=</font>*</span></td></tr></table></div></p>
+</div>
+<script type="text/javascript">
+var nrCol1 = document.getElementById("nrCol1");
+
+NumberLines(nrCol1, 26);
+</script>
+</body>
+</html>

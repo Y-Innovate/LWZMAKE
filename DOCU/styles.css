@@ -2,14 +2,6 @@ html, body {
 	margin: 10px 10px;
 }
 
-ul {
-	list-style-type: none;
-}
-
-li {
-	margin-top: 20px;
-}
-
 .clsMonospaceBold {
 	font-family: monospace;
 	font-size: 130%;
@@ -51,7 +43,5 @@ li {
 }
 
 .clsLineNumber {
-	background-color: #FFFFFF;
-	color: #000;
 	margin-right: 5px;
 }

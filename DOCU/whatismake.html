@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
 <div id="div_all">
@@ -20,17 +21,17 @@ There's plenty of information on the web about <span class="clsMonospace">make</
 </p>
 <p>
 A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
-<span class="clsLineNumber">02|</span>
-<span class="clsLineNumber">03|</span><font color="#008000"># Copy SOMEJOB, but only if it changed</font>
-<span class="clsLineNumber">04|</span><font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
-<span class="clsLineNumber">05|</span>- CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
-<span class="clsLineNumber">06|</span>-              MEMBER(SOMEJOB)</pre></div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+
+<font color="#008000"># Copy SOMEJOB, but only if it changed</font>
+<font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
+- CALL IEBCOPY PDSIN(SOMEUSR.PDS.JCL) PDSOUT(MYUSR.PDS.JCL) \
+-              MEMBER(SOMEJOB)</td></tr></table></div>
 </p>
 <p>
 Or in a more generic form:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
-<span class="clsLineNumber">02|</span>- recipe command</div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
+- recipe command</td></tr></table></div>
 </p>
 <p>
 On the first line a special variable <span class="clsMonospace">.REFIPEPREFIX</span> is set to a <span class="clsMonospace">-</span> character to specify that recipe lines will start with a <span class="clsMonospace">-</span>.<br/>
@@ -44,5 +45,12 @@ On the fourth sample line before the <span class="clsMonospace">:</span> is spec
 The fifth and sixth line in the example define the <span class="clsMonospace">recipe</span>, in this example a single command that wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
 </p>
 </div>
+<script type="text/javascript">
+var nrCol1 = document.getElementById("nrCol1");
+var nrCol2 = document.getElementById("nrCol2");
+
+NumberLines(nrCol1, 6);
+NumberLines(nrCol2, 2);
+</script>
 </body>
 </html>

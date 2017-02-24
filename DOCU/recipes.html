@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
 <div id="div_all">
@@ -11,16 +12,15 @@
 <h1>Recipes</h1>
 <p>
 A <span class="clsMonospace">recipe</span> is the script that is executed when the evaluation of the preceding rule flagged the target to be built. Consider the following simple <span class="clsMonospace">makefile</span>:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
-<span class="clsLineNumber">02|</span>
-<span class="clsLineNumber">03|</span><font color="#008000"># Example of a simple recipe</font>
-<span class="clsLineNumber">04|</span>.PHONY SIMPLE_TARGET
-<span class="clsLineNumber">05|</span><font color="#800000">SIMPLE_TARGET :</font>
-<span class="clsLineNumber">06|</span>- tgt := $@
-<span class="clsLineNumber">07|</span>- CALL JUSTECHO This line came from a simple target called $(tgt)
-<span class="clsLineNumber">08|</span>- CALL JUSTECHO This line too and it was\
-<span class="clsLineNumber">09|</span>-               continued on a second line
-</div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+
+<font color="#008000"># Example of a simple recipe</font>
+.PHONY SIMPLE_TARGET
+<font color="#800000">SIMPLE_TARGET :</font>
+- tgt := $@
+- CALL JUSTECHO This line came from a simple target called $(tgt)
+- CALL JUSTECHO This line too and it was\
+-               continued on a second line</td></tr></table></div>
 </p>
 <p>
 In this example there's one recipe on lines 06 through 09. Recipe lines begin with the recipe prefix, which was set with an assignment statement on line 01.
@@ -60,5 +60,10 @@ Another difference is the use of target reference variables:
 <b>After all recipe statements of a target are executed <span class="clsMonospace">zmake</span> will only continue if the target that was just built actually exists (unless the target is <span class="clsMonospace">PHONY</span>).
 </p>
 </div>
+<script type="text/javascript">
+var nrCol1 = document.getElementById("nrCol1");
+
+NumberLines(nrCol1, 9);
+</script>
 </body>
 </html>

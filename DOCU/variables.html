@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
 <div id="div_all">
@@ -14,32 +15,31 @@ When using <span class="clsMonospace">zmake</span> you'll make heavy use of vari
 </p>
 <p>
 A <span class="clsMonospace">Make</span> variable is created by an assignment statement, some examples:
-<div class="clsDivCode" style="padding: 5px 20px;"><span class="clsLineNumber">01|</span><font color="#008000"># immediate assignment using :=</font>
-<span class="clsLineNumber">02|</span><font color="0000FF">hlq       </font>:=<font color="0000FF"> USER1</font>
-<span class="clsLineNumber">03|</span>
-<span class="clsLineNumber">04|</span><font color="008000"># delayed assignment using =
-<span class="clsLineNumber">05|</span># the $(hlq) variable referred to doesn't get resolved here, but later
-<span class="clsLineNumber">06|</span># whenever $(jclds) is used in another statement with immediate
-<span class="clsLineNumber">08|</span># variable resolution</font>
-<span class="clsLineNumber">08|</span><font color="0000FF">jclds      </font>=<font color="0000FF"> $(hlq).JCL</font>
-<span class="clsLineNumber">09|</span>
-<span class="clsLineNumber">10|</span><font color="008000"># immediate assignment using :=
-<span class="clsLineNumber">11|</span># this statement refers to a variable with delayed assignment which
-<span class="clsLineNumber">12|</span># means $(jclds) is expanded to $(hlq).JCL which then gets resolved
-<span class="clsLineNumber">13|</span># to USER1.JCL</font>
-<span class="clsLineNumber">14|</span><font color="0000FF">someds    </font>:=<font color="0000FF"> $(jclds)</font>
-<span class="clsLineNumber">15|</span>
-<span class="clsLineNumber">16|</span><font color="008000"># delayed assignment using =</font>
-<span class="clsLineNumber">17|</span><font color="0000FF">hlq        </font>=<font color="0000FF"> USER2</font>
-<span class="clsLineNumber">18|</span>
-<span class="clsLineNumber">19|</span><font color="008000"># immediate conditional assignment using ?=
-<span class="clsLineNumber">20|</span># a conditional assignment only assigns a value if the variable doesn't
-<span class="clsLineNumber">21|</span># exist, or already exists but has no value
-<span class="clsLineNumber">22|</span># this statement again refers to $(jclds) which again is expanded to
-<span class="clsLineNumber">23|</span># $(hlq).JCL but since $(hlq) has been assigned a new value, the result
-<span class="clsLineNumber">24|</span># is now USER1.JCL</font>
-<span class="clsLineNumber">25|</span><font color="0000FF">anotherds </font>?=<font color="0000FF"> $(jclds)</font>
-</div>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#008000"># immediate assignment using :=</font>
+<font color="0000FF">hlq       </font>:=<font color="0000FF"> USER1</font>
+
+<font color="008000"># delayed assignment using =
+# the $(hlq) variable referred to doesn't get resolved here, but later
+# whenever $(jclds) is used in another statement with immediate
+# variable resolution</font>
+<font color="0000FF">jclds      </font>=<font color="0000FF"> $(hlq).JCL</font>
+
+<font color="008000"># immediate assignment using :=
+# this statement refers to a variable with delayed assignment which
+# means $(jclds) is expanded to $(hlq).JCL which then gets resolved
+# to USER1.JCL</font>
+<font color="0000FF">someds    </font>:=<font color="0000FF"> $(jclds)</font>
+
+<font color="008000"># delayed assignment using =</font>
+<font color="0000FF">hlq        </font>=<font color="0000FF"> USER2</font>
+
+<font color="008000"># immediate conditional assignment using ?=
+# a conditional assignment only assigns a value if the variable doesn't
+# exist, or already exists but has no value
+# this statement again refers to $(jclds) which again is expanded to
+# $(hlq).JCL but since $(hlq) has been assigned a new value, the result
+# is now USER1.JCL</font>
+<font color="0000FF">anotherds </font>?=<font color="0000FF"> $(jclds)</font></td></tr></table></div>
 <p>
 The first sample assignment is the simplest one. The immediate assignment operator <span class="clsMonospace">:=</span> causes any other variables used in the value part of the assignment to be resolved and the result assigned. Although in this first example the value is merely a constant.
 </p>
@@ -56,5 +56,10 @@ The fourth example is simple there to setup the the last example while in the me
 The fifth sample assignment uses the immediate conditional assignment operator <span class="clsMonospace">?=</span> which causes the resolved value to only be assigned if the variable left of the operator doesn't exist or if it's empty. It also demonstrates how assigning the same <span class="clsMonospace">$(jclds)</span> variable can result in a different value because it in turn was assigned in a delayed assignment.
 </p>
 </div>
+<script type="text/javascript">
+var nrCol1 = document.getElementById("nrCol1");
+
+NumberLines(nrCol1, 25);
+</script>
 </body>
 </html>
