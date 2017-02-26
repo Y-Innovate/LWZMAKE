@@ -44,7 +44,7 @@ You can use the following sample JCL for that:
 <font color="#388D9A">//*</font>
 //LKED    <font color="#800000">EXEC</font> PGM<font color="#D0D000">=</font>IEWL<font color="#D0D000">,</font>COND<font color="#D0D000">=(</font>0<font color="#D0D000">,</font>NE<font color="#D0D000">),</font>
 //             PARM<font color="#D0D000">=</font><font color="#D0D0D0">'LIST,XREF,RENT,REUS'</font>
-//SYSLIB    <font color="#800000">DD</font> DISP<font color="#D0D000">=(</font>SHR<font color="#D0D000">,</font>DELETE<font color="#D0D000">),</font>DSN=<font color="#D0D000">&&</font>OBJ
+//SYSLIB    <font color="#800000">DD</font> DISP<font color="#D0D000">=(</font>SHR<font color="#D0D000">,</font>DELETE<font color="#D0D000">),</font>DSN<font color="#D0D000">=&&</font>OBJ
 //SYSLIN    <font color="#800000">DD</font> *
 <font color="#388D9A">  MODE AMODE(31),RMODE(ANY)
   INCLUDE SYSLIB(LWZMAKE)

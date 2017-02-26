@@ -14,7 +14,7 @@
 Along with the <span class="clsMonospace">zmake</span> source &amp; binary there are a number of provided REXX execs to help you get started. You can find them here: <a target="_blank" href="https://github.com/btjassenskeiser/LWZMAKE/tree/master/SOURCE/EXEC">https://github.com/btjassenskeiser/LWZMAKE/tree/master/SOURCE/EXEC</a>.<br/>
 They contain both REXX execs to be used in recipe <span class="clsMonospace">CALL</span> statements, and REXX execs to be used as <span class="clsMonospace">functions</span>.
 </p>
-<h3>REXX exec for recipe CALL statements</h3>
+<h3>REXX execs for recipe CALL statements</h3>
 <p>
 The following REXX execs can be used in recipe CALL statements:
 <table>
@@ -77,6 +77,52 @@ The following REXX execs can be used in recipe CALL statements:
 	<tr>
 		<td valign="top"><span class="clsMonospace">UPDCOPY</span></td>
 		<td>Copies an input data set to an output data set and performs one or more search and replace actions during copying</td>
+	</tr>
+</table>
+</p>
+<h3>REXX execs for ${function} statements</h3>
+<p>
+The following REXX execs can be used in <span class="clsMonospace">${function}</span> statements:
+<table>
+	<tr>
+		<td valign="top"><span class="clsMonospace">APNDALL</span></td>
+		<td>Append the first argument to each of the following arguments</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">APPEND</span></td>
+		<td>Append the second argument to the first argument</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">LOWER</span></td>
+		<td>Convert any uppercase characters in the argument(s) to lowercase</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">NEWDUMMY</span></td>
+		<td>Create a new PDS(E) member with new ISPF stats to serve as a dummy member</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">PREPALL</span></td>
+		<td>Prepend the first argument to each of the following arguments</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">PREPEND</span></td>
+		<td>Prepend the second argument to the first argument</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">REPLACE</span></td>
+		<td>Replace in the first argument any occurrence of the second argument with the third argument</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">SUBSTR</span></td>
+		<td>Get a substring from the first argument, starting at the second argument and optionally limited to the length provided in a third argument</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">TEMPPDS</span></td>
+		<td>Allocate a temporary PDS and return its data set name</td>
+	</tr>
+	<tr>
+		<td valign="top"><span class="clsMonospace">UPPER</span></td>
+		<td>Convert any lowercase characters in the argument(s) to uppercase</td>
 	</tr>
 </table>
 </p>
