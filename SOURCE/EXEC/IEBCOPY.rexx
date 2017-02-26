@@ -1,4 +1,39 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : IEBCOPY                                               */
+/*                                                                    */
+/* Description: This program invokes IEBCOPY to copy one, multiple or */
+/*              all members from one PDS(E) to another.               */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-PDSIN(-pdsin-)--PDSOUT(-pdsout-)---------------->  */
+/*                                                                    */
+/*              >--MEMBER(-member-)--+----------------+--><           */
+/*                                   '-SYSIN(-sysin-)-'               */
+/*                                                                    */
+/*              pdsin : Input PDS(E) data set.                        */
+/*              pdsout: Output PDS(E) data set.                       */
+/*              member: IEBCOPY SELECT MEMBER selection list.         */
+/*              sysin : Input SYSIN data set.                         */
+/*                                                                    */
+/* Returns    : 0 when IEBCOPY returned 0                             */
+/*              8 when REXX error occurs or when parameter string     */
+/*                contains syntax error                               */
+/*              n any IEBCOPY return code /= 0                        */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "PDSIN(MY.INPUT.PDS)"     || ,                              */
+/*        " PDSOUT(MY.OUTPUT.PDS)"  || ,                              */
+/*        " MEMBER(MEM1,MEM2,ABC*)"                                   */
+/*                                                                    */
+/* CALL 'IEBCOPY' _par                                                */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 

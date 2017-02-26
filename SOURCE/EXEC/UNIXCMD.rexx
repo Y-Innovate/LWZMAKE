@@ -1,4 +1,24 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : UNIXCMD                                               */
+/*                                                                    */
+/* Description: This program accepts a Unix System Services command   */
+/*              and executes it.                                      */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : A single unix command.                                */
+/*                                                                    */
+/* Returns    : 0 when unix command returned >= 0                     */
+/*              8 when unix command returned <  0                     */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "mkdir -m 755 /u/myusr/newdir"                              */
+/*                                                                    */
+/* CALL 'UNIXCMD' _par                                                */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 

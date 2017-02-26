@@ -1,6 +1,6 @@
 /* REXX */
 /**********************************************************************/
-/* Program    : DB2BIND                                               */
+/* Program    : BIND                                                  */
 /*                                                                    */
 /* Description: This program invokes the DSN SYSTEM command followed  */
 /*              by a BIND statement with whatever parameters were     */
@@ -52,7 +52,7 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* BINDPACK'
+SAY '* BIND'
 SAY COPIES('*',100)
 
 g.error = 0

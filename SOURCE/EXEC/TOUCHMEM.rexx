@@ -1,4 +1,31 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : TOUCHMEM                                              */
+/*                                                                    */
+/* Description: This program accepts one or more PDS(E) members and   */
+/*              uses the ISPF library management LMMSTATS function to */
+/*              set the member statistics last modified date to the   */
+/*              current date and time (comparable to unix touch).     */
+/*                                                                    */
+/* Environment: ISPF                                                  */
+/*                                                                    */
+/* Parameters : One or more fully qualified PDS(E) members:           */
+/*                                                                    */
+/*                             .---------.                            */
+/*                             V         |                            */
+/*              >>---DATASETS(---dataset-+-)--><                      */
+/*                 '-DATASET-'                                        */
+/*                                                                    */
+/* Returns    : 0 when all data sets touched successfully             */
+/*              8 when touching a data set failed                     */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "MY.PDS(MEM1) MY.PDS(MEM2)"                                 */
+/*                                                                    */
+/* CALL 'TOUCHMEM' _par                                               */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 

@@ -1,4 +1,40 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : EQALANGX                                              */
+/*                                                                    */
+/* Description: This program invokes EQALANGX to create an EQALANGX   */
+/*              file for an assembler source.                         */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-SYSADATA(-adata-)--IDILANGX(-langx-)------------>  */
+/*                                                                    */
+/*              >--+---------------------+--+----------------+--><    */
+/*                 '-SYSPRINT(-listing-)-'  '-PARM(-params-)-'        */
+/*                                                                    */
+/*              adata  : Input SYSADATA source data set.              */
+/*              langx  : Output EQALANGX data set.                    */
+/*              listing: Output listing data set.                     */
+/*              params : Parameters to EQALANGX.                      */
+/*                                                                    */
+/* Returns    : 0 when EQALANGX returned 4 or less                    */
+/*              8 when REXX error occurs or when parameter string     */
+/*                contains syntax error                               */
+/*              n any EQALANGX return code > 4                        */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "SYSADATA(MY.ADATA.PDS(MEMBER))"      || ,                  */
+/*        " IDILANGX(MY.LANGX.PDS(MEMBER))"     || ,                  */
+/*        " SYSPRINT(MY.LST.PDS(MEMBER))"       || ,                  */
+/*        " PARM(ASM ERROR)"                                          */
+/*                                                                    */
+/* CALL 'EQALANGX' _par                                               */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
@@ -19,7 +55,6 @@ CALL freeDDs
 IF g.EQALANGX.retcode > 4 | g.EQALANGX.retcode < 0 THEN
    g.error = g.EQALANGX.retcode
 
-SAY "exiting EQALANGX "g.error
 EXIT g.error
 
 /**********************************************************************/

@@ -1,4 +1,24 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : SUBMIT                                                */
+/*                                                                    */
+/* Description: This program accepts a single data set name and       */
+/*              submits the contents by writing it to internal reader.*/
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : A single data set name (can be a PDS(E) member).      */
+/*                                                                    */
+/* Returns    : 0 when submit was successful                          */
+/*              8 when submit failed                                  */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "MY.PDS.JCL(JOB1)"                                          */
+/*                                                                    */
+/* CALL 'SUBMIT' _par                                                 */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 

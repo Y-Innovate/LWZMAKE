@@ -1,4 +1,63 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : UPDCOPY                                               */
+/*                                                                    */
+/* Description: This program copies an input data set to an output    */
+/*              data set and performs one or more search and replace  */
+/*              actions during copying.                               */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-DSIN(-dsin-)--DSOUT(-dsout-)-------------------->  */
+/*                                                                    */
+/*              >--UPDWITH(-updwith-)--><                             */
+/*                                                                    */
+/*              dsin   : Input data set.                              */
+/*              dsout  : Output data set.                             */
+/*              updwith: Input search and replace data set.           */
+/*                                                                    */
+/* Format     : The search and replace data set can supply one or     */
+/*              more lines in the following format:                   */
+/*                                                                    */
+/*                >search_text>replace_text>                          */
+/*                                                                    */
+/*              For example the following set of search and replace   */
+/*              lines:                                                */
+/*                                                                    */
+/*                >{variableHLQ}>MYUSR>                               */
+/*                >{dsType}>SRC>                                      */
+/*                                                                    */
+/*              would cause this input text:                          */
+/*                                                                    */
+/*       //COPYDEL EXEC PGM=IDCAMS                                    */
+/*       //SYSIN     DD *                                             */
+/*         PRINT INDATASET({variableHLQ}.INPUT.{dsType})              */
+/*         DELETE ({variableHLQ}.INPUT.{dsType}) SCRATCH PURGE        */
+/*       //SYSPRINT  DD SYSOUT=*                                      */
+/*                                                                    */
+/*              to be turned into this output text:                   */
+/*                                                                    */
+/*       //COPYDEL EXEC PGM=IDCAMS                                    */
+/*       //SYSIN     DD *                                             */
+/*         PRINT INDATASET(MYUSR.INPUT.SRC)                           */
+/*         DELETE (MYUSR.INPUT.SRC) SCRATCH PURGE                     */
+/*       //SYSPRINT  DD SYSOUT=*                                      */
+/*                                                                    */
+/* Returns    : 0 when UPDCOPY successful                             */
+/*              8 when UPDCOPY unsuccessful                           */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "DSIN(MY.INPUT.PDS(MEM1))"         || ,                     */
+/*        " DSOUT(MY.OUTPUT.PDS(MEM1))"      || ,                     */
+/*        " UPDWITH(MY.UPDCOPY.INPUT(SET1))"                          */
+/*                                                                    */
+/* CALL 'UPDCOPY' _par                                                */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 

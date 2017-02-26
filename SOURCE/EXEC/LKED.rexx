@@ -1,4 +1,65 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : LKED                                                  */
+/*                                                                    */
+/* Description: This program invokes IEWBLINK to link-edit one or     */
+/*              more objects into a load module.                      */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-SYSLIN(-syslin-)--SYSLMOD(-syslmod-)------------>  */
+/*                                                                    */
+/*              >--+----------------------+------------------------>  */
+/*                 |         .--------.   |                           */
+/*                 |         V        |   |                           */
+/*                 '-SYSLIB(---syslib-+-)-'                           */
+/*                                                                    */
+/*              >--+----------------------+------------------------>  */
+/*                 |         .--------.   |                           */
+/*                 |         V        |   |                           */
+/*                 '-OBJECT(---object-+-)-'                           */
+/*                                                                    */
+/*              >--+------------------+---------------------------->  */
+/*                 |       .------.   |                               */
+/*                 |       V      |   |                               */
+/*                 '-LOAD(---load-+-)-'                               */
+/*                                                                    */
+/*              >--+---------------------+--+----------------+--><    */
+/*                 '-SYSPRINT(-listing-)-'  '-PARM(-params-)-'        */
+/*                                                                    */
+/*              syslin : Input binder control statements.             */
+/*              syslmod: Output load module data set.                 */
+/*              syslib : One or more input object or load module      */
+/*                       PDS(E)'s used to resolve external references */
+/*                       that were not explicitly specified.          */
+/*              object : One or more input object PDS(E)'s that you   */
+/*                       can explicitly refer to in the binder        */
+/*                       control statements.                          */
+/*              load   : One or more input load module PDS(E)'s that  */
+/*                       you can explicitly refer to in the binder    */
+/*                       control statements.                          */
+/*              listing: Output binder listing data set.              */
+/*              params : Parameters to IEWBLINK.                      */
+/*                                                                    */
+/* Returns    : 0 when IEWBLINK returned 4 or less                    */
+/*              8 when REXX error occurs or when parameter string     */
+/*                contains syntax error                               */
+/*              n any IEWBLINK return code > 4                        */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "SYSLIN(MY.LKEDIN.PDS(MEMBER))"       || ,                  */
+/*        " SYSLMOD(MY.LOADLIB.PDS(MEMBER))"    || ,                  */
+/*        " SYSLIB(CEE.SCEELKED)"               || ,                  */
+/*        " OBJECT(MY.OBJECT.PDS(MEMBER))"      || ,                  */
+/*        " PARM(LIST,XREF,RENT,REUS)"                                */
+/*                                                                    */
+/* CALL 'LKED' _par                                                   */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
@@ -141,8 +202,13 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW RECFM(V,B,M) DSORG(PS) LRECL(133) CYL" || ,
-                 " SPACE(1,1) RTDDN(_ddn)")
+   IF g.sysprint /= "" THEN DO
+      _rc = BPXWDYN("ALLOC DSN('"g.sysprint"') SHR RTDDN(_ddn)")
+   END
+   ELSE DO
+      _rc = BPXWDYN("ALLOC NEW RECFM(V,B,M) DSORG(PS) LRECL(133) CYL" || ,
+                    " SPACE(1,1) RTDDN(_ddn)")
+   END
 
    IF _rc == 0 THEN DO
       g.SYSPRINT.allocated = 1
@@ -404,7 +470,7 @@ g.IEWBLINK.retcode = RC
 _rc = RC
 
 IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       SAY "SYSPRINT copied to DD "_ddn
@@ -602,6 +668,25 @@ DO WHILE g.error == 0
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
+   WHEN _parmName == 'SYSPRINT' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
+         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+         _dsname = parseDsname()
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         g.sysprint = _dsname
+         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
+            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
+            g.error = 8
+            RETURN
+         END
+      END
+   END
    WHEN _parmName == 'PARM' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM1
       CALL lexerGetToken
@@ -631,18 +716,19 @@ IF g.error == 0 & g.syslmod == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSLIN:  'g.syslin
-   SAY 'SYSLMOD: 'g.syslmod
+   SAY 'SYSLIN:   'g.syslin
+   SAY 'SYSLMOD:  'g.syslmod
    DO i = 1 TO g.syslib.0
-      SAY 'SYSLIB:  'g.syslib.i
+      SAY 'SYSLIB:   'g.syslib.i
    END
    DO i = 1 TO g.object.0
-      SAY 'OBJECT:  'g.object.i
+      SAY 'OBJECT:   'g.object.i
    END
    DO i = 1 TO g.load.0
-      SAY 'LOAD:    'g.load.i
+      SAY 'LOAD:     'g.load.i
    END
-   SAY 'PARM:    'g.parm
+   SAY 'SYSPRINT: 'g.sysprint
+   SAY 'PARM:     'g.parm
 END
 
 RETURN

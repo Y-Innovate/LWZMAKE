@@ -1,4 +1,26 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : SAFEDEL                                               */
+/*                                                                    */
+/* Description: This program accepts a space delimited set of data    */
+/*              sets and/or PDS(E) members, checks if they exist and  */
+/*              if so deletes them.                                   */
+/*                                                                    */
+/* Environment: TSO or ISPF                                           */
+/*                                                                    */
+/* Parameters : A space delimited set of data sets and/or PDS(E)      */
+/*              members.                                              */
+/*                                                                    */
+/* Returns    : 0 when all deletes successful                         */
+/*              8 when a delete failed                                */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "MY.DS1 MY.PDS MY.PDS2(MEM1)"                               */
+/*                                                                    */
+/* CALL 'SAFEDEL' _par                                                */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
