@@ -524,9 +524,9 @@ NO_PARAMETER EQU *
 *
          MVC   INPUTLEAD,=H'0'    * Clear leading spaces
          MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF * Set type of input
-         STH   R3,INPUTLEN        * Copy value length
+         ST    R3,INPUTLEN        * Copy value length
          ST    R2,INPUTPTR        * Copy value pointer
-         MVC   INPUTPOS,=H'0'     * Set initial scan position to start
+         MVC   INPUTPOS,=A(0)     * Set initial scan position to start
 *
          MVI   G_LWZMRPT_LINE,C' '
          MVC   G_LWZMRPT_LINE+1(L'G_LWZMRPT_LINE-1),G_LWZMRPT_LINE
@@ -623,7 +623,7 @@ PARMS_TARGET_SET EQU *
 PARMS_DONE EQU  *
          MVC   G_SCAN_CURRCOL,=F'999'    * Make sure first scanned char
 *                                        * causes read record
-         MVC   G_SCAN_INPUT_STACK+(INPUTPOS-INPUT_DSECT)(2),=H'999'
+         MVC   G_SCAN_INPUT_STACK+(INPUTPOS-INPUT_DSECT)(4),=F'999'
 PARMS_RET EQU  *
          BR    R8                 * Return
 *
@@ -1221,7 +1221,7 @@ SCAN_EXPECTED_COMMENT       EQU   B'01110000000000000000000000000000'
 * LWZMAKE_SCAN_CHAR reads from. Initial size is 1, entry 0 filled
 * with all zeros, indicating input from MAKEFILE DD
                             DS    0F
-MAX_SCAN_INPUT_STACK_ENTRY  EQU   16
+MAX_SCAN_INPUT_STACK_ENTRY  EQU   12
 G_SCAN_INPUT_STACK          DS    CL(MAX_SCAN_INPUT_STACK_ENTRY*INPUT_DX
                SECT_SIZ)
 G_SCAN_INPUT_STACK_IDX      DS    C
@@ -1421,7 +1421,7 @@ STMT_A_DSECT                DSECT
 STMT_A_DESTLEN              DS    H    * length of variable name
 STMT_A_DEST                 DS    CL72 * variable name (destination)
 STMT_A_OPERATOR             DS    CL2  * type of assignment
-STMT_A_SRCLEN               DS    H    * length of value
+STMT_A_SRCLEN               DS    F    * length of value
 STMT_A_SRC                  DS    0C   * value (source) starts here
 *                                      * length can vary
 STMT_A_DSECT_LEN            EQU   *-STMT_A_DSECT
@@ -1492,7 +1492,7 @@ VARHIGH                     DS    A    * pointer to variable with name
 *                                      * higher than this one
 VARNAMELEN                  DS    H    * length of variable name
 VARNAME                     DS    CL72 * variable name
-VALLEN                      DS    H    * length of variable value
+VALLEN                      DS    F    * length of variable value
 VALPTR                      DS    A    * pointer to value (getmain'd)
 VAR_DSECT_LEN               EQU   *-VAR_DSECT
 *
@@ -1549,9 +1549,9 @@ INPUTLEAD                   DS    H    * leading spaces count
 INPUTPTR                    DS    A    * for type != X'00' ptr to input
 *                                      * string (e.g. variable value)
 INPUTXPTR                   DS    A    * extra pointer
-INPUTLEN                    DS    H    * length of string pointed to by
+INPUTLEN                    DS    F    * length of string pointed to by
 *                                      * INPUTPTR
-INPUTPOS                    DS    H    * current position in string
+INPUTPOS                    DS    F    * current position in string
 *                                      * pointed to by INPUTPTR
 INPUT_DSECT_SIZ             EQU   *-INPUT_DSECT
 *
@@ -2718,7 +2718,7 @@ STMT_A_FINISH EQU *
 *        Fill in source text (token 3) in assignment block
          LA    R0,STMT_A_SRC        * Point R0 to source in block
          L     R1,G_SCAN_TOKEN3_LEN * Get length of source
-         STH   R1,STMT_A_SRCLEN     * Store length in block
+         ST    R1,STMT_A_SRCLEN     * Store length in block
          L     R2,G_SCAN_TOKEN3A    * Point R2 to token 3
          LR    R3,R1                * Make sure no cropping/filling
          MVCL  R0,R2                * Copy source text
@@ -3590,8 +3590,8 @@ STMT_I_NEXT_DSNAME_CHAR EQU *
 *
          MVC   INPUTLEAD,=H'0'    * Clear leading spaces
          MVI   INPUTTYPE,INPUTTYPE_MAKEFILE_INC * Set type of input
-         MVC   INPUTLEN,=H'0'     * Clear value length
-         MVC   INPUTPOS,=H'999'   * Force a read of next record
+         MVC   INPUTLEN,=F'0'     * Clear value length
+         MVC   INPUTPOS,=F'999'   * Force a read of next record
 *
 *                                 * GM DCB storage below the line
          GETMAIN RU,LV=DCB_INCLUDE_DSECT_SIZ,LOC=24
@@ -3841,7 +3841,7 @@ LWZMAKE_SCAN_VAR DS    0F
 *
             USING VAR_DSECT,R4    * Address with VAR DSECT
 *
-            CLC   VALLEN,=H'0'    * Check empty variable value
+            CLC   VALLEN,=A(0)    * Check empty variable value
             BE    SCAN_VAR_RET    * If empty skip rest of section
 *
 *           Push variable value on to input stack
@@ -3869,7 +3869,7 @@ LWZMAKE_SCAN_VAR DS    0F
             MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
             MVC   INPUTLEN,VALLEN * Copy value length
             MVC   INPUTPTR,VALPTR * Copy value pointer
-            MVC   INPUTPOS,=H'0'  * Set initial scan position to start
+            MVC   INPUTPOS,=A(0)  * Set initial scan position to start
 *
             DROP  R2
             DROP  R4
@@ -4578,9 +4578,9 @@ SCAN_VAR_RESTORE EQU *
 *
             MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF_FREE * Set inp type
             MVC   INPUTLEAD,G_SAVE_SPACE_COUNT+2
-            MVC   INPUTLEN,G_SCAN_TOKEN3_LEN+2 * Copy value length
+            MVC   INPUTLEN,G_SCAN_TOKEN3_LEN * Copy value length
             MVC   INPUTPTR,G_SCAN_TOKEN3A * Copy value pointer
-            MVC   INPUTPOS,=H'0'  * Set initial scan position to start
+            MVC   INPUTPOS,=A(0)  * Set initial scan position to start
 *
             DROP  R2
 *
@@ -5093,11 +5093,13 @@ STORE_ACRO_OR_PERCENT EQU *
                MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF * Type of input
                MVC   INPUTLEAD,G_SAVE_SPACE_COUNT
                IF (CLI,G_SCAN_TOKENTYPE,EQ,SCAN_TOKENTYPE_ACRO) THEN
-                  MVC   INPUTLEN,TGTNAMELEN-TARGET_DSECT(R3)
+                  MVC   INPUTLEN,=A(0)
+                  MVC   INPUTLEN+2(2),TGTNAMELEN-TARGET_DSECT(R3)
                   LA    R4,TGTNAME-TARGET_DSECT(,R3)
                   ST    R4,INPUTPTR
                ELSE
-                  MVC   INPUTLEN,TGTNAMEMEMLEN-TARGET_DSECT(R3)
+                  MVC   INPUTLEN,=A(0)
+                  MVC   INPUTLEN+2(2),TGTNAMEMEMLEN-TARGET_DSECT(R3)
                   LA    R4,TGTNAME-TARGET_DSECT(,R3)
                   AH    R4,TGTNAMELEN-TARGET_DSECT(,R3)
                   BCTR  R4,R0
@@ -5109,7 +5111,7 @@ STORE_ACRO_OR_PERCENT EQU *
                   ENDIF
                   ST    R4,INPUTPTR
                ENDIF
-               MVC   INPUTPOS,=H'0'  * Set initial scan pos to start
+               MVC   INPUTPOS,=A(0)  * Set initial scan pos to start
 *
                DROP  R2
 *
@@ -5588,8 +5590,7 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
 *
             USING INPUT_DSECT,R2  * Address with INPUT DSECT
 *
-            XR    R1,R1
-            LH    R1,INPUTPOS
+            L     R1,INPUTPOS
             ST    R1,G_SCAN_CURRCOL
 *
             CLI   INPUTTYPE,INPUTTYPE_MAKEFILE
@@ -5607,21 +5608,20 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
                B     SCAN_CHAR_RET
             ENDIF
 *
-            XR    R3,R3           * Clear R3
-            LH    R3,INPUTPOS     * Get next position in input
-            CH    R3,INPUTLEN     * Has input been exhausted?
+            L     R3,INPUTPOS     * Get next position in input
+            C     R3,INPUTLEN     * Has input been exhausted?
             IF (L) THEN           * If not...
                L     R4,INPUTPTR  * Point R4 to input
                IC    R5,0(R3,R4)  * Get the next character from input
                STC   R5,G_SCAN_CURRCHAR * and put it in CURRCHAR
                LA    R3,1(,R3)    * Advance next position
-               STH   R3,INPUTPOS  * and store it in input block
-               CH    R3,INPUTLEN  * Was this the last char?
+               ST    R3,INPUTPOS  * and store it in input block
+               C     R3,INPUTLEN  * Was this the last char?
                IF (L) THEN        * If not, also get PEEKCHAR
                   IC    R5,0(R3,R4) * Get the next char + 1 from input
                   STC   R5,G_SCAN_PEEKCHAR * and put it in PEEKCHAR
                   LA    R3,1(,R3) * Advance next position
-                  CH    R3,INPUTLEN * Was this the last char?
+                  C     R3,INPUTLEN * Was this the last char?
                   IF (L) THEN
                      IC    R5,0(R3,R4)
                      STC   R5,G_SCAN_PEEKCHAR2
@@ -5630,8 +5630,7 @@ SCAN_CHAR_CHECK_INPUT_STACK EQU *
                B     SCAN_CHAR_RET * Skip rest of scanner
             ELSE                  * Else, input exhausted
                IF (CLI,INPUTTYPE,EQ,INPUTTYPE_STRPTR_NEOF_FREE) THEN
-                  XR    R3,R3
-                  LH    R3,INPUTLEN
+                  L     R3,INPUTLEN
                   ST    R3,G_STGOR_LEN
                   MVC   G_STGOR_PTR,INPUTPTR
                   MVI   G_STGOR_TYPE,STGOR_TYPE_TOKEN
@@ -5658,14 +5657,13 @@ SCAN_CHAR_READ_FROM_MAKEFILE EQU *
 *        as a separate token, a fictitious 81st column is used for that
 *        When we go beyond column 81 that triggers a next record to be
 *        read from the makefile.
-         XR    R1,R1
-         LH    R1,INPUTPOS
+         L     R1,INPUTPOS
          ST    R1,G_SCAN_CURRCOL
 *
          L     R3,G_SCAN_CURRCOL  * Get the current column
          LA    R3,1(,R3)          * Advance 1 position
          ST    R3,G_SCAN_CURRCOL  * and put it back
-         STH   R3,INPUTPOS
+         ST    R3,INPUTPOS
          C     R3,=F'80'          * Check if we're past 81 yet
          IF (GT) THEN             * If so...
             MVI   G_SCAN_CONTINUED_LINE,C'N' * Reset continued line
@@ -5754,7 +5752,7 @@ READNEXT EQU   *
 READNEXT_10 EQU *
          IF (CLI,G_MKFEOF,NE,C'Y') THEN * Did we hit EOF? If not
             MVC   G_SCAN_CURRCOL,=F'0' * Reset current column to 0
-            MVC   INPUTPOS-INPUT_DSECT(2,R3),=H'0'
+            MVC   INPUTPOS-INPUT_DSECT(4,R3),=F'0'
             L     R4,G_SCAN_CURRLINE * Get the current line
             LA    R4,1(,R4)          * Advance 1 line count
             ST    R4,G_SCAN_CURRLINE * And put it back as current line
@@ -5958,19 +5956,17 @@ TEST_VARS   EQU   *               * Test this var for matching name
 * Set a value, either in a new variable just allocated, or replacing a
 * value of an existing variable
 FILL_VAR EQU   *
-         CLC   VALLEN,=AL2(0)     * Check if there's an existing value
+         CLC   VALLEN,=A(0)       * Check if there's an existing value
          IF (NE) THEN             * If so...
-            XR    R2,R2           * Clear R2
-            LH    R2,VALLEN       * and put old value length in
+            L     R2,VALLEN       * put old value length in R2
             ST    R2,G_STGOR_LEN
             MVC   G_STGOR_PTR,VALPTR * Get old value pointer
             MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
             L     R15,LWZMAKE_STG_RELEASEA_STORE_VAR
             BASR  R14,R15
          ENDIF
-         XR    R2,R2              * Clear R2
-         LH    R2,STMT_A_SRCLEN   * Get new value length
-         STH   R2,VALLEN          * Put it in variable block
+         L     R2,STMT_A_SRCLEN   * Get new value length
+         ST    R2,VALLEN          * Put it in variable block
          ST    R2,G_STGOR_LEN
          MVI   G_STGOR_TYPE,STGOR_TYPE_VARVAL
          L     R15,LWZMAKE_STG_OBTAINA_STORE_VAR
@@ -6001,9 +5997,9 @@ FILL_VAR EQU   *
          LA    R3,110
          L     R4,VALPTR
          LR    R5,R3
-         CH    R5,VALLEN
+         C     R5,VALLEN
          IF (H) THEN
-            LH    R5,VALLEN
+            L     R5,VALLEN
          ENDIF
          LTR   R5,R5
          BZ    STORE_VAR_WRITE_RPT
@@ -6541,8 +6537,7 @@ LWZMAKE_FREEBST MLWZSAVE
          ENDIF
 *
          IF (CLI,G_STGOR_TYPE,EQ,STGOR_TYPE_VAR) THEN
-            XR    R2,R2
-            LH    R2,VALLEN-VAR_DSECT(,R1)
+            L     R2,VALLEN-VAR_DSECT(,R1)
             LTR   R2,R2
             BZ    SKIP_FREEBST_RELEASE_VARVAL
             LT    R3,VALPTR-VAR_DSECT(,R1)
@@ -6731,11 +6726,12 @@ EXEC_TGT_PREREQ EQU *
          AR    R2,R3
          USING INPUT_DSECT,R2
          MVI   INPUTTYPE,INPUTTYPE_STRPTR_NEOF
-         MVC   INPUTLEN,STMT_R_REQLEN
+         MVC   INPUTLEN,=A(0)
+         MVC   INPUTLEN+2(2),STMT_R_REQLEN
          LA    R4,STMT_R_TGT
          AH    R4,STMT_R_TGTLEN
          ST    R4,INPUTPTR
-         MVC   INPUTPOS,=H'0'
+         MVC   INPUTPOS,=A(0)
          DROP  R2
 *
          MVI   G_SCAN_STATE,SCAN_STATE_IN_EXPAND
@@ -7192,7 +7188,7 @@ EXEC_ASSIGN_START EQU *
             MVC   INPUTLEN,STMT_A_SRCLEN
             LA    R14,STMT_A_SRC
             ST    R14,INPUTPTR
-            MVC   INPUTPOS,=H'0'
+            MVC   INPUTPOS,=A(0)
             MVI   G_MKFEOF,C'N'
 *
             DROP  R2
@@ -7278,7 +7274,7 @@ EXEC_ASSIGN_EXPANDED EQU *
 *           Fill in source text (token 3) in assignment block
             LA    R0,STMT_A_SRC      * Point R0 to source in block
             L     R1,G_SCAN_TOKEN3_LEN * Get length of source
-            STH   R1,STMT_A_SRCLEN   * Store length in block
+            ST    R1,STMT_A_SRCLEN   * Store length in block
             L     R2,G_SCAN_TOKEN3A  * Point R2 to token 3
             LR    R3,R1              * Make sure no cropping/filling
             MVCL  R0,R2              * Copy source text
@@ -8975,11 +8971,12 @@ LWZMAKE_CALL_REXX MLWZSAVE
          AR    R2,R3
          USING INPUT_DSECT,R2
          MVI   INPUTTYPE,INPUTTYPE_STRPTR_EOF
-         MVC   INPUTLEN,STMT_C_PARMLEN
+         MVC   INPUTLEN,=A(0)
+         MVC   INPUTLEN+2(2),STMT_C_PARMLEN
          LA    R6,STMT_C_EXEC
          AH    R6,STMT_C_EXECLEN
          ST    R6,INPUTPTR
-         MVC   INPUTPOS,=H'0'
+         MVC   INPUTPOS,=A(0)
          MVI   G_MKFEOF,C'N'
 *
          DROP  R2
