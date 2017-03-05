@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
@@ -15,7 +16,7 @@ A <span class="clsMonospace">rule</span> is a statement that defines one or more
 </p>
 <p>
 Here's another simple example makefile to help explain how rules work:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td id="contentCol1"><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
 
 <font color="#0000FF">srchlq</font>  := <font color="#0000FF">SOMEUSR</font>
 <font color="#0000FF">tgthlq</font>  := <font color="#0000FF">MYUSR</font>
@@ -59,7 +60,7 @@ Now the process repeats itself, so first for target <span class="clsMonospace">M
 </p>
 <h3>Comparing target with prerequisite</h3>
 <p>
-Whether a prerequisite was built as another target or not, unless it's a <span class="clsMonospace">PHONY</span> target, it's always compared to the target it's prerequisite to. This comparison is done based on the last alter date and by default a target is flagged to be built when it's last alter date is older than any of its prerequisites or when the target is missing. If the prerequisite is missing, <span class="clsMonospace">zmake</span> will terminate with an error.
+Whether a prerequisite was built as another target or not, unless it's a <span class="clsMonospace">PHONY</span> target, it's always compared to the target it's prerequisite to. For PDS(E) members this comparison is done based on the <b>last alter date found in the ISPF statistics</b> and by default a target is flagged to be built when it's last alter date is older than any of its prerequisites or when the target is missing. For load modules the comparison is slightly different, since those don't have ISPF statistics with a last alter date, so <b>for load modules the creation timestamp is used</b> (by invoking the binder API). Data sets don't have a last alter date in the MVS file system, so <b>if a data set is a target it's built if it is missing</b>. If the prerequisite is missing, <span class="clsMonospace">zmake</span> will terminate with an error.
 </p>
 <p>
 In the sample the last alter date of target <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> is compared to the last alter date of prerequisite <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM1)</span>. If either <span class="clsMonospaceCyan">SOMEUSR.PDS.JCL(MEM1)</span> was altered more recently than <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> or if <span class="clsMonospaceRed">MYUSR.PDS.JCL(MEM1)</span> doesn't exit, the target is flagged to be built.
@@ -80,7 +81,7 @@ A target is marked as <span class="clsMonospace">PHONY</span> by using a separat
 <h3>Unconditional targets</h3>
 <p>
 A target can become unconditional when the value <span class="clsMonospace">1</span> is found among the prerequisites. This causes the target to be flagged to be built even if no prerequisite comparison would. The value <span class="clsMonospace">1</span> doesn't have to be a constant, a variable or function that resolves to <span class="clsMonospace">0</span> or <span class="clsMonospace">1</span> is also allowed, <span class="clsMonospace">0</span> is ignored. Below is the same sample script, but altered slightly to make it unconditional:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td id="contentCol2"><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
 
 <font color="#0000FF">uncond</font>  := <font color="#0000FF">1</font>&nbsp;&nbsp;<font color="#008000"># this variable indicates unconditional</font>
 
@@ -99,11 +100,10 @@ A target can become unconditional when the value <span class="clsMonospace">1</s
 </p>
 </div>
 <script type="text/javascript">
-var nrCol1 = document.getElementById("nrCol1");
-var nrCol2 = document.getElementById("nrCol2");
-
-NumberLines(nrCol1, 13);
-NumberLines(nrCol2, 16);
+var lineCount1 = $("#contentCol1").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol1")[0], lineCount1);
+var lineCount2 = $("#contentCol2").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol2")[0], lineCount2);
 </script>
 </body>
 </html>

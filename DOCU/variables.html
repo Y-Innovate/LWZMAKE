@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
@@ -15,7 +16,7 @@ When using <span class="clsMonospace">zmake</span> you'll make heavy use of vari
 </p>
 <p>
 A <span class="clsMonospace">Make</span> variable is created by an assignment statement, some examples:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#008000"># immediate assignment using :=</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td id="contentCol1"><font color="#008000"># immediate assignment using :=</font>
 <font color="0000FF">hlq       </font>:=<font color="0000FF"> USER1</font>
 
 <font color="008000"># delayed assignment using =
@@ -57,9 +58,8 @@ The fifth sample assignment uses the immediate conditional assignment operator <
 </p>
 </div>
 <script type="text/javascript">
-var nrCol1 = document.getElementById("nrCol1");
-
-NumberLines(nrCol1, 25);
+var lineCount1 = $("#contentCol1").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol1")[0], lineCount1);
 </script>
 </body>
 </html>

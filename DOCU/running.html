@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
@@ -65,7 +66,7 @@ Below are 3 sample JCL's to run <span class="clsMonospace">zmake</span>:
 <h3><span class="clsMonospace">zmake</span> as the main program</h3>
 <p>
 Below is a sample JCL for running <span class="clsMonospace">zmake</span> as the main program in a JCL step:
-<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol1" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol1" style="color: #D0D0D0;"></td><td id="contentCol1"><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
 <font color="#388D9A">//*</font>
 //ZMAKE   <font color="#800000">EXEC</font> PGM<font color="#D0D000">=</font>LWZMAKE<font color="#D0D000">,</font>PARM<font color="#D0D000">=</font><font color="#D0D0D0">'-t SOME_TARGET'</font>      <font color="#388D9A">&lt;&lt; PARM optional</font>
 //STEPLIB   <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>&lt;some hlq&gt;.LOAD           <font color="#388D9A">&lt;&lt; check</font>
@@ -78,7 +79,7 @@ Below is a sample JCL for running <span class="clsMonospace">zmake</span> as the
 <h3><span class="clsMonospace">zmake</span> from within a TSO batch environment</h3>
 <p>
 Below is a sample JCL for running <span class="clsMonospace">zmake</span> from within a TSO batch environment:
-<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol2" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol2" style="color: #D0D0D0;"></td><td id="contentCol2"><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
 <font color="#388D9A">//*</font>
 //ZMAKE   <font color="#800000">EXEC</font> PGM<font color="#D0D000">=</font>IKJEFT1B
 //SYSEXEC   <font color="#800000">DD</font> DISP<font color="#D0D000">=</font>SHR<font color="#D0D000">,</font>DSN<font color="#D0D000">=</font>&lt;some hlq&gt;.EXEC           <font color="#388D9A">&lt;&lt; check</font>
@@ -95,7 +96,7 @@ You might need to add a STEPLIB, for example if you want to run REXX execs to do
 <h3><span class="clsMonospace">zmake</span> from within an ISPF batch environment</h3>
 <p>
 Below is a sample JCL for running <span class="clsMonospace">zmake</span> from within an ISPF batch environment:
-<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol3" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol3" style="color: #D0D0D0;"></td><td id="contentCol3"><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
 <font color="#388D9A">//*</font>
 //      <font color="#800000">EXPORT</font> SYMLIST<font color="#D0D000">=</font>* 
 //         <font color="#800000">SET</font> TARGET<font color="#D0D000">=</font>SOME_TARGET
@@ -146,7 +147,7 @@ $$
 </p>
 <p>
 But it's probably easier to put most of the above JCL in a separate procedure:
-<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol4" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//ISPFMAKE <font color="#800000">PROC</font> LWZMHLQ<font color="#D0D000">=,</font>TARGET<font color="#D0D000">=,</font>MAKEFILE<font color="#D0D000">=,</font>EXECLIB<font color="#D0D000">=</font>
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol4" style="color: #D0D0D0;"></td><td id="contentCol4"><span style="color: #008000;">//ISPFMAKE <font color="#800000">PROC</font> LWZMHLQ<font color="#D0D000">=,</font>TARGET<font color="#D0D000">=,</font>MAKEFILE<font color="#D0D000">=,</font>EXECLIB<font color="#D0D000">=</font>
 <font color="#388D9A">//*</font>
 //      <font color="#800000">EXPORT</font> SYMLIST<font color="#D0D000">=</font>* 
 //         <font color="#800000">SET</font> TARGET<font color="#D0D000">=&</font>TARGET
@@ -196,7 +197,7 @@ $$
 /*</span></td></tr></table></div></p>
 <p>
 And then invoke that procedure like so:
-<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol5" style="color: #D0D0D0;"></td><td><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
+<div class="clsDivCode" style="background-color: black; padding: 5px 20px;"><table><tr><td id="nrCol5" style="color: #D0D0D0;"></td><td id="contentCol5"><span style="color: #008000;">//&lt;jobcard&gt;   <font color="#388D9A">&lt;&lt; check</font>
 <font color="#388D9A">//*</font>
 //      <font color="#800000">JCLLIB</font> ORDER<font color="#D0D000">=(</font>&lt;proc library&gt;<font color="#D0D000">)</font>                <font color="#388D9A">&lt;&lt; check</font>
 <font color="#388D9A">//*</font>
@@ -204,25 +205,23 @@ And then invoke that procedure like so:
 //             LWZMHLQ<font color="#D0D000">=</font>&lt;some hlq&gt;<font color="#D0D000">,</font>                   <font color="#388D9A">&lt;&lt; check</font>
 //             TARGET<font color="#D0D000">=</font>SOME_TARGET<font color="#D0D000">,</font>
 //             MAKEFILE<font color="#D0D000">=</font>&lt;some hlq&gt;.CNTL<font color="#D0D000">(</font>&lt;member&gt;<font color="#D0D000">),</font>   <font color="#388D9A">&lt;&lt; check</font>
-//             EXECLIB<font color="#D0D000">=</font>&lt;some hlq&gt;.EXEC               <font color="#388D9A">&lt;&lt; check</font>
-</span></td></tr></table></div>
+//             EXECLIB<font color="#D0D000">=</font>&lt;some hlq&gt;.EXEC               <font color="#388D9A">&lt;&lt; check</font></span></td></tr></table></div>
 </p>
 <p>
 Again, if you need extra load libraries, for example if you want to run REXX execs to do DB2 BINDs, you need to add them to the procedure, however not in a STEPLIB DD, but concatenate them to the ISPLLIB DD.
 </p>
 </div>
 <script type="text/javascript">
-var nrCol1 = document.getElementById("nrCol1");
-var nrCol2 = document.getElementById("nrCol2");
-var nrCol3 = document.getElementById("nrCol3");
-var nrCol4 = document.getElementById("nrCol4");
-var nrCol5 = document.getElementById("nrCol5");
-
-NumberLines(nrCol1, 9);
-NumberLines(nrCol2, 10);
-NumberLines(nrCol3, 48);
-NumberLines(nrCol4, 48);
-NumberLines(nrCol5, 9);
+var lineCount1 = $("#contentCol1").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol1")[0], lineCount1);
+var lineCount2 = $("#contentCol2").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol2")[0], lineCount2);
+var lineCount3 = $("#contentCol3").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol3")[0], lineCount3);
+var lineCount4 = $("#contentCol4").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol4")[0], lineCount4);
+var lineCount5 = $("#contentCol5").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol5")[0], lineCount5);
 </script>
 </body>
 </html>

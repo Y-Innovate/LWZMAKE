@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
@@ -20,8 +21,15 @@ There's plenty of information on the web about <span class="clsMonospace">make</
 <span class="clsMonospace">zmake</span> is a similar utility but for z/OS, or to be more specific the 'old' MVS part of z/OS (because the unix <span class="clsMonospace">make</span> is already available under z/OS Unix System Services). <span class="clsMonospace">zmake</span> works more or less the same as <span class="clsMonospace">make</span> and its <span class="clsMonospace">makefile</span> syntax is loosely based on <span class="clsMonospace">make's</span> but there are some differences.
 </p>
 <p>
+The most notable differences are:
+<ul>
+	<li>To determine if some file changed, a last alter date is needed. Since the MVS file system is fundamentally different from a *nix file system, obtaining last alter dates is different. PDS(E) member last alter dates are obtained from ISPF statistics, except for load modules which are processed with the binder API to obtain the load module creation date from its contents. Data sets have no last alter date, so it's only possible to check for existence (checked in catalog).</li>
+	<li>Traditional <span class="clsMonospace">make</span> recipes start command lines that would run in a shell or command prompt in order to build stuff. z/OS typically runs programs by submitting JCL's and has no real command prompt other than the unix which really focusses on the unix environment. As an alternative <span class="clsMonospace">zmake</span> provides or reuses a REXX environment in stead of a shell and allows you to run REXX execs as 'command lines'.
+</ul>
+</p>
+<p>
 A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td id="contentCol1"><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
 
 <font color="#008000"># Copy SOMEJOB, but only if it changed</font>
 <font color="#800000">MYUSR.PDS.JCL(SOMEJOB)</font> : <font color="#388D9A">SOMEUSR.PDS.JCL(SOMEJOB)</font>
@@ -30,7 +38,7 @@ A basic example of the <span class="clsMonospace">zmake makefile</span> syntax:
 </p>
 <p>
 Or in a more generic form:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol2"></td><td id="contentCol2"><font color="#800000">target</font> : <font color="#388D9A">prerequisite</font>
 - recipe command</td></tr></table></div>
 </p>
 <p>
@@ -42,15 +50,15 @@ The third line is a comment line since it starts with a <span class="clsMonospac
 <br/>
 On the fourth sample line before the <span class="clsMonospace">:</span> is specified the file or files that share the same command line(s) to build them. In the example that's <span class="clsMonospace">MYUSR.PDS.JCL(SOMEJOB)</span>. After the <span class="clsMonospace">:</span> follow <span class="clsMonospace">prerequisites</span> to the building of this <span class="clsMonospace">target</span>, for example input files, which in turn could be targets defined elsewhere in the <span class="clsMonospace">makefile</span>. In the example that's <span class="clsMonospace">SOMEUSR.PDS.JCL(SOMEJOB)</span>. The combination of the targets and prerequisites is called a <span class="clsMonospace">rule</span>.<br/>
 <br/>
-The fifth and sixth line in the example define the <span class="clsMonospace">recipe</span>, in this example a single command that wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
+The fifth and sixth line in the example define the <span class="clsMonospace">recipe</span>, in this example a single command calling a REXX exec called IEBCOPY to copy a member from one PDS to another. That command wouldn't fit on a single 72 character line, so it's continued with a <span class="clsMonospace">\</span> continuation character. A recipe can contain multiple commands that each start with a recipe prefix, the default is a tab character but that's a difficult character to code on z/OS. Each recipe command is executed to build the target as long as they return <span class="clsMonospace">0</span>.
 </p>
 </div>
 <script type="text/javascript">
-var nrCol1 = document.getElementById("nrCol1");
-var nrCol2 = document.getElementById("nrCol2");
+var lineCount1 = $("#contentCol1").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol1")[0], lineCount1);
 
-NumberLines(nrCol1, 6);
-NumberLines(nrCol2, 2);
+var lineCount2 = $("#contentCol2").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol2")[0], lineCount2);
 </script>
 </body>
 </html>

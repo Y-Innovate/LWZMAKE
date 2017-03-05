@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>LWZMAKE documentation</title>
 <link href="styles.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
@@ -12,7 +13,7 @@
 <h1>Recipes</h1>
 <p>
 A <span class="clsMonospace">recipe</span> is the script that is executed when the evaluation of the preceding rule flagged the target to be built. Consider the following simple <span class="clsMonospace">makefile</span>:
-<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
+<div class="clsDivCode" style="padding: 5px 20px;"><table><tr><td id="nrCol1"></td><td id="contentCol1"><font color="#0000FF">.RECIPEPREFIX</font> = <font color="#0000FF">-</font>
 
 <font color="#008000"># Example of a simple recipe</font>
 .PHONY SIMPLE_TARGET
@@ -61,9 +62,8 @@ Another difference is the use of target reference variables:
 </p>
 </div>
 <script type="text/javascript">
-var nrCol1 = document.getElementById("nrCol1");
-
-NumberLines(nrCol1, 9);
+var lineCount1 = $("#contentCol1").text().split(/\r\n|\r|\n/).length;
+NumberLines($("#nrCol1")[0], lineCount1);
 </script>
 </body>
 </html>
