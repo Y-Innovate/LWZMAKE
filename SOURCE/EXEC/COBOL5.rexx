@@ -1051,6 +1051,9 @@ DO WHILE g.error == 0
          WHEN _parmName == 'SYSOPTF' THEN DO
             g.sysoptf = _dsname
          END
+         WHEN _parmName == 'SYSPRINT' THEN DO
+            g.sysprint = _dsname
+         END
          WHEN _parmName == 'DBRMLIB' THEN DO
             g.dbrmlib = _dsname
          END
@@ -1062,7 +1065,8 @@ DO WHILE g.error == 0
       IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       IF g.lexer.currToken /= ')' THEN DO
          IF _parmName == 'SYSLIN' | _parmName == 'SYSIN' | ,
-            _parmName == 'SYSOPTF' | _parmName == 'DBRMLIB' THEN DO
+            _parmName == 'SYSOPTF' | _parmName == 'SYSPRINT' THEN DO
+            _parmName == 'DBRMLIB' THEN DO
             CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
             g.error = 8
             RETURN
@@ -1084,13 +1088,14 @@ IF g.error == 0 & g.syslmod == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSLIN:  'g.syslin
-   SAY 'SYSIN:   'g.sysin
+   SAY 'SYSLIN:   'g.syslin
+   SAY 'SYSIN:    'g.sysin
    DO i = 1 to g.syslib.0
-      SAY 'SYSLIB:  'g.syslib.i
+      SAY 'SYSLIB:   'g.syslib.i
    END
-   SAY 'SYSOPTF: 'g.sysoptf
-   SAY 'DBRMLIB: 'g.dbrmlib
+   SAY 'SYSOPTF:  'g.sysoptf
+   SAY 'SYSPRINT: 'g.sysprint
+   SAY 'DBRMLIB:  'g.dbrmlib
 END
 
 RETURN
