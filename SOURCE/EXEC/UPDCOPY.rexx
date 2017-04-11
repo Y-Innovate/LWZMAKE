@@ -89,6 +89,7 @@ init: PROCEDURE EXPOSE g. SIGL
 SAY COPIES('*',100)
 SAY '* UPDCOPY'
 SAY COPIES('*',100)
+SAY g.arg
 
 g.error = 0
 
