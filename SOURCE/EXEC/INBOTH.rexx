@@ -1,1 +1,56 @@
-êáìì& êëá êå/ÊÅëÁÈ/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀä?Í>Èï|êàë/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀä?Í>Èï|êàë/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀÄÍÊÊÁ>Èï?ÊÀÊÁÈëÈÊÑ>Åä <<ËÁÈï?ÊÀà|ïçñ<áÄÍÊÊÁ>Èï?ÊÀñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>È/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>ÈÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀèçá+à|ñãÊÁÈëÈÊÑ>Åèçá+à|ÊÁÈëÈÊÑ>ÅÄÍÊÊÁ>Èï?ÊÀá+àá<ëáà|ÊÁÈëÈÊÑ>ÅÊÁÈëÈÊÑ>ÅÄÍÊÊÁ>Èï?ÊÀá+àá+àñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>ÈÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀèçá+à|/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀá+àñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>ÈÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀèçá+à|/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀá+àä <<ËÁÈï?ÊÀá+àêáèíê+ÊÁÈëÈÊÑ>ÅËÁÈï?ÊÀñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>Èèçá+à|ñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>Èèçá+à|ñãï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀèçá+à|ÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀá+àá<ëáà|ÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀá+àá+àá<ëáà|ÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀá+àá+àá<ëáà|ñã/ÊÅëÁÈï?ÊÀ/ÊÅëÁÈï?ÊÀä?Í>Èèçá+à|ÄÍÊÊÁ>Èï?ÊÀï|êà/ÊÅëÁÈ/ÊÅëÁÈï?ÊÀá+àá<ëáà|ÄÍÊÊÁ>Èï?ÊÀá+àá+àêáèíê+
+/* REXX */
+PARSE ARG argSet1','argSet2
+argSet1WordCount = WORDS(argSet1)
+argSet2WordCount = WORDS(argSet2)
+argSet1Word# = 1
+argSet2Word# = 1
+currentWord = ""
+retString = ""
+CALL setWord
+DO WHILE currentWord /= ""
+  IF argSet1Word# <= argSet1WordCount & ,
+     argSet2Word# <= argSet2WordCount & ,
+     currentWord = WORD(argSet1,argSet1Word#) & ,
+     currentWord = WORD(argSet2,argSet2Word#) THEN DO
+    IF retString = "" THEN DO
+      retString = currentWord
+    END
+    ELSE DO
+      retString = retString" "currentWord
+    END
+  END
+  IF argSet1Word# <= argSet1WordCount & ,
+     currentWord = WORD(argSet1,argSet1Word#) THEN DO
+    argSet1Word# = argSet1Word# + 1
+  END
+  IF argSet2Word# <= argSet2WordCount & ,
+     currentWord = WORD(argSet2,argSet2Word#) THEN DO
+    argSet2Word# = argSet2Word# + 1
+  END
+  CALL setWord
+END
+RETURN retString
+
+setWord:
+IF argSet1Word# <= argSet1WordCount THEN DO
+  IF argSet2Word# <= argSet2WordCount THEN DO
+    IF WORD(argSet1,argSet1Word#) <= WORD(argSet2,argSet2Word#) THEN DO
+      currentWord = WORD(argSet1,argSet1Word#)
+    END
+    ELSE DO
+      currentWord = WORD(argSet2,argSet2Word#)
+    END
+  END
+  ELSE DO
+    currentWord = WORD(argSet1,argSet1Word#)
+  END
+END
+ELSE DO
+  IF argSet2Word# <= argSet2WordCount THEN DO
+    currentWord = WORD(argSet2,argSet2Word#)
+  END
+  ELSE DO
+    currentWord = ""
+  END
+END
+RETURN

@@ -1,0 +1,48 @@
+//ISPFMAKE PROC LWZMHLQ=,MAKEPARM=,MAKEFILE=,EXECLIB=,                          
+//             ISPHLQ=ISP  <=== CHECK                                           
+//*                                                                             
+//ALLOPDS EXEC PGM=IEFBR14,COND=(0,NE)                                          
+//PDS       DD DISP=(,PASS),DSN=&&PROC,UNIT=SYSDA,                              
+//             SPACE=(TRK,(1,1,1)),RECFM=FB,LRECL=80,DSORG=PO                   
+//*                                                                             
+//GENCALL EXEC PGM=SORT,COND=(0,NE)                                             
+//SORTIN    DD *,SYMBOLS=EXECSYS,DLM=$$                                         
+PROC 0                                                                          
+CONTROL MSG ASIS                                                                
+SET PRM = &STR(&MAKEPARM)                                                       
+ISPEXEC SELECT PGM(LWZMAKE) PARM(&PRM) NEWAPPL(TEMP) PASSLIB                    
+SET ZISPFRC = &LASTCC                                                           
+ISPEXEC VPUT (ZISPFRC) SHARED                                                   
+END EXITCODE(&ZISPFRC)                                                          
+$$                                                                              
+//SYSIN     DD *                                                                
+  SORT FIELDS=COPY,EQUALS                                                       
+  OUTREC FIELDS=(1,72)                                                          
+  END                                                                           
+/*                                                                              
+//SORTOUT   DD DISP=(SHR,PASS),DSN=&&PROC(ISPFMAKE)                             
+//SYSOUT    DD SYSOUT=*                                                         
+//*                                                                             
+//ZMAKE   EXEC PGM=IKJEFT1B,REGION=256M,DYNAMNBR=30,COND=(0,NE)                 
+//SYSEXEC   DD DISP=SHR,DSN=&EXECLIB                                            
+//SYSPROC   DD DISP=SHR,DSN=ISP.SISPCLIB                                        
+//          DD DISP=(SHR,DELETE),DSN=&&PROC                                     
+//LWZMINP   DD DISP=SHR,DSN=&MAKEFILE                                           
+//EQADEBUG  DD DISP=SHR,DSN=&LWZMHLQ..EQALANGX                                  
+//ISPPROF   DD RECFM=FB,LRECL=80,SPACE=(TRK,(2,2,2))                            
+//ISPLLIB   DD DISP=SHR,DSN=&LWZMHLQ..LOAD                                      
+//*         DD DISP=SHR,DSN=<CICS_HLQ>.SDFHLOAD                                 
+//*         DD DISP=SHR,DSN=<DB2_SUBSYS_HLQ>.SDSNEXIT                           
+//*         DD DISP=SHR,DSN=<DB2_HLQ>.SDSNLOAD                                  
+//*         DD DISP=SHR,DSN=<IPV_HLQ>.SIPVMODA                                  
+//ISPMLIB   DD DISP=SHR,DSN=&ISPHLQ..SISPMENU                                   
+//ISPPLIB   DD DISP=SHR,DSN=&ISPHLQ..SISPPENU                                   
+//ISPSLIB   DD DISP=SHR,DSN=&ISPHLQ..SISPSENU                                   
+//ISPTLIB   DD DISP=SHR,DSN=&ISPHLQ..SISPTENU                                   
+//ISPCTL1   DD RECFM=FB,LRECL=80,SPACE=(CYL,1)                                  
+//ISPLOG    DD SYSOUT=*,RECFM=FB,LRECL=133                                      
+//SYSTSPRT  DD SYSOUT=*                                                         
+//LWZMLOG   DD SYSOUT=*,RECFM=FB,LRECL=160                                      
+//SYSTSIN   DD *,SYMBOLS=EXECSYS                                                
+  ISPSTART CMD(%ISPFMAKE)                                                       
+/*                                                                              

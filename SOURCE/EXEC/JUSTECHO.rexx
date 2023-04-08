@@ -1,1 +1,4 @@
-êáìì& êëá êå_` ÊÅë ß_` ÊÅáìñè
+/* REXX */
+PARSE ARG myArg
+SAY myArg
+EXIT 0

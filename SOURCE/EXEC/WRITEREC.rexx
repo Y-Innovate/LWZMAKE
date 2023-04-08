@@ -1,15 +1,12 @@
 /* REXX */
-PARSE ARG g.arg
+PARSE ARG g.ddname","g.record
 PARSE SOURCE . . g.rexxname .
 
 CALL init
 
-CALL allocatePDS
+CALL writeRecord
 
-IF g.error == 0 THEN
-   RETURN g.dsname
-ELSE
-   RETURN g.error
+RETURN g.error
 
 /**********************************************************************/
 /* Initialize                                                         */
@@ -17,33 +14,27 @@ ELSE
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* TEMPPDS'
+SAY '* WRITEREC'
 SAY COPIES('*',100)
 
 g.error = 0
 
-g.dsname = ""
+SAY 'Write to ddname: 'g.ddname
+SAY 'Write record   : "'g.record'"'
 
 RETURN
 
 /**********************************************************************/
-/* Allocate a temporary PDS                                           */
+/* Write a record                                                     */
 /**********************************************************************/
-allocatePDS: PROCEDURE EXPOSE g. SIGL
+writeRecord: PROCEDURE EXPOSE g. SIGL
 
-_rc = BPXWDYN("ALLOC NEW RECFM(F,B) DSORG(PO) LRECL(80) TRACKS" || ,
-           " SPACE(50,50) DIR(300) UNIT(SYSDA) RTDSN(_dsn) MSG(_msg.)")
+PUSH g.record
+"EXECIO 1 DISKW "g.ddname
 
-IF _rc == 0 THEN DO
-   g.dsname = _dsn
-END
-ELSE DO
-   DO i = 1 TO _msg.0
-      SAY _msg.i
-   END
+IF RC /= 0 THEN DO
    g.error = 8
-   IF _rc > 0 THEN _rc = D2X(_rc)
-   CALL log 'Dynamic allocation of a PDS failed with '_rc
+   CALL log "EXECIO failed "RC
 END
 
 RETURN

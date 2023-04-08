@@ -1,4 +1,31 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : NOTIN                                                 */
+/*                                                                    */
+/* Description: This program compares two lists of items and returns  */
+/*              the items found in the first list, but not in the     */
+/*              second.                                               */
+/*                                                                    */
+/* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>-SET1(-items1-)--SET2(-items2-)--><                 */
+/*                                                                    */
+/*              items1: space delimited list of items.                */
+/*              items2: space delimited list of items.                */
+/*                                                                    */
+/* Returns    : list of items only in SET1                            */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "SET1(A B C D E)"                  || ,                     */
+/*        " SET2(A C E)"                     || ,                     */
+/*                                                                    */
+/* CALL 'NOTIN' _par                                                  */
+/*                                                                    */
+/* _rc = RESULT  <-- would be "B D"                                   */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
@@ -7,10 +34,12 @@ CALL init
 CALL parseArguments
 
 IF g.error == 0 THEN DO
-   CALL createMember
+   CALL filterSets
 END
 
-EXIT g.error
+SAY 'RETURN:       'g.retvalue
+
+RETURN g.retvalue
 
 /**********************************************************************/
 /* Initialize                                                         */
@@ -18,91 +47,116 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* NEWDUMMY'
+SAY '* NOTIN'
 SAY COPIES('*',100)
 
 g.error = 0
+g.retvalue = ""
 
-g.newdummy = ""
+g.set1 = ""
+g.set2 = ""
 
 RETURN
 
 /**********************************************************************/
-/* Create dummy member                                                */
+/* Filter sets                                                        */
 /**********************************************************************/
-createMember:
+filterSets: PROCEDURE EXPOSE g. SIGL
 
-PARSE VAR g.newdummy _someDataset'('_someMember')'
+_set1 = g.set1
+_set2 = g.set2
+_s1.0 = 0
+_s2.0 = 0
 
-IF _someMember /= "" THEN DO
-   _lminit = "LMINIT DATAID(MYID)"
-   _lminit = _lminit || " DATASET('"_someDataset"')"
-   _lminit = _lminit || " ENQ(EXCLU)"
+DO WHILE _set1 <> ''
+   PARSE VAR _set1 _word _set1
 
-   ADDRESS ISPEXEC _lminit
-
-   IF RC /= 0 THEN DO
-      CALL log 'LMINIT failed with 'RC
-      g.error = 8
+   DO I = 1 TO _s1.0
+      IF _s1.I > _word THEN LEAVE
    END
 
-   IF g.error == 0 THEN DO
-      _lmopen = "LMOPEN DATAID(&MYID) OPTION(OUTPUT)"
-
-      ADDRESS ISPEXEC _lmopen
-
-      IF RC /= 0 THEN DO
-         CALL log 'LMOPEN failed with 'RC
-         g.error = 8
-      END
-
-      IF g.error == 0 THEN DO
-         ZLMTIME  = TIME()
-         ZLCDATE = TRANSLATE('yr/mn/dt',DATE('S'),'ceyrmndt')
-         ZLMDATE = TRANSLATE('yr/mn/dt',DATE('S'),'ceyrmndt')
-         ZLUSER   = USERID()
-         MYREC = ZLMTIME ZLCDATE ZLMDATE ZLUSER
-
-         _lmput = "LMPUT DATAID(&MYID) MODE(INVAR)"
-         _lmput = _lmput || " DATALOC(MYREC) DATALEN("LENGTH(MYREC)")"
-
-         ADDRESS ISPEXEC _lmput
-
-         IF RC /= 0 THEN DO
-            CALL log 'LMPUT failed with 'RC
-            g.error = 8
-         END
-
-         IF g.error == 0 THEN DO
-            _lmmadd = "LMMADD DATAID(&MYID) MEMBER("_someMember")"
-            _lmmadd = _lmmadd || " STATS(YES)"
-
-            ADDRESS ISPEXEC _lmmadd
-
-            IF RC /= 0 THEN DO
-               CALL log 'LMMADD failed with 'RC
-               g.error = 8
-            END
-         END
-
-         _lmclose = "LMCLOSE DATAID(&MYID)"
-
-         ADDRESS ISPEXEC _lmclose
-
-         IF RC /= 0 THEN DO
-            CALL log 'LMCLOSE failed with 'RC
-            g.error = 8
-         END
+   IF I <= _s1.0 THEN DO
+      DO J = _s1.0 TO I BY -1
+         nextJ = J + 1
+         _s1.nextJ = _s1.J
       END
    END
 
-   IF g.error == 0 THEN DO
-      ADDRESS ISPEXEC "LMFREE DATAID(&MYID)"
+   _s1.I = _word
 
-      IF RC /= 0 THEN DO
-         CALL log 'LMFREE failed with 'RC
-         g.error = 8
+   _s1.0 = _s1.0 + 1
+END
+
+DO WHILE _set2 <> ''
+   PARSE VAR _set2 _word _set2
+
+   DO I = 1 TO _s2.0
+      IF _s2.I > _word THEN LEAVE
+   END
+
+   IF I <= _s2.0 THEN DO
+      DO J = _s2.0 TO I BY -1
+         nextJ = J + 1
+         _s2.nextJ = _s2.J
       END
+   END
+
+   _s2.I = _word
+
+   _s2.0 = _s2.0 + 1
+END
+
+IF _s1.0 == 0
+THEN I = -1
+ELSE I = 1
+
+IF _s2.0 == 0
+THEN J = -1
+ELSE J = 1
+
+IF I < 0 & J < 0 THEN RETURN
+
+IF I >= 0 & J >= 0 THEN DO
+   IF _s1.I <= _s2.J
+   THEN _lowest = _s1.I
+   ELSE _lowest = _s2.J
+END
+ELSE DO
+   IF J < 0
+   THEN _lowest = _s1.I
+   ELSE _lowest = _s2.J
+END
+
+DO UNTIL I < 0 & J < 0
+   IF _s2.J == _lowest & _s1.I /= _lowest THEN DO
+      IF g.retvalue == ""
+      THEN g.retvalue = _s2.J
+      ELSE g.retvalue = g.retvalue" "_s2.J
+   END
+
+   IF _s1.I == _lowest THEN DO
+      IF I < _s1.0
+      THEN I = I + 1
+      ELSE I = -1
+   END
+
+   IF _s2.J == _lowest THEN DO
+      IF J < _s2.0
+      THEN J = J + 1
+      ELSE J = -1
+   END
+
+   IF I < 0 & J < 0 THEN LEAVE
+
+   IF I >= 0 & J >= 0 THEN DO
+      IF _s1.I <= _s2.J
+      THEN _lowest = _s1.I
+      ELSE _lowest = _s2.J
+   END
+   ELSE DO
+      IF J < 0
+      THEN _lowest = _s1.I
+      ELSE _lowest = _s2.J
    END
 END
 
@@ -117,8 +171,6 @@ g.parser.EXPECTED_EOF = 1
 g.parser.EXPECTED_NORMAL = 2
 g.parser.EXPECTED_OPEN_BRACKET = 4
 g.parser.EXPECTED_CLOSE_BRACKET = 8
-g.parser.EXPECTED_DOT = 16
-g.parser.EXPECTED_ANYTHING_ELSE = 64
 
 g.parser.SCAN_STATE_NOT_IN_PARM = 1
 g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM = g.parser.EXPECTED_EOF + ,
@@ -131,42 +183,12 @@ g.parser.EXPECTED_FOR_STATE_IN_PARM2 = g.parser.EXPECTED_NORMAL + ,
 g.parser.SCAN_STATE_IN_PARM3 = 4
 g.parser.EXPECTED_FOR_STATE_IN_PARM3 = g.parser.EXPECTED_NORMAL + ,
                                        g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_DSNAME1 = 5
-g.parser.EXPECTED_FOR_STATE_IN_DSNAME1 = g.parser.EXPECTED_NORMAL + ,
-                                         g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_DSNAME2 = 6
-g.parser.EXPECTED_FOR_STATE_IN_DSNAME2 = g.parser.EXPECTED_OPEN_BRACKET + ,
-                                         g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                         g.parser.EXPECTED_DOT
-g.parser.SCAN_STATE_IN_DSNAME3 = 7
-g.parser.EXPECTED_FOR_STATE_IN_DSNAME3 = g.parser.EXPECTED_NORMAL
-g.parser.SCAN_STATE_IN_DSNAME4 = 8
-g.parser.EXPECTED_FOR_STATE_IN_DSNAME4 = g.parser.EXPECTED_NORMAL
-g.parser.SCAN_STATE_IN_DSNAME5 = 9
-g.parser.EXPECTED_FOR_STATE_IN_DSNAME5 = g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_PARM_PARM1 = 10
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT + ,
-                                            g.parser.EXPECTED_ANYTHING_ELSE
-g.parser.SCAN_STATE_IN_PARM_PARM2 = 11
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT + ,
-                                            g.parser.EXPECTED_ANYTHING_ELSE
 
 g.parser.scanState = 1
 g.parser.scanStateTable.1 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM
 g.parser.scanStateTable.2 = g.parser.EXPECTED_FOR_STATE_IN_PARM1
 g.parser.scanStateTable.3 = g.parser.EXPECTED_FOR_STATE_IN_PARM2
 g.parser.scanStateTable.4 = g.parser.EXPECTED_FOR_STATE_IN_PARM3
-g.parser.scanStateTable.5 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME1
-g.parser.scanStateTable.6 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME2
-g.parser.scanStateTable.7 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME3
-g.parser.scanStateTable.8 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME4
-g.parser.scanStateTable.9 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME5
-g.parser.scanStateTable.10 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1
-g.parser.scanStateTable.11 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2
 
 _parmName = ""
 
@@ -175,7 +197,7 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error /= 0   | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
@@ -183,23 +205,54 @@ DO WHILE g.error == 0
    CALL lexerGetToken
    IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    SELECT
-   WHEN _parmName == 'DATASET' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+   WHEN _parmName == 'SET1' THEN DO
+      _openBracketCount = 0
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
       CALL lexerGetToken
       IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.newdummy = _dsname
+      IF g.lexer.currToken /= ')' THEN DO
+         g.set1 = g.lexer.currToken
          g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
          CALL lexerGetToken
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
+      END
+      DO WHILE g.lexer.currToken /= ')' | _openBracketCount > 0
+         g.set1 = g.set1" "g.lexer.currToken
+
+         IF g.lexer.currToken == '(' THEN DO
+            _openBracketCount = _openBracketCount + 1
          END
+         IF g.lexer.currToken == ')' THEN DO
+            _openBracketCount = _openBracketCount - 1
+         END
+
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
+   WHEN _parmName == 'SET2' THEN DO
+      _openBracketCount = 0
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF g.lexer.currToken /= ')' THEN DO
+         g.set2 = g.lexer.currToken
+         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+      DO WHILE g.lexer.currToken /= ')' | _openBracketCount > 0
+         g.set2 = g.set2" "g.lexer.currToken
+
+         IF g.lexer.currToken == '(' THEN DO
+            _openBracketCount = _openBracketCount + 1
+         END
+         IF g.lexer.currToken == ')' THEN DO
+            _openBracketCount = _openBracketCount - 1
+         END
+
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    OTHERWISE
@@ -209,51 +262,22 @@ DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
-IF g.error == 0 & g.newdummy == "" THEN DO
-   CALL log 'DATASET(...) expected but not found or specified wrong'
+IF g.sysin == "" THEN DO
+   CALL log 'SYSIN(...) expected but not found or specified wrong'
+   g.error = 8
+END
+
+IF g.error == 0 & g.syslin == "" THEN DO
+   CALL log 'SYSLIN(...) expected but not found or specified wrong'
    g.error = 8
 END
 
 IF g.error == 0 THEN DO
-   SAY 'DATASET: 'g.newdummy
+   SAY 'SET1:         'g.set1
+   SAY 'SET2:         'g.set2
 END
 
 RETURN
-
-/**********************************************************************/
-/* Parse data set name                                                */
-/**********************************************************************/
-parseDsname: PROCEDURE EXPOSE g. SIGL
-
-_dsname = g.lexer.currToken
-DO WHILE g.error == 0
-   g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME2
-   CALL lexerGetToken
-   IF g.error /= 0 THEN LEAVE
-   IF g.lexer.currToken /= '.' THEN LEAVE
-   _dsname = _dsname || g.lexer.currToken
-   g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME3
-   CALL lexerGetToken
-   IF g.error /= 0 THEN LEAVE
-   _dsname = _dsname || g.lexer.currToken
-   IF g.scanner.peekChar /= '.' & g.scanner.peekChar /= '(' THEN LEAVE
-END
-
-IF g.lexer.currToken == '(' THEN DO
-   _dsname = _dsname || g.lexer.currToken
-   g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME4
-   CALL lexerGetToken
-   IF g.error == 0 THEN DO
-      _dsname = _dsname || g.lexer.currToken
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME5
-      CALL lexerGetToken
-   END
-   IF g.error == 0 THEN DO
-      _dsname = _dsname || g.lexer.currToken
-   END
-END
-
-RETURN _dsname
 
 /**********************************************************************/
 /* Initialize lexer                                                   */
@@ -265,9 +289,9 @@ g.upperArgLen = LENGTH(g.upperArg)
 
 g.scanner.colIndex = 0
 
-g.lexer.IDENTIFIER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 g.lexer.IDENTIFIER_STARTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 g.lexer.IDENTIFIER_CHARS = g.lexer.IDENTIFIER_STARTCHARS || "0123456789@#$"
+g.lexer.IDENTIFIER_STARTCHARS = g.lexer.IDENTIFIER_CHARS
 
 RETURN
 
@@ -294,18 +318,6 @@ IF g.error == 0 THEN DO
       END
       ELSE DO
          CALL log 'Unexpected end of parameter at pos 'g.scanner.colIndex
-         g.error = 8
-      END
-      SIGNAL lexerGetToken_complete
-   END
-
-   IF g.scanner.currChar == '.' THEN DO
-      _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) /= 0 THEN DO
-         g.lexer.currToken = g.scanner.currChar
-      END
-      ELSE DO
-         CALL log 'Unexpected "." at pos 'g.scanner.colIndex
          g.error = 8
       END
       SIGNAL lexerGetToken_complete
@@ -355,14 +367,7 @@ IF g.error == 0 THEN DO
       SIGNAL lexerGetToken_complete
    END
 
-   _expected = g.parser.scanStateTable._state
-   IF C2D(BITAND(D2C(_expected), ,
-                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
-     g.lexer.currToken = g.scanner.currChar
-     SIGNAL lexerGetToken_complete
-   END
-
-   CALL log 'Unexpected character at 'g.scanner.colIndex
+   CALL log "Unexpected character '"g.scanner.currChar"' at "g.scanner.colIndex
    g.error = 8
 
 END

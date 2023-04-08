@@ -1,1 +1,8 @@
-êáìì& êëá êå_` ÊÅë ß<|ïáêä ëá^ÍøøÁÊ âäàáãåçñ¢.<(+|&éêëèíîïìß!^%?ÏÁÊ/ÂÄÀÁÃÅÇÑ¦,%_>?øÉÊËÈÍÎÏÌ`:^ÊÁÈèê +ë< èá_` ÊÅ^%?ÏÁÊ^ÍøøÁÊë ß^ÊÁÈêáèíê+^ÊÁÈ
+/* REXX */
+PARSE ARG myArg
+SAY 'LOWERCASE'
+_upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+_lower = 'abcdefghijklmnopqrstuvwxyz'
+_ret = TRANSLATE(myArg, _lower, _upper)
+SAY _ret
+RETURN _ret
