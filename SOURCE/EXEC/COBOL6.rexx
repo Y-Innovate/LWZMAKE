@@ -1,6 +1,6 @@
 /* REXX */
 /**********************************************************************/
-/* Program    : COBOL5                                                */
+/* Program    : COBOL6                                                */
 /*                                                                    */
 /* Description: This program invokes IGYCRCTL to compile a source.    */
 /*                                                                    */
@@ -19,8 +19,12 @@
 /*              >--+--------------------+--+--------------------+-->  */
 /*                 '-SYSOPTF(-optfile-)-'  '-DBRMLIB(-dbrmlib-)-'     */
 /*                                                                    */
-/*              >--+---------------------+-><                         */
+/*              >--+---------------------+->                          */
 /*                 '-SYSPRINT(-listing-)-'                            */
+/*                                                                    */
+/*                                 .-YES-.                            */
+/*              >--+---------------+-----+-+--><                      */
+/*                 '-PRINTSUCCESS(-+-NO--+)'                          */
 /*                                                                    */
 /*              source : Input COBOL source data set.                 */
 /*              object : Output object module data set.               */
@@ -29,6 +33,8 @@
 /*              optfile: Input COBOL compiler options data set.       */
 /*              dbrmlib: Output DBRM data set.                        */
 /*              listing: Output COBOL compile listing data set.       */
+/*              printsuccess: Copy listing to job log when successful */
+/*                            link edit.                              */
 /*                                                                    */
 /* Returns    : 0 when IGYCRCTL returned 4 or less                    */
 /*              8 when REXX error occurs or when parameter string     */
@@ -62,6 +68,8 @@ END
 
 CALL freeDDs
 
+SAY 'RETURN CODE:  'g.IGYCRCTL.retcode
+
 IF g.IGYCRCTL.retcode > 4 | g.IGYCRCTL.retcode < 0 THEN
    g.error = g.IGYCRCTL.retcode
 
@@ -73,7 +81,7 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* COBOL5'
+SAY '* COBOL6'
 SAY COPIES('*',100)
 
 g.error = 0
@@ -85,6 +93,7 @@ g.sysin = ""
 g.sysoptf = ""
 g.dbrmlib = ""
 g.sysprint = ""
+g.printsuccess = "Y"
 
 g.SYSLIN.allocated = 0
 g.SYSLIB.allocated = 0
@@ -102,6 +111,7 @@ g.SYSUT6.allocated = 0
 g.SYSUT7.allocated = 0
 g.SYSADATA.allocated = 0
 g.SYSJAVA.allocated = 0
+g.SYSDEBUG.allocated = 0
 g.SYSMDECK.allocated = 0
 g.DBRMLIB.allocated = 0
 g.SYSOPTF.allocated = 0
@@ -188,11 +198,11 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC DSN('"g.sysin"') SHR RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC DSN('"g.sysin"') SHR FI(SYSIN)")
 
    IF _rc == 0 THEN DO
       g.SYSIN.allocated = 1
-      g.SYSIN.ddname = _ddn
+      g.SYSIN.ddname = 'SYSIN'
    END
    ELSE DO
       g.error = 8
@@ -236,7 +246,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT1.allocated = 1
@@ -250,7 +260,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT2.allocated = 1
@@ -264,7 +274,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT3.allocated = 1
@@ -278,7 +288,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT4.allocated = 1
@@ -306,7 +316,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT5.allocated = 1
@@ -320,7 +330,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT6.allocated = 1
@@ -334,7 +344,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT7.allocated = 1
@@ -376,7 +386,22 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+    _rc = BPXWDYN("ALLOC NEW RECFM(F,B) DSORG(PS) LRECL(80) CYL" || ,
+                  " SPACE(1,1) RTDDN(_ddn)")
+
+   IF _rc == 0 THEN DO
+      g.SYSDEBUG.allocated = 1
+      g.SYSDEBUG.ddname = _ddn
+   END
+   ELSE DO
+      g.error = 8
+      IF _rc > 0 THEN _rc = D2X(_rc)
+      CALL log 'Dynamic allocation of SYSDEBUG failed with '_rc
+   END
+END
+
+IF g.error == 0 THEN DO
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSMDECK.allocated = 1
@@ -428,7 +453,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT8.allocated = 1
@@ -442,7 +467,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT9.allocated = 1
@@ -456,7 +481,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT10.allocated = 1
@@ -470,7 +495,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT11.allocated = 1
@@ -484,7 +509,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT12.allocated = 1
@@ -498,7 +523,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT13.allocated = 1
@@ -512,7 +537,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT14.allocated = 1
@@ -526,7 +551,7 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(460) SPACE(350,100) RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC NEW BLOCK(800) SPACE(500,500) RTDDN(_ddn)")
 
    IF _rc == 0 THEN DO
       g.SYSUT15.allocated = 1
@@ -742,6 +767,19 @@ IF g.SYSJAVA.allocated == 1 THEN DO
    END
 END
 
+IF g.SYSDEBUG.allocated == 1 THEN DO
+   _rc = BPXWDYN("FREE FI("g.SYSDEBUG.ddname")")
+
+   IF _rc == 0 THEN DO
+      g.SYSDEBUG.allocated = 0
+   END
+   ELSE DO
+      g.error = 8
+      IF _rc > 0 THEN _rc = D2X(_rc)
+      CALL log 'Free of file 'g.SYSDEBUG.ddname' failed with '_rc
+   END
+END
+
 IF g.SYSMDECK.allocated == 1 THEN DO
    _rc = BPXWDYN("FREE FI("g.SYSMDECK.ddname")")
 
@@ -914,7 +952,7 @@ _ddlist = LEFT(g.SYSLIN.ddname,8) || ,
           LEFT(g.SYSUT7.ddname,8) || ,
           LEFT(g.SYSADATA.ddname,8) || ,
           LEFT(g.SYSJAVA.ddname,8) || ,
-          COPIES('00'X,8) || ,
+          LEFT(g.SYSDEBUG.ddname,8) || ,
           LEFT(g.SYSMDECK.ddname,8) || ,
           LEFT(g.DBRMLIB.ddname,8) || ,
           LEFT(g.SYSOPTF.ddname,8) || ,
@@ -931,40 +969,43 @@ ADDRESS LINKMVS _prog '_parm _ddlist'
 
 g.IGYCRCTL.retcode = RC
 
-"EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+IF g.printsuccess == "Y" | ,
+   g.IGYCRCTL.retcode > 4 | g.IGYCRCTL.retcode < 0 THEN DO
+   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = RC
-
-IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+   _rc = RC
 
    IF _rc == 0 THEN DO
-      SAY "SYSPRINT copied to DD "_ddn
+      _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+      IF _rc == 0 THEN DO
+         SAY "SYSPRINT copied to DD "_ddn
 
-      _rc = RC
+         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         _rc = RC
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         END
+
+         _rc = BPXWDYN("FREE FI("_ddn")")
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "FREE for copy SYSPRINT failed "_rc
+         END
       END
-
-      _rc = BPXWDYN("FREE FI("_ddn")")
-
-      IF _rc /= 0 THEN DO
+      ELSE DO
          g.error = 8
-         CALL log "FREE for copy SYSPRINT failed "_rc
+         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
       g.error = 8
-      CALL log "ALLOC for copy SYSPRINT failed "_rc
+      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 RETURN
@@ -1030,47 +1071,62 @@ DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
    CALL lexerGetToken
    IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-   CALL lexerGetToken
-   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   DO WHILE g.lexer.currToken /= ')'
-      _dsname = parseDsname()
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      SELECT
-         WHEN _parmName == 'SYSLIN' THEN DO
-            g.syslin = _dsname
-         END
-         WHEN _parmName == 'SYSIN' THEN DO
-            g.sysin = _dsname
-         END
-         WHEN _parmName == 'SYSLIB' THEN DO
-            _nextSyslib = g.syslib.0 + 1
-            g.syslib.0 = _nextSyslib
-            g.syslib._nextSyslib = _dsname
-         END
-         WHEN _parmName == 'SYSOPTF' THEN DO
-            g.sysoptf = _dsname
-         END
-         WHEN _parmName == 'SYSPRINT' THEN DO
-            g.sysprint = _dsname
-         END
-         WHEN _parmName == 'DBRMLIB' THEN DO
-            g.dbrmlib = _dsname
-         END
-         OTHERWISE
-            NOP
-      END
-      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+   IF _parmName /= 'PRINTSUCCESS' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
       IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      IF g.lexer.currToken /= ')' THEN DO
-         IF _parmName == 'SYSLIN' | _parmName == 'SYSIN' | ,
-            _parmName == 'SYSOPTF' | _parmName == 'SYSPRINT' THEN DO
-            _parmName == 'DBRMLIB' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
+      DO WHILE g.lexer.currToken /= ')'
+         _dsname = parseDsname()
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         SELECT
+            WHEN _parmName == 'SYSLIN' THEN DO
+               g.syslin = _dsname
+            END
+            WHEN _parmName == 'SYSIN' THEN DO
+               g.sysin = _dsname
+            END
+            WHEN _parmName == 'SYSLIB' THEN DO
+               _nextSyslib = g.syslib.0 + 1
+               g.syslib.0 = _nextSyslib
+               g.syslib._nextSyslib = _dsname
+            END
+            WHEN _parmName == 'SYSOPTF' THEN DO
+               g.sysoptf = _dsname
+            END
+            WHEN _parmName == 'SYSPRINT' THEN DO
+               g.sysprint = _dsname
+            END
+            WHEN _parmName == 'DBRMLIB' THEN DO
+               g.dbrmlib = _dsname
+            END
+            OTHERWISE
+               NOP
          END
+         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
+            IF _parmName == 'SYSLIN' | _parmName == 'SYSIN' | ,
+               _parmName == 'SYSOPTF' | _parmName == 'SYSPRINT' THEN DO
+               _parmName == 'DBRMLIB' THEN DO
+               CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
+               g.error = 8
+               RETURN
+            END
+         END
+      END
+   END
+   ELSE DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF TRANSLATE(g.lexer.currToken) == 'NO' THEN DO
+         g.printsuccess = 'N'
+      END
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+      DO WHILE g.lexer.currToken /= ')'
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
    IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
@@ -1088,14 +1144,15 @@ IF g.error == 0 & g.syslmod == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSLIN:   'g.syslin
-   SAY 'SYSIN:    'g.sysin
+   SAY 'SYSLIN:       'g.syslin
+   SAY 'SYSIN:        'g.sysin
    DO i = 1 to g.syslib.0
-      SAY 'SYSLIB:   'g.syslib.i
+      SAY 'SYSLIB:       'g.syslib.i
    END
-   SAY 'SYSOPTF:  'g.sysoptf
-   SAY 'SYSPRINT: 'g.sysprint
-   SAY 'DBRMLIB:  'g.dbrmlib
+   SAY 'SYSOPTF:      'g.sysoptf
+   SAY 'SYSPRINT:     'g.sysprint
+   SAY 'DBRMLIB:      'g.dbrmlib
+   SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
 RETURN

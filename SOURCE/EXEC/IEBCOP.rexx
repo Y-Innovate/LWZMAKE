@@ -1,52 +1,48 @@
 /* REXX */
 /**********************************************************************/
-/* Program    : ASMA                                                  */
+/* Program    : IEBCOP                                                */
 /*                                                                    */
-/* Description: This program invokes ASMA90 to assemble a source.     */
+/* Description: This program invokes IEBCOPY to copy one, multiple or */
+/*              all members from one PDS(E) to another.               */
 /*                                                                    */
 /* Environment: Any (plain LWZMAKE, TSO, ISPF)                        */
 /*                                                                    */
 /* Parameters : The program accepts a single parameter string with    */
 /*              the following syntax:                                 */
 /*                                                                    */
-/*              >>-SYSIN(-source-)--SYSLIN(-object-)--------------->  */
+/*              >>-PDSIN(-pdsin-)--PDSOUT(-pdsout-)---------------->  */
 /*                                                                    */
-/*              >--+-----------------------+----------------------->  */
-/*                 |         .---------.   |                          */
-/*                 |         V         |   |                          */
-/*                 '-SYSLIB(---copylib-+-)-'                          */
-/*                                                                    */
-/*              >--+-------------------+--+---------------------+-->  */
-/*                 '-SYSADATA(-adata-)-'  '-SYSPRINT(-listing-)-'     */
+/*              >--MEMBER(-member-)--+----------------+------------>  */
+/*                                   '-SYSIN(-sysin-)-'               */
 /*                                                                    */
 /*                                                     .-YES-.        */
 /*              >--+----------------+--+---------------+-----+-+--><  */
-/*                 '-PARM(-params-)-'  '-PRINTSUCCESS(-+-NO--+)'      */
+/*                 '-PRINT(-print-)-'  '-PRINTSUCCESS(-+-NO--+)'      */
 /*                                                                    */
-/*              source : Input assembler source data set.             */
-/*              object : Output object module data set.               */
-/*              copylib: One or more input assembler copy or macro    */
-/*                       PDS(E)'s, separated by spaces.               */
-/*              adata  : Output ADATA module data set (for debugging).*/
-/*              listing: Output assembler listing data set.           */
-/*              params : Parameters to ASMA90.                        */
+/*              pdsin : Input PDS(E) data set.                        */
+/*              pdsout: Output PDS(E) data set.                       */
+/*              member: IEBCOPY SELECT MEMBER selection list.         */
+/*              sysin : Input SYSIN data set.                         */
+/*              print : SYSOUT to write IEBCOPY to a sysout file      */
+/*                        this is the default                         */
+/*                      DD:<ddname> to write IEBCOPY to a ddname      */
+/*                        allocated outside this REXX                 */
+/*                      anything else is considered a data set name   */
+/*                        to receive the IEBCOPY output               */
 /*              printsuccess: Copy listing to job log when successful */
 /*                            compile YES/NO.                         */
 /*                                                                    */
-/* Returns    : 0 when ASMA90 returned 4 or less                      */
+/* Returns    : 0 when IEBCOPY returned 0                             */
 /*              8 when REXX error occurs or when parameter string     */
 /*                contains syntax error                               */
-/*              n any ASMA90 return code > 4                          */
+/*              n any IEBCOPY return code /= 0                        */
 /*                                                                    */
 /* Sample code:                                                       */
-/* _par = "SYSIN(MY.ASM.PDS(MEMBER))"        || ,                     */
-/*        " SYSLIN(MY.OBJ.PDS(MEMBER))"      || ,                     */
-/*        " SYSLIB(SYS1.MACLIB SYS1.MODGEN)" || ,                     */
-/*        " SYSADATA(MY.ADATA.PDS(MEMBER))"  || ,                     */
-/*        " SYSPRINT(MY.LST.PDS(MEMBER))"    || ,                     */
-/*        " PARM(ADATA,LIST(133))"                                    */
+/* _par = "PDSIN(MY.INPUT.PDS)"     || ,                              */
+/*        " PDSOUT(MY.OUTPUT.PDS)"  || ,                              */
+/*        " MEMBER(MEM1,MEM2,ABC*)"                                   */
 /*                                                                    */
-/* CALL 'ASMA' _par                                                   */
+/* CALL 'IEBCOPY' _par                                                */
 /*                                                                    */
 /* _rc = RESULT                                                       */
 /**********************************************************************/
@@ -62,15 +58,13 @@ IF g.error == 0 THEN DO
 END
 
 IF g.error == 0 THEN DO
-   CALL invokeASMA90
+   CALL invokeIEBCOPY
 END
 
 CALL freeDDs
 
-SAY 'RETURN CODE:  'g.ASMA90.retcode
-
-IF g.ASMA90.retcode > 4 | g.ASMA90.retcode < 0 THEN
-   g.error = g.ASMA90.retcode
+IF g.IEBCOPY.retcode /= 0 THEN
+   g.error = g.IEBCOPY.retcode
 
 EXIT g.error
 
@@ -80,245 +74,182 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* ASMA'
+SAY '* IEBCOPY'
 SAY COPIES('*',100)
 
 g.error = 0
-g.ASMA90.retcode = 0
+g.IEBCOPY.retcode = 0
 
 g.sysin = ""
-g.syslin = ""
-g.syslib.0 = 0
-g.sysadata = ""
 g.sysprint = ""
-g.parm = ""
+g.pdsin = ""
+g.pdsout = ""
+g.member = ""
+g.print = "SYSOUT"
 g.printsuccess = "Y"
 
-g.SYSLIN.allocated = 0
-g.SYSLIB.allocated = 0
-g.SYSLIB.ddname.0 = 0
 g.SYSIN.allocated = 0
 g.SYSPRINT.allocated = 0
-g.SYSPUNCH.allocated = 0
-g.SYSUT1.allocated = 0
-g.SYSTERM.allocated = 0
-g.SYSADATA.allocated = 0
-g.ASMAOPT.allocated = 0
+g.PDSIN.allocated = 0
+g.PDSOUT.allocated = 0
 
 RETURN
 
 /**********************************************************************/
-/* Allocate DD's for invoking ASMA90                                  */
+/* Allocate DD's for invoking IEBCOPY                                 */
 /**********************************************************************/
 allocDDs: PROCEDURE EXPOSE g. SIGL
 
-_rc = BPXWDYN("ALLOC DSN('"g.syslin"') SHR RTDDN(_ddn)")
+_rc = BPXWDYN("ALLOC DSN('"g.pdsin"') SHR RTDDN(_ddn)")
 
 IF _rc == 0 THEN DO
-   g.SYSLIN.allocated = 1
-   g.SYSLIN.ddname = _ddn
+   g.PDSIN.allocated = 1
+   g.PDSIN.ddname = _ddn
 END
 ELSE DO
    g.error = 8
    IF _rc > 0 THEN _rc = D2X(_rc)
-   CALL log 'Dynamic allocation of 'g.syslin' failed with '_rc
+   CALL log 'Dynamic allocation of 'g.pdsin' failed with '_rc
 END
 
 IF g.error == 0 THEN DO
-   IF g.syslib.0 == 0 THEN DO
-      _rc = BPXWDYN("ALLOC DUMMY SHR RTDDN(_ddn)")
+   _rc = BPXWDYN("ALLOC DSN('"g.pdsout"') SHR RTDDN(_ddn)")
+
+   IF _rc == 0 THEN DO
+      g.PDSOUT.allocated = 1
+      g.PDSOUT.ddname = _ddn
+   END
+   ELSE DO
+      g.error = 8
+      IF _rc > 0 THEN _rc = D2X(_rc)
+      CALL log 'Dynamic allocation of 'g.pdsout' failed with '_rc
+   END
+END
+
+IF g.error == 0 THEN DO
+   IF g.sysin /= "" THEN DO
+      _rc = BPXWDYN("ALLOC DSN('"g.sysin"') SHR RTDDN(_ddn)")
 
       IF _rc == 0 THEN DO
-         g.SYSLIB.allocated = 1
-         g.SYSLIB.ddname.0 = 1
-         g.SYSLIB.ddname.1 = _ddn
+         g.SYSIN.allocated = 1
+         g.SYSIN.ddname = _ddn
       END
       ELSE DO
          g.error = 8
          IF _rc > 0 THEN _rc = D2X(_rc)
-         CALL log 'Dynamic allocation of 'g.obj' failed with '_rc
+         CALL log 'Dynamic allocation of 'g.sysin' failed with '_rc
       END
    END
    ELSE DO
-      _rc = BPXWDYN("ALLOC DSN('"g.syslib.1"') SHR RTDDN(_ddn)")
+      _rc = BPXWDYN("ALLOC NEW RECFM(F,B) DSORG(PS) LRECL(80) TRACKS" || ,
+                    " SPACE(1,1) RTDDN(_ddn)")
 
       IF _rc == 0 THEN DO
-         g.SYSLIB.allocated = 1
-         g.SYSLIB.ddname.0 = 1
-         g.SYSLIB.ddname.1 = _ddn
-      END
-      ELSE DO
-         g.error = 8
-         IF _rc > 0 THEN _rc = D2X(_rc)
-         CALL log 'Dynamic allocation of 'g.syslib.1' failed with '_rc
-      END
+         g.SYSIN.allocated = 1
+         g.SYSIN.ddname = _ddn
 
-      DO i = 2 TO g.syslib.0 WHILE g.error == 0
-         _rc = BPXWDYN("ALLOC DSN('"g.syslib.i"') SHR RTDDN(_ddn)")
+         _members.0 = 0
+         _unstr = g.member
+         PARSE VAR _unstr _onemem","_unstr
+         DO UNTIL _onemem == ""
+            _nextmemnr = _members.0 + 1
+            _members.0 = _nextmemnr
+            _members._nextmemnr = _onemem
+            PARSE VAR _unstr _onemem","_unstr
+         END
 
-         IF _rc == 0 THEN DO
-            _nextDD = g.SYSLIB.ddname.0 + 1
-            g.SYSLIB.ddname.0 = _nextDD
-            g.SYSLIB.ddname._nextDD = _ddn
-
-            _rc = BPXWDYN("CONCAT DDLIST("g.SYSLIB.ddname.1","_ddn")")
-
-            IF _rc /= 0 THEN DO
-               g.error = 8
-               IF _rc > 0 THEN _rc = D2X(_rc)
-               CALL log 'Dynamic concatenation failed with '_rc
-            END
+         "NEWSTACK"
+         _copygroup = "         COPYGROUP OUTDD="g.PDSOUT.ddname
+         _copygroup = _copygroup || ",INDD=(("g.PDSIN.ddname",R))"
+         QUEUE _copygroup
+         IF _members.0 <= 1 THEN DO
+            QUEUE "         SELECT MEMBER=("g.member")"
          END
          ELSE DO
-            g.error = 8
-            IF _rc > 0 THEN _rc = D2X(_rc)
-            CALL log 'Dynamic allocation of 'g.syslib.i' failed with '_rc
+            _questr = "         SELECT MEMBER=("_members.1","
+            _questr = _questr || COPIES(" ",71-LENGTH(_questr)) || "X"
+            QUEUE _questr
+            DO i = 2 TO _members.0
+               _questr = "                        "_members.i
+               IF i < _members.0 THEN DO
+                  _questr = _questr || "," || ,
+                            COPIES(" ",70-LENGTH(_questr)) || "X"
+               END
+               ELSE DO
+                  _questr = _questr")"
+               END
+               QUEUE _questr
+            END
          END
+         "EXECIO "QUEUED()" DISKW "g.SYSIN.ddname" (FINIS"
+         _rc = RC
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log 'EXECIO to SYSIN failed with '_rc
+         END
+         "DELSTACK"
+      END
+      ELSE DO
+         g.error = 8
+         IF _rc > 0 THEN _rc = D2X(_rc)
+         CALL log 'Dynamic allocation of SYSIN failed with '_rc
       END
    END
 END
 
 IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC DSN('"g.sysin"') SHR RTDDN(_ddn)")
+   IF g.print == 'SYSOUT' THEN DO
+      _rc = BPXWDYN("ALLOC NEW RECFM(V,B,M) DSORG(PS) LRECL(133)" || ,
+                    " CYL SPACE(1,1) RTDDN(_ddn)")
 
-   IF _rc == 0 THEN DO
-      g.SYSIN.allocated = 1
-      g.SYSIN.ddname = _ddn
+      IF _rc == 0 THEN DO
+         g.SYSPRINT.allocated = 1
+         g.SYSPRINT.ddname = _ddn
+      END
+      ELSE DO
+         g.error = 8
+         IF _rc > 0 THEN _rc = D2X(_rc)
+         CALL log 'Dynamic allocation of SYSPRINT failed with '_rc
+      END
    END
    ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of 'g.sysin' failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   IF g.sysprint /= "" THEN DO
-      _rc = BPXWDYN("ALLOC DSN('"g.sysprint"') SHR RTDDN(_ddn)")
-   END
-   ELSE DO
-      _rc = BPXWDYN("ALLOC NEW RECFM(F,B,A) DSORG(PS) LRECL(133) CYL" || ,
-                    " SPACE(1,1) RTDDN(_ddn)")
-   END
-
-   IF _rc == 0 THEN DO
-      g.SYSPRINT.allocated = 1
-      g.SYSPRINT.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSPRINT failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC DUMMY RTDDN(_ddn)")
-
-   IF _rc == 0 THEN DO
-      g.SYSPUNCH.allocated = 1
-      g.SYSPUNCH.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSPUNCH failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC NEW BLOCK(4096) SPACE(120,120) RTDDN(_ddn)")
-
-   IF _rc == 0 THEN DO
-      g.SYSUT1.allocated = 1
-      g.SYSUT1.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSUT1 failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC DUMMY RTDDN(_ddn)")
-
-   IF _rc == 0 THEN DO
-      g.SYSTERM.allocated = 1
-      g.SYSTERM.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSTERM failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   IF g.sysadata == "" THEN DO
-      _rc = BPXWDYN("ALLOC DUMMY RTDDN(_ddn)")
-   END
-   ELSE DO
-      _rc = BPXWDYN("ALLOC DSN('"g.sysadata"') SHR RTDDN(_ddn)")
-   END
-
-   IF _rc == 0 THEN DO
-      g.SYSADATA.allocated = 1
-      g.SYSADATA.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSADATA failed with '_rc
-   END
-END
-
-IF g.error == 0 THEN DO
-   _rc = BPXWDYN("ALLOC DUMMY RTDDN(_ddn)")
-
-   IF _rc == 0 THEN DO
-      g.ASMAOPT.allocated = 1
-      g.ASMAOPT.ddname = _ddn
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of ASMAOPT failed with '_rc
+      IF SUBSTR(g.print,1,3) == "DD:" THEN DO
+         g.SYSPRINT.ddname = SUBSTR(g.print,4)
+      END
    END
 END
 
 RETURN
 
 /**********************************************************************/
-/* Free DD's after invoking ASMA90                                    */
+/* Free DD's after invoking IEBCOPY                                   */
 /**********************************************************************/
 freeDDs: PROCEDURE EXPOSE g. SIGL
 
-IF g.SYSLIN.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSLIN.ddname")")
+IF g.PDSIN.allocated == 1 THEN DO
+   _rc = BPXWDYN("FREE FI("g.PDSIN.ddname")")
 
    IF _rc == 0 THEN DO
-      g.SYSLIN.allocated = 0
+      g.PDSIN.allocated = 0
    END
    ELSE DO
       g.error = 8
       IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSLIN.ddname' failed with '_rc
+      CALL log 'Free of file 'g.PDSIN.ddname' failed with '_rc
    END
 END
 
-IF g.SYSLIB.allocated == 1 THEN DO
-   DO i = 1 TO g.SYSLIB.ddname.0
-      _rc = BPXWDYN("FREE FI("g.SYSLIB.ddname.i")")
+IF g.PDSOUT.allocated == 1 THEN DO
+   _rc = BPXWDYN("FREE FI("g.PDSOUT.ddname")")
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         IF _rc > 0 THEN _rc = D2X(_rc)
-         CALL log 'Free of file 'g.SYSLIB.ddname.i' failed with '_rc
-      END
+   IF _rc == 0 THEN DO
+      g.PDSOUT.allocated = 0
    END
-
-   g.SYSLIB.allocated = 0
+   ELSE DO
+      g.error = 8
+      IF _rc > 0 THEN _rc = D2X(_rc)
+      CALL log 'Free of file 'g.PDSOUT.ddname' failed with '_rc
+   END
 END
 
 IF g.SYSIN.allocated == 1 THEN DO
@@ -347,135 +278,64 @@ IF g.SYSPRINT.allocated == 1 THEN DO
    END
 END
 
-IF g.SYSPUNCH.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSPUNCH.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.SYSPUNCH.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSPUNCH.ddname' failed with '_rc
-   END
-END
-
-IF g.SYSUT1.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSUT1.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.SYSUT1.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSUT1.ddname' failed with '_rc
-   END
-END
-
-IF g.SYSTERM.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSTERM.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.SYSTERM.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSTERM.ddname' failed with '_rc
-   END
-END
-
-IF g.SYSADATA.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSADATA.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.SYSADATA.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSADATA.ddname' failed with '_rc
-   END
-END
-
-IF g.ASMAOPT.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.ASMAOPT.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.ASMAOPT.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.ASMAOPT.ddname' failed with '_rc
-   END
-END
-
 RETURN
 
 /**********************************************************************/
-/* Invoke ASMA90                                                      */
+/* Invoke IEBCOPY                                                     */
 /**********************************************************************/
-invokeASMA90: PROCEDURE EXPOSE g. SIGL
+invokeIEBCOPY: PROCEDURE EXPOSE g. SIGL
 
-_prog = 'ASMA90'
-_parm = g.parm
-_ddlist = LEFT(g.SYSLIN.ddname,8) || ,
+_prog = 'IEBCOPY'
+_parm = ''
+_ddlist = COPIES('00'X,8) || ,
           COPIES('00'X,8) || ,
           COPIES('00'X,8) || ,
-          LEFT(g.SYSLIB.ddname.1,8) || ,
+          COPIES('00'X,8) || ,
           LEFT(g.SYSIN.ddname,8) || ,
           LEFT(g.SYSPRINT.ddname,8) || ,
-          LEFT(g.SYSPUNCH.ddname,8) || ,
-          LEFT(g.SYSUT1.ddname,8) || ,
           COPIES('00'X,8) || ,
+          LEFT(g.PDSIN.ddname,8) || ,
+          LEFT(g.PDSOUT.ddname,8) || ,
           COPIES('00'X,8) || ,
-          COPIES('00'X,8) || ,
-          LEFT(g.SYSTERM.ddname,8) || ,
-          COPIES('00'X,8) || ,
-          COPIES('00'X,8) || ,
-          COPIES('00'X,8) || ,
-          LEFT(g.SYSADATA.ddname,8) || ,
-          COPIES('00'X,8) || ,
-          COPIES('00'X,8) || ,
-          COPIES('00'X,8) || ,
-          LEFT(g.ASMAOPT.ddname,8)
+          COPIES('00'X,8)
 
 ADDRESS LINKMVS _prog '_parm _ddlist'
 
-g.ASMA90.retcode = RC
+g.IEBCOPY.retcode = RC
 
-IF g.printsuccess == 'Y' | g.ASMA90.retcode /= 0 THEN DO
+IF g.printsuccess == 'Y' | g.IEBCOPY.retcode /= 0 THEN DO
    "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
    _rc = RC
 
-   IF _rc = 0 THEN DO
-      _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
+   IF _rc == 0 THEN DO
+      IF g.print == "SYSOUT" | ,
+         g.IEBCOPY.retcode /= 0 THEN DO
+         _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-      IF _rc == 0 THEN DO
-         SAY "SYSPRINT copied to DD "_ddn
+         IF _rc == 0 THEN DO
+            SAY "SYSPRINT copied to DD "_ddn
 
-         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+            "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-         _rc = RC
+            _rc = RC
 
-         IF _rc /= 0 THEN DO
-            g.error = 8
-            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+            IF _rc /= 0 THEN DO
+               g.error = 8
+               CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+            END
+
+            _rc = BPXWDYN("FREE FI("_ddn")")
+
+            IF _rc /= 0 THEN DO
+               g.error = 8
+               CALL log "FREE for copy SYSPRINT failed "_rc
+            END
          END
-
-         _rc = BPXWDYN("FREE FI("_ddn")")
-
-         IF _rc /= 0 THEN DO
+         ELSE DO
             g.error = 8
-            CALL log "FREE for copy SYSPRINT failed "_rc
+            CALL log "ALLOC for copy SYSPRINT failed "_rc
          END
-      END
-      ELSE DO
-         g.error = 8
-         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
@@ -496,7 +356,9 @@ g.parser.EXPECTED_NORMAL = 2
 g.parser.EXPECTED_OPEN_BRACKET = 4
 g.parser.EXPECTED_CLOSE_BRACKET = 8
 g.parser.EXPECTED_DOT = 16
-g.parser.EXPECTED_COMMA = 32
+g.parser.EXPECTED_ASTERISK = 32
+g.parser.EXPECTED_COMMA = 64
+g.parser.EXPECTED_COLON = 128
 
 g.parser.SCAN_STATE_NOT_IN_PARM = 1
 g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM = g.parser.EXPECTED_EOF + ,
@@ -522,16 +384,28 @@ g.parser.SCAN_STATE_IN_DSNAME4 = 8
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME4 = g.parser.EXPECTED_NORMAL
 g.parser.SCAN_STATE_IN_DSNAME5 = 9
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME5 = g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_PARM_PARM1 = 10
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT
-g.parser.SCAN_STATE_IN_PARM_PARM2 = 11
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_OPEN_BRACKET + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT + ,
-                                            g.parser.EXPECTED_COMMA
+g.parser.SCAN_STATE_IN_MEMBER1 = 10
+g.parser.EXPECTED_FOR_STATE_IN_MEMBER1 = g.parser.EXPECTED_NORMAL + ,
+                                         g.parser.EXPECTED_OPEN_BRACKET + ,
+                                         g.parser.EXPECTED_CLOSE_BRACKET + ,
+                                         g.parser.EXPECTED_DOT + ,
+                                         g.parser.EXPECTED_ASTERISK
+g.parser.SCAN_STATE_IN_MEMBER2 = 11
+g.parser.EXPECTED_FOR_STATE_IN_MEMBER2 = g.parser.EXPECTED_NORMAL + ,
+                                         g.parser.EXPECTED_OPEN_BRACKET + ,
+                                         g.parser.EXPECTED_CLOSE_BRACKET + ,
+                                         g.parser.EXPECTED_DOT + ,
+                                         g.parser.EXPECTED_ASTERISK + ,
+                                         g.parser.EXPECTED_COMMA
+g.parser.SCAN_STATE_IN_PRINT1 = 12
+g.parser.EXPECTED_FOR_STATE_IN_PRINT1 = g.parser.EXPECTED_NORMAL + ,
+                                        g.parser.EXPECTED_CLOSE_BRACKET
+g.parser.SCAN_STATE_IN_PRINT2 = 13
+g.parser.EXPECTED_FOR_STATE_IN_PRINT2 = g.parser.EXPECTED_COLON + ,
+                                        g.parser.EXPECTED_CLOSE_BRACKET
+g.parser.SCAN_STATE_IN_PRINT3 = 14
+g.parser.EXPECTED_FOR_STATE_IN_PRINT3 = g.parser.EXPECTED_NORMAL + ,
+                                        g.parser.EXPECTED_CLOSE_BRACKET
 
 g.parser.scanState = 1
 g.parser.scanStateTable.1 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM
@@ -543,8 +417,11 @@ g.parser.scanStateTable.6 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME2
 g.parser.scanStateTable.7 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME3
 g.parser.scanStateTable.8 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME4
 g.parser.scanStateTable.9 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME5
-g.parser.scanStateTable.10 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1
-g.parser.scanStateTable.11 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2
+g.parser.scanStateTable.10 = g.parser.EXPECTED_FOR_STATE_IN_MEMBER1
+g.parser.scanStateTable.11 = g.parser.EXPECTED_FOR_STATE_IN_MEMBER2
+g.parser.scanStateTable.12 = g.parser.EXPECTED_FOR_STATE_IN_PRINT1
+g.parser.scanStateTable.13 = g.parser.EXPECTED_FOR_STATE_IN_PRINT2
+g.parser.scanStateTable.14 = g.parser.EXPECTED_FOR_STATE_IN_PRINT3
 
 _parmName = ""
 
@@ -553,7 +430,7 @@ CALL initLexer
 DO WHILE g.error == 0
    CALL lexerGetToken
 
-   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
+   IF g.error /= 0   | g.scanner.currChar == 'EOF' THEN LEAVE
 
    _parmName = g.lexer.currToken
 
@@ -561,6 +438,57 @@ DO WHILE g.error == 0
    CALL lexerGetToken
    IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
    SELECT
+   WHEN _parmName == 'PDSIN' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
+         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+         _dsname = parseDsname()
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         g.pdsin = _dsname
+         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
+            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
+            g.error = 8
+            RETURN
+         END
+      END
+   END
+   WHEN _parmName == 'PDSOUT' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      DO WHILE g.lexer.currToken /= ')'
+         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+         _dsname = parseDsname()
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         g.pdsout = _dsname
+         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+         IF g.lexer.currToken /= ')' THEN DO
+            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
+            g.error = 8
+            RETURN
+         END
+      END
+   END
+   WHEN _parmName == 'MEMBER' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_MEMBER1
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      _member = ""
+      DO WHILE g.lexer.currToken /= ')'
+         _member = _member || g.lexer.currToken
+         g.member = _member
+         g.parser.scanState = g.parser.SCAN_STATE_IN_MEMBER2
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
    WHEN _parmName == 'SYSIN' THEN DO
       g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
       CALL lexerGetToken
@@ -580,92 +508,19 @@ DO WHILE g.error == 0
          END
       END
    END
-   WHEN _parmName == 'SYSLIN' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+   WHEN _parmName == 'PRINT' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PRINT1
       CALL lexerGetToken
       IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      _print = ""
       DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.syslin = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
+         _print = _print || g.lexer.currToken
+         g.print = _print
+         IF _print == 'DD' THEN DO
+            g.parser.scanState = g.parser.SCAN_STATE_IN_PRINT2
          END
-      END
-   END
-   WHEN _parmName == 'SYSADATA' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.sysadata = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
-         END
-      END
-   END
-   WHEN _parmName == 'SYSPRINT' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.sysprint = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
-         END
-      END
-   END
-   WHEN _parmName == 'SYSLIB' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         _nextSyslib = g.syslib.0 + 1
-         g.syslib.0 = _nextSyslib
-         g.syslib._nextSyslib = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      END
-   END
-   WHEN _parmName == 'PARM' THEN DO
-      _openBracketCount = 0
-      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM2
-      DO WHILE g.lexer.currToken /= ')' | _openBracketCount > 0
-         g.parm = g.parm || g.lexer.currToken
-         IF g.lexer.currToken == '(' THEN DO
-            _openBracketCount = _openBracketCount + 1
-         END
-         IF g.lexer.currToken == ')' THEN DO
-            _openBracketCount = _openBracketCount - 1
+         ELSE DO
+            g.parser.scanState = g.parser.SCAN_STATE_IN_PRINT3
          END
          CALL lexerGetToken
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
@@ -691,25 +546,22 @@ DO WHILE g.error == 0
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
-IF g.sysin == "" THEN DO
-   CALL log 'SYSIN(...) expected but not found or specified wrong'
+IF g.pdsin == "" THEN DO
+   CALL log 'PDSIN(...) expected but not found or specified wrong'
    g.error = 8
 END
 
-IF g.error == 0 & g.syslin == "" THEN DO
-   CALL log 'SYSLIN(...) expected but not found or specified wrong'
+IF g.error == 0 & g.pdsout == "" THEN DO
+   CALL log 'PDSOUT(...) expected but not found or specified wrong'
    g.error = 8
 END
 
 IF g.error == 0 THEN DO
+   SAY 'PDSIN:        'g.pdsin
+   SAY 'PDSOUT:       'g.pdsout
+   SAY 'MEMBER:       'g.member
    SAY 'SYSIN:        'g.sysin
-   SAY 'SYSLIN:       'g.syslin
-   DO i = 1 to g.syslib.0
-      SAY 'SYSLIB:       'g.syslib.i
-   END
-   SAY 'SYSADATA:     'g.sysadata
-   SAY 'SYSPRINT:     'g.sysprint
-   SAY 'PARM:         'g.parm
+   SAY 'PRINT:        'g.print
    SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
@@ -760,9 +612,9 @@ g.upperArgLen = LENGTH(g.upperArg)
 
 g.scanner.colIndex = 0
 
+g.lexer.IDENTIFIER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 g.lexer.IDENTIFIER_STARTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 g.lexer.IDENTIFIER_CHARS = g.lexer.IDENTIFIER_STARTCHARS || "0123456789@#$"
-g.lexer.IDENTIFIER_STARTCHARS = g.lexer.IDENTIFIER_CHARS
 
 RETURN
 
@@ -844,6 +696,32 @@ IF g.error == 0 THEN DO
       SIGNAL lexerGetToken_complete
    END
 
+   IF g.scanner.currChar == '*' THEN DO
+      _expected = g.parser.scanStateTable._state
+      IF C2D(BITAND(D2C(_expected), ,
+                    D2C(g.parser.EXPECTED_ASTERISK))) /= 0 THEN DO
+         g.lexer.currToken = g.scanner.currChar
+      END
+      ELSE DO
+         CALL log 'Unexpected "*" at pos 'g.scanner.colIndex
+         g.error = 8
+      END
+      SIGNAL lexerGetToken_complete
+   END
+
+   IF g.scanner.currChar == ':' THEN DO
+      _expected = g.parser.scanStateTable._state
+      IF C2D(BITAND(D2C(_expected), ,
+                    D2C(g.parser.EXPECTED_COLON))) /= 0 THEN DO
+         g.lexer.currToken = g.scanner.currChar
+      END
+      ELSE DO
+         CALL log 'Unexpected ":" at pos 'g.scanner.colIndex
+         g.error = 8
+      END
+      SIGNAL lexerGetToken_complete
+   END
+
    IF VERIFY(g.scanner.currChar, g.lexer.IDENTIFIER_STARTCHARS) == 0 THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
@@ -857,12 +735,14 @@ IF g.error == 0 THEN DO
                VERIFY(g.scanner.peekChar, g.lexer.IDENTIFIER_CHARS) == 0
          CALL scannerGetChar
 
-         g.lexer.currToken = g.lexer.currToken || g.scanner.currChar
+         IF g.scanner.currChar /= 'EOF' THEN DO
+            g.lexer.currToken = g.lexer.currToken || g.scanner.currChar
+         END
       END
       SIGNAL lexerGetToken_complete
    END
 
-   CALL log "Unexpected character '"g.scanner.currChar"' at "g.scanner.colIndex
+   CALL log 'Unexpected character at 'g.scanner.colIndex
    g.error = 8
 
 END

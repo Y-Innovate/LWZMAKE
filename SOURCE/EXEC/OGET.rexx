@@ -1,34 +1,33 @@
 /* REXX */
 /**********************************************************************/
-/* Program    : DSNTIAD                                               */
+/* Program    : OGET                                                  */
 /*                                                                    */
-/* Description: This program invokes the DSN SYSTEM command followed  */
-/*              by a RUN PROGRAM(DSNTIAD) statement to have bla....   */
+/* Description: This program copies a USS file into a PDS(E) member   */
+/*              and sets the member statistics to the USS file's last */
+/*              modified time.                                        */
 /*                                                                    */
-/* Environment: TSO or ISPF                                           */
+/* Environment: ISPF                                                  */
 /*                                                                    */
 /* Parameters : The program accepts a single parameter string with    */
 /*              the following syntax:                                 */
 /*                                                                    */
-/*              >>-SYSTEM(-db2subsys-)--SQL(-sqldataset-)---------->  */
+/*              >>--'pathname'--'mvs_data_set_name(member_name)-->    */
 /*                                                                    */
-/*              >--+---------------------+--><                        */
-/*                 '-SYSPRINT(-listing-)-'                            */
+/*                 .-TEXT---.              .-NO--------.              */
+/*              >--+--------+--+-----------+-----------+----+--><     */
+/*                 '-BINARY-'  '--CONVERT(-+-YES-------+-)--'         */
+/*                                         '-convtable-'              */
 /*                                                                    */
-/*              db2subsys:  DB2 subsystem id.                         */
-/*              sqldataset: Input sequential file or PDS(E) member    */
-/*                          with the SQL to execute.                  */
-/*              listing:    Output DSNTIAD listing data set.          */
+/*              (everything from TEXT/BINARY isn't actually parsed    */
+/*              but rather passed as is to the TSO OGET command)      */
 /*                                                                    */
-/* Returns    : 0 when DSNTIAD returned 4 or less                     */
-/*              8 when REXX error occurs or when parameter string     */
-/*                contains syntax error                               */
-/*              n any DSNTIAD return code > 4                         */
+/* Returns    : 0 when file copies successfully                       */
+/*              8 when there was an error                             */
 /*                                                                    */
 /* Sample code:                                                       */
-/* _par = "SYSTEM(DBBG) SQL(MY.SQL.PDS(MEM1))"                        */
+/* _par = "'/some/path/file' 'MY.PDS(MEMBER)' TEXT CONVERT(YES)"      */
 /*                                                                    */
-/* CALL 'DSNTIAD' _par                                                */
+/* CALL 'OGET' _par                                                   */
 /*                                                                    */
 /* _rc = RESULT                                                       */
 /**********************************************************************/
@@ -40,17 +39,12 @@ CALL init
 CALL parseArguments
 
 IF g.error == 0 THEN DO
-   CALL allocDDs
+   CALL do_oget
 END
 
 IF g.error == 0 THEN DO
-   CALL invokeDSNTIAD
+   CALL do_touch
 END
-
-CALL freeDDs
-
-IF g.DSNTIAD.retcode > 4 | g.DSNTIAD.retcode < 0 THEN
-   g.error = g.DSNTIAD.retcode
 
 EXIT g.error
 
@@ -60,152 +54,103 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* DSNTIAD'
+SAY '* OGET'
 SAY COPIES('*',100)
 
 g.error = 0
-g.DSNTIAD.retcode = 0
 
-g.system   = ""
-g.sql      = ""
-g.sysprint = ""
-
-g.SYSIN.allocated = 0
-g.SYSPRINT.allocated = 0
+g.pathname = ""
+g.pdsmem = ""
 
 RETURN
 
 /**********************************************************************/
-/* Allocate DD's for invoking DB2 RUN PROGRAM                         */
+/* Execute OGET command                                               */
 /**********************************************************************/
-allocDDs: PROCEDURE EXPOSE g. SIGL
+do_oget: PROCEDURE EXPOSE g. SIGL
 
-_rc = BPXWDYN("ALLOC FI(SYSIN) DSN('"g.sql"') SHR REUSE")
+ADDRESS TSO "OGET "g.arg
 
-IF _rc == 0 THEN DO
-   g.SYSIN.allocated = 1
-   g.SYSIN.ddname = "SYSIN"
-END
-ELSE DO
-   g.error = 8
-   IF _rc > 0 THEN _rc = D2X(_rc)
-   CALL log 'Dynamic allocation of 'g.sql' failed with '_rc
-END
-
-IF g.error == 0 THEN DO
-   IF g.sysprint /= "" THEN DO
-      _rc = BPXWDYN("ALLOC FI(SYSPRINT) DSN('"g.sysprint"') SHR REUSE")
-   END
-   ELSE DO
-      _rc = BPXWDYN("ALLOC NEW RECFM(F,B,A) DSORG(PS) LRECL(133) CYL" || ,
-                    " SPACE(1,1) FI(SYSPRINT)")
-   END
-
-   IF _rc == 0 THEN DO
-      g.SYSPRINT.allocated = 1
-      g.SYSPRINT.ddname = "SYSPRINT"
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Dynamic allocation of SYSPRINT failed with '_rc
-   END
-END
+g.error = RC
 
 RETURN
 
 /**********************************************************************/
-/* Free DD's after invoking ASMA90                                    */
+/* Touch member                                                       */
 /**********************************************************************/
-freeDDs: PROCEDURE EXPOSE g. SIGL
+do_touch: PROCEDURE EXPOSE g. SIGL
 
-IF g.SYSIN.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSIN.ddname")")
+_x = SYSCALLS('ON')
 
-   IF _rc == 0 THEN DO
-      g.SYSIN.allocated = 0
-   END
-   ELSE DO
+path = g.pathname
+
+ADDRESS SYSCALL 'stat (path) st.'
+
+_timestamp = ST.ST_MTIME
+
+NUMERIC DIGITS 21
+
+cvt     = C2d( Storage( D2x( 16 ), 4 ) )
+cvttz   = C2d( Storage( D2x( cvt + 304 ), 4 ) )
+cvtext2 = C2d( Storage( D2x( cvt + 328 ), 4 ) )
+cvtldto = C2d( Storage( D2x( cvtext2 + 56 ), 8 ), 8 )
+absldto = Abs( cvtldto )
+secs    = absldto / x2d("F4240000")
+
+_timestamp = _timestamp + secs
+
+ADDRESS SYSCALL 'gmtime '_timestamp' tm.'
+
+_moddate = tm.TM_YEAR || ,
+           '/' || ,
+           RIGHT("0" || tm.TM_MON, 2) || ,
+           '/' || ,
+           RIGHT("0" || tm.TM_MDAY, 2)
+_modtime = RIGHT("0" || tm.TM_HOUR, 2) || ,
+           ':' || ,
+           RIGHT("0" || tm.TM_MIN, 2) || ,
+           ':' || ,
+           RIGHT("0" || tm.TM_SEC, 2)
+
+NUMERIC DIGITS
+
+PARSE VAR g.pdsmem _someDataset'('_someMember')'
+
+IF _someMember /= "" THEN DO
+   _lminit = "LMINIT DATAID(MYID)"
+   _lminit = _lminit || " DATASET('"_someDataset"')"
+   _lminit = _lminit || " ENQ(EXCLU)"
+
+   ADDRESS ISPEXEC _lminit
+
+   IF RC /= 0 THEN DO
+      CALL log 'LMINIT failed with 'RC
       g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSIN.ddname' failed with '_rc
-   END
-END
-
-IF g.SYSPRINT.allocated == 1 THEN DO
-   _rc = BPXWDYN("FREE FI("g.SYSPRINT.ddname")")
-
-   IF _rc == 0 THEN DO
-      g.SYSPRINT.allocated = 0
-   END
-   ELSE DO
-      g.error = 8
-      IF _rc > 0 THEN _rc = D2X(_rc)
-      CALL log 'Free of file 'g.SYSPRINT.ddname' failed with '_rc
-   END
-END
-
-RETURN
-
-/**********************************************************************/
-/* Invoke DB2 RUN PROGRAM(DSNTIAD)                                    */
-/**********************************************************************/
-invokeDSNTIAD: PROCEDURE EXPOSE g. SIGL
-
-QUEUE "RUN PROGRAM(DSNTIAD) PLAN(DSNTIA13)" || ,
-      " LIB('DSND10.DBDG.RUNLIB.LOAD')"
-QUEUE "END"
-
-x = OUTTRAP('_out.')
-ADDRESS TSO "DSN SYSTEM ("g.system")"
-g.DSNTIAD.retcode = RC
-x = OUTTRAP('OFF')
-
-ADDRESS MVS DELSTACK
-
-_rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
-
-IF _rc == 0 THEN DO
-   SAY "DSNTIAD output copied to DD "_ddn
-
-   "EXECIO "_out.0" DISKW "_ddn" (STEM _out. FINIS"
-
-   _rc = RC
-
-   IF _rc /= 0 THEN DO
-      g.error = 8
-      CALL log "EXECIO DISKW for DSNTIAD output failed "_rc
    END
 
-   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+   IF g.error == 0 THEN DO
+      _lmmstats = "LMMSTATS DATAID(&MYID)"
+      _lmmstats = _lmmstats || " MEMBER("_someMember")"
+      _lmmstats = _lmmstats || " MODDATE4("_moddate")"
+      _lmmstats = _lmmstats || " MODTIME("_modtime")"
+      _lmmstats = _lmmstats || " USER("USERID()")"
 
-   _rc = RC
+      ADDRESS ISPEXEC _lmmstats
 
-   IF _rc = 0 THEN DO
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
-
-      _rc = RC
-
-      IF _rc /= 0 THEN DO
+      IF RC /= 0 THEN DO
+         CALL log 'LMMSTATS failed with 'RC
          g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
       END
    END
-   ELSE DO
-      g.error = 8
-      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
-   END
 
-   _rc = BPXWDYN("FREE FI("_ddn")")
+   IF g.error == 0 THEN DO
+      ADDRESS ISPEXEC "LMFREE DATAID(&MYID)"
 
-   IF _rc /= 0 THEN DO
-      g.error = 8
-      CALL log "FREE for copy DSNTIAD output failed "_rc
+      IF RC /= 0 THEN DO
+         CALL log 'LMFREE failed with 'RC
+         g.error = 8
+      END
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "ALLOC for copy DSNTIAD output failed "_rc
 END
 
 RETURN
@@ -219,113 +164,114 @@ g.parser.EXPECTED_EOF = 1
 g.parser.EXPECTED_NORMAL = 2
 g.parser.EXPECTED_OPEN_BRACKET = 4
 g.parser.EXPECTED_CLOSE_BRACKET = 8
-g.parser.EXPECTED_DOT = 16
-g.parser.EXPECTED_COMMA = 32
-g.parser.EXPECTED_QUOTE = 64
-g.parser.EXPECTED_DBLQUOTE = 128
+g.parser.EXPECTED_QUOTE = 16
+g.parser.EXPECTED_DOT = 32
+g.parser.EXPECTED_ANYTHING_ELSE = 64
 
 g.parser.SCAN_STATE_NOT_IN_PARM = 1
 g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM = g.parser.EXPECTED_EOF + ,
-                                          g.parser.EXPECTED_NORMAL
+                                          g.parser.EXPECTED_QUOTE
 g.parser.SCAN_STATE_IN_PARM1 = 2
-g.parser.EXPECTED_FOR_STATE_IN_PARM1 = g.parser.EXPECTED_OPEN_BRACKET
+g.parser.EXPECTED_FOR_STATE_IN_PARM1 = g.parser.EXPECTED_NORMAL + ,
+                                       g.parser.EXPECTED_DOT + ,
+                                       g.parser.EXPECTED_ANYTHING_ELSE
 g.parser.SCAN_STATE_IN_PARM2 = 3
 g.parser.EXPECTED_FOR_STATE_IN_PARM2 = g.parser.EXPECTED_NORMAL + ,
-                                       g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                       g.parser.EXPECTED_QUOTE + ,
-                                       g.parser.EXPECTED_DBLQUOTE
-g.parser.SCAN_STATE_IN_PARM3 = 4
-g.parser.EXPECTED_FOR_STATE_IN_PARM3 = g.parser.EXPECTED_NORMAL + ,
-                                       g.parser.EXPECTED_CLOSE_BRACKET + ,
                                        g.parser.EXPECTED_DOT + ,
-                                       g.parser.EXPECTED_COMMA + ,
-                                       g.parser.EXPECTED_QUOTE + ,
-                                       g.parser.EXPECTED_DBLQUOTE
-g.parser.SCAN_STATE_IN_DSNAME1 = 5
+                                       g.parser.EXPECTED_ANYTHING_ELSE + ,
+                                       g.parser.EXPECTED_QUOTE
+g.parser.SCAN_STATE_IN_DSNAME1 = 4
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME1 = g.parser.EXPECTED_NORMAL + ,
                                          g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_DSNAME2 = 6
+g.parser.SCAN_STATE_IN_DSNAME2 = 5
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME2 = g.parser.EXPECTED_OPEN_BRACKET + ,
                                          g.parser.EXPECTED_CLOSE_BRACKET + ,
                                          g.parser.EXPECTED_DOT
-g.parser.SCAN_STATE_IN_DSNAME3 = 7
+g.parser.SCAN_STATE_IN_DSNAME3 = 6
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME3 = g.parser.EXPECTED_NORMAL
-g.parser.SCAN_STATE_IN_DSNAME4 = 8
+g.parser.SCAN_STATE_IN_DSNAME4 = 7
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME4 = g.parser.EXPECTED_NORMAL
-g.parser.SCAN_STATE_IN_DSNAME5 = 9
+g.parser.SCAN_STATE_IN_DSNAME5 = 8
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME5 = g.parser.EXPECTED_CLOSE_BRACKET
 
 g.parser.scanState = 1
 g.parser.scanStateTable.1 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM
 g.parser.scanStateTable.2 = g.parser.EXPECTED_FOR_STATE_IN_PARM1
 g.parser.scanStateTable.3 = g.parser.EXPECTED_FOR_STATE_IN_PARM2
-g.parser.scanStateTable.4 = g.parser.EXPECTED_FOR_STATE_IN_PARM3
-g.parser.scanStateTable.5 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME1
-g.parser.scanStateTable.6 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME2
-g.parser.scanStateTable.7 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME3
-g.parser.scanStateTable.8 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME4
-g.parser.scanStateTable.9 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME5
+g.parser.scanStateTable.4 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME1
+g.parser.scanStateTable.5 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME2
+g.parser.scanStateTable.6 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME3
+g.parser.scanStateTable.7 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME4
+g.parser.scanStateTable.8 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME5
 
 _parmName = ""
 
 CALL initLexer
 
-DO WHILE g.error == 0
-   CALL lexerGetToken
+CALL lexerGetToken /* Should be quote */
 
-   IF g.error /= 0  | g.scanner.currChar == 'EOF' THEN LEAVE
+IF g.error == 0 & g.scanner.currChar == 'EOF' THEN DO
+   CALL log 'No parameters found'
+   g.error = 8
+END
 
-   _parmName = g.lexer.currToken
-
+IF g.error == 0 THEN DO
    g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
-   CALL lexerGetToken
-   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   SELECT
-   WHEN _parmName == 'SYSTEM' THEN DO
+
+   _pathname = ""
+
+   DO UNTIL g.error /= 0
+      CALL lexerGetToken
+
+      IF g.error /= 0 | g.scanner.currChar == "'" THEN LEAVE
+
+      _pathname = _pathname || g.lexer.currToken
+
       g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.system = g.lexer.currToken
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single keyword allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
-         END
-      END
    END
-   WHEN _parmName == 'SQL' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.sql = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
-         END
-      END
-   END
-   OTHERWISE
-      NOP
-   END
-   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+
    g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSTEM: 'g.system
-   SAY 'SQL   : 'g.sql
+   CALL lexerGetToken
+
+   IF g.error == 0 & g.scanner.currChar == 'EOF' THEN DO
+      CALL log 'No PDS(E) data set and member parameter found'
+      g.error = 8
+   END
+
+   IF g.error == 0 THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
+
+      CALL lexerGetToken
+
+      IF g.error == 0 THEN DO
+         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+
+         _pdsmem = parseDsname()
+
+         IF g.error == 0 THEN DO
+            g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+
+            CALL lexerGetToken
+
+            IF g.error == 0 & g.scanner.currChar /= "'" THEN DO
+               CALL log 'PDS(E) data set and member wrong'
+               g.error = 8
+            END
+         END
+      END
+   END
+END
+
+IF g.error == 0 THEN DO
+   g.pathname = _pathname
+   g.pdsmem = _pdsmem
+
+   SAY 'pathname:      'g.pathname
+   SAY 'pdsmem:        'g.pdsmem
+   SAY 'complete parm: 'g.arg
 END
 
 RETURN
@@ -370,8 +316,8 @@ RETURN _dsname
 /**********************************************************************/
 initLexer: PROCEDURE EXPOSE g. SIGL
 
-g.upperArg = TRANSLATE(g.arg)
-g.upperArgLen = LENGTH(g.upperArg)
+/*g.upperArg = TRANSLATE(g.arg)*/
+g.argLen = LENGTH(g.arg)
 
 g.scanner.colIndex = 0
 
@@ -409,6 +355,18 @@ IF g.error == 0 THEN DO
       SIGNAL lexerGetToken_complete
    END
 
+   IF g.scanner.currChar == "'" THEN DO
+      _expected = g.parser.scanStateTable._state
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_QUOTE))) /= 0 THEN DO
+         g.lexer.currToken = g.scanner.currChar
+      END
+      ELSE DO
+         CALL log 'Unexpected "''" at pos 'g.scanner.colIndex
+         g.error = 8
+      END
+      SIGNAL lexerGetToken_complete
+   END
+
    IF g.scanner.currChar == '.' THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_DOT))) /= 0 THEN DO
@@ -416,18 +374,6 @@ IF g.error == 0 THEN DO
       END
       ELSE DO
          CALL log 'Unexpected "." at pos 'g.scanner.colIndex
-         g.error = 8
-      END
-      SIGNAL lexerGetToken_complete
-   END
-
-   IF g.scanner.currChar == ',' THEN DO
-      _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_COMMA))) /= 0 THEN DO
-         g.lexer.currToken = g.scanner.currChar
-      END
-      ELSE DO
-         CALL log 'Unexpected "," at pos 'g.scanner.colIndex
          g.error = 8
       END
       SIGNAL lexerGetToken_complete
@@ -459,32 +405,6 @@ IF g.error == 0 THEN DO
       SIGNAL lexerGetToken_complete
    END
 
-   IF g.scanner.currChar == "'" THEN DO
-      _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_QUOTE))) /= 0 THEN DO
-         g.lexer.currToken = g.scanner.currChar
-      END
-      ELSE DO
-         CALL log 'Unexpected "''" at pos 'g.scanner.colIndex
-         g.error = 8
-      END
-      SIGNAL lexerGetToken_complete
-   END
-
-   IF g.scanner.currChar == '"' THEN DO
-      _expected = g.parser.scanStateTable._state
-      IF C2D(BITAND(D2C(_expected), ,
-                    D2C(g.parser.EXPECTED_DBLQUOTE))) /= 0 THEN DO
-         g.lexer.currToken = g.scanner.currChar
-      END
-      ELSE DO
-         CALL log 'Unexpected ''"'' at pos 'g.scanner.colIndex
-         g.error = 8
-      END
-      SIGNAL lexerGetToken_complete
-   END
-
    IF VERIFY(g.scanner.currChar, g.lexer.IDENTIFIER_STARTCHARS) == 0 THEN DO
       _expected = g.parser.scanStateTable._state
       IF C2D(BITAND(D2C(_expected), ,
@@ -501,6 +421,13 @@ IF g.error == 0 THEN DO
          g.lexer.currToken = g.lexer.currToken || g.scanner.currChar
       END
       SIGNAL lexerGetToken_complete
+   END
+
+   _expected = g.parser.scanStateTable._state
+   IF C2D(BITAND(D2C(_expected), ,
+                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
+     g.lexer.currToken = g.scanner.currChar
+     SIGNAL lexerGetToken_complete
    END
 
    CALL log 'Unexpected character at 'g.scanner.colIndex
@@ -520,13 +447,13 @@ scannerGetChar: PROCEDURE EXPOSE g. SIGL
 g.scanner.colIndex = g.scanner.colIndex + 1
 g.scanner.peekChar = ''
 
-IF g.scanner.colIndex > g.upperArgLen THEN DO
+IF g.scanner.colIndex > g.argLen THEN DO
    g.scanner.currChar = 'EOF'
 END
 ELSE DO
-   g.scanner.currChar = SUBSTR(g.upperArg, g.scanner.colIndex, 1)
-   IF g.scanner.colIndex < g.upperArgLen THEN DO
-      g.scanner.peekChar = SUBSTR(g.upperArg, g.scanner.colIndex + 1, 1)
+   g.scanner.currChar = SUBSTR(g.arg, g.scanner.colIndex, 1)
+   IF g.scanner.colIndex < g.argLen THEN DO
+      g.scanner.peekChar = SUBSTR(g.arg, g.scanner.colIndex + 1, 1)
    END
 END
 
@@ -540,5 +467,9 @@ log: PROCEDURE EXPOSE g. SIGL
 PARSE ARG _msg
 
 SAY g.rexxname SIGL _msg
+
+ADDRESS ISPEXEC "VGET (ZERRMSG ZERRSM ZERRLM)"
+SAY ZERRMSG" - "ZERRSM
+SAY ZERRLM
 
 RETURN

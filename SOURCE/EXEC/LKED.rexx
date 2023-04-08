@@ -27,8 +27,12 @@
 /*                 |       V      |   |                               */
 /*                 '-LOAD(---load-+-)-'                               */
 /*                                                                    */
-/*              >--+---------------------+--+----------------+--><    */
+/*              >--+---------------------+--+----------------+-->     */
 /*                 '-SYSPRINT(-listing-)-'  '-PARM(-params-)-'        */
+/*                                                                    */
+/*                                 .-YES-.                            */
+/*              >--+---------------+-----+-+--><                      */
+/*                 '-PRINTSUCCESS(-+-NO--+)'                          */
 /*                                                                    */
 /*              syslin : Input binder control statements.             */
 /*              syslmod: Output load module data set.                 */
@@ -43,6 +47,8 @@
 /*                       control statements.                          */
 /*              listing: Output binder listing data set.              */
 /*              params : Parameters to IEWBLINK.                      */
+/*              printsuccess: Copy listing to job log when successful */
+/*                            link edit.                              */
 /*                                                                    */
 /* Returns    : 0 when IEWBLINK returned 4 or less                    */
 /*              8 when REXX error occurs or when parameter string     */
@@ -77,6 +83,8 @@ END
 
 CALL freeDDs
 
+SAY 'RETURN CODE:  'g.IEWBLINK.retcode
+
 IF g.IEWBLINK.retcode > 4 | g.IEWBLINK.retcode < 0 THEN
    g.error = g.IEWBLINK.retcode
 
@@ -101,6 +109,7 @@ g.sysprint = ""
 g.object.0 = 0
 g.load.0 = 0
 g.parm = ""
+g.printsuccess = "Y"
 
 g.SYSLIN.allocated = 0
 g.SYSLMOD.allocated = 0
@@ -465,40 +474,42 @@ ADDRESS LINKMVS _prog '_parm _ddlist'
 
 g.IEWBLINK.retcode = RC
 
-"EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+IF g.printsuccess == "Y" | g.IEWBLINK.retcode /= 0 THEN DO
+   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = RC
-
-IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
+   _rc = RC
 
    IF _rc == 0 THEN DO
-      SAY "SYSPRINT copied to DD "_ddn
+      _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
 
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+      IF _rc == 0 THEN DO
+         SAY "SYSPRINT copied to DD "_ddn
 
-      _rc = RC
+         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         _rc = RC
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         END
+
+         _rc = BPXWDYN("FREE FI("_ddn")")
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "FREE for copy SYSPRINT failed "_rc
+         END
       END
-
-      _rc = BPXWDYN("FREE FI("_ddn")")
-
-      IF _rc /= 0 THEN DO
+      ELSE DO
          g.error = 8
-         CALL log "FREE for copy SYSPRINT failed "_rc
+         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
       g.error = 8
-      CALL log "ALLOC for copy SYSPRINT failed "_rc
+      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 IF g.IEWBLINK.retcode > 4 THEN DO
@@ -698,6 +709,19 @@ DO WHILE g.error == 0
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
+   WHEN _parmName == 'PRINTSUCCESS' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM1
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF TRANSLATE(g.lexer.currToken) == 'NO' THEN DO
+         g.printsuccess = 'N'
+      END
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM_PARM2
+      DO WHILE g.lexer.currToken /= ')'
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
    OTHERWISE
       NOP
    END
@@ -716,19 +740,20 @@ IF g.error == 0 & g.syslmod == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSLIN:   'g.syslin
-   SAY 'SYSLMOD:  'g.syslmod
+   SAY 'SYSLIN:       'g.syslin
+   SAY 'SYSLMOD:      'g.syslmod
    DO i = 1 TO g.syslib.0
-      SAY 'SYSLIB:   'g.syslib.i
+      SAY 'SYSLIB:       'g.syslib.i
    END
    DO i = 1 TO g.object.0
-      SAY 'OBJECT:   'g.object.i
+      SAY 'OBJECT:       'g.object.i
    END
    DO i = 1 TO g.load.0
-      SAY 'LOAD:     'g.load.i
+      SAY 'LOAD:         'g.load.i
    END
-   SAY 'SYSPRINT: 'g.sysprint
-   SAY 'PARM:     'g.parm
+   SAY 'SYSPRINT:     'g.sysprint
+   SAY 'PARM:         'g.parm
+   SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
 RETURN

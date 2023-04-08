@@ -12,13 +12,19 @@
 /*                                                                    */
 /*              >>-PDSIN(-pdsin-)--PDSOUT(-pdsout-)---------------->  */
 /*                                                                    */
-/*              >--MEMBER(-member-)--+----------------+--><           */
+/*              >--MEMBER(-member-)--+----------------+-->            */
 /*                                   '-SYSIN(-sysin-)-'               */
+/*                                                                    */
+/*                                 .-YES-.                            */
+/*              >--+---------------+-----+-+--><                      */
+/*                 '-PRINTSUCCESS(-+-NO--+)'                          */
 /*                                                                    */
 /*              pdsin : Input PDS(E) data set.                        */
 /*              pdsout: Output PDS(E) data set.                       */
 /*              member: IEBCOPY SELECT MEMBER selection list.         */
 /*              sysin : Input SYSIN data set.                         */
+/*              printsuccess: Copy listing to job log when successful */
+/*                            compile YES/NO.                         */
 /*                                                                    */
 /* Returns    : 0 when IEBCOPY returned 0                             */
 /*              8 when REXX error occurs or when parameter string     */
@@ -73,6 +79,7 @@ g.sysprint = ""
 g.pdsin = ""
 g.pdsout = ""
 g.member = ""
+g.printsuccess = "Y"
 
 g.SYSIN.allocated = 0
 g.SYSPRINT.allocated = 0
@@ -282,40 +289,42 @@ ADDRESS LINKMVS _prog '_parm _ddlist'
 
 g.IEBCOPY.retcode = RC
 
-"EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+IF g.printsuccess == 'Y' | g.IEBCOPY.retcode /= 0 THEN DO
+   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = RC
-
-IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+   _rc = RC
 
    IF _rc == 0 THEN DO
-      SAY "SYSPRINT copied to DD "_ddn
+      _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+      IF _rc == 0 THEN DO
+         SAY "SYSPRINT copied to DD "_ddn
 
-      _rc = RC
+         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         _rc = RC
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         END
+
+         _rc = BPXWDYN("FREE FI("_ddn")")
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "FREE for copy SYSPRINT failed "_rc
+         END
       END
-
-      _rc = BPXWDYN("FREE FI("_ddn")")
-
-      IF _rc /= 0 THEN DO
+      ELSE DO
          g.error = 8
-         CALL log "FREE for copy SYSPRINT failed "_rc
+         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
       g.error = 8
-      CALL log "ALLOC for copy SYSPRINT failed "_rc
+      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 RETURN
@@ -469,6 +478,19 @@ DO WHILE g.error == 0
          END
       END
    END
+   WHEN _parmName == 'PRINTSUCCESS' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF TRANSLATE(g.lexer.currToken) == 'NO' THEN DO
+         g.printsuccess = 'N'
+      END
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+      DO WHILE g.lexer.currToken /= ')'
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
    OTHERWISE
       NOP
    END
@@ -487,10 +509,11 @@ IF g.error == 0 & g.pdsout == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'PDSIN:   'g.pdsin
-   SAY 'PDSOUT:  'g.pdsout
-   SAY 'MEMBER:  'g.member
-   SAY 'SYSIN:   'g.sysin
+   SAY 'PDSIN:        'g.pdsin
+   SAY 'PDSOUT:       'g.pdsout
+   SAY 'MEMBER:       'g.member
+   SAY 'SYSIN:        'g.sysin
+   SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
 RETURN
