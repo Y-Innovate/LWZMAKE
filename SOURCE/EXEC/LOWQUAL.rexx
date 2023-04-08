@@ -1,11 +1,1 @@
-/* REXX */
-PARSE ARG argdsname
-SAY COPIES('*',100)
-SAY '* LOWQUAL'
-SAY COPIES('*',100)
-SAY 'Data set name: 'argdsname
-tmpdsname = TRANSLATE(argdsname," ",".")
-qualcount = WORDS(tmpdsname)
-retvalue = WORD(tmpdsname,qualcount)
-SAY 'Return value : 'retvalue
-RETURN retvalue
+êáìì& êëá êå/ÊÅÀË>/_Áë ßä|&ñáëë ß<|ïéí <ë ßä|&ñáëë ßà/È/ËÁÈ>/_Á/ÊÅÀË>/_ÁÈ_øÀË>/_Áèê +ë< èá/ÊÅÀË>/_ÁÉÍ/%Ä?Í>Èï|êàëÈ_øÀË>/_ÁÊÁÈÎ/%ÍÁï|êàÈ_øÀË>/_ÁÉÍ/%Ä?Í>Èë ßêÁÈÍÊ>Î/%ÍÁÊÁÈÎ/%ÍÁêáèíê+ÊÁÈÎ/%ÍÁ

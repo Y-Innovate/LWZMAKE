@@ -1,18 +1,1 @@
-/* REXX */
-PARSE ARG someText appendText
-SAY COPIES('*',100)
-SAY '* APPEND'
-SAY COPIES('*',100)
-SAY 'Starting text:  'someText
-SAY 'Text to append: 'appendText
-retValue = ""
-appendCount = WORDS(appendText)
-IF appendCount > 0 THEN DO
-   retvalue = someText || WORD(appendText,1)
-   DO I = 2 TO appendCount
-      retvalue = retvalue" "someText || WORD(appendText,I)
-   END
-END
-SAY 'Return value:   'retvalue
-SAY COPIES('-',100)
-RETURN retvalue
+êáìì& êëá êåË?_ÁèÁÌÈ/øøÁ>ÀèÁÌÈë ßä|&ñáëë ß &&á+àë ßä|&ñáëë ßëÈ/ÊÈÑ>ÅÈÁÌÈË?_ÁèÁÌÈë ßèÁÌÈÈ?/øøÁ>À/øøÁ>ÀèÁÌÈÊÁÈî/%ÍÁ/øøÁ>Àä?Í>Èï|êàë/øøÁ>ÀèÁÌÈñã/øøÁ>Àä?Í>Èèçá+à|ÊÁÈÎ/%ÍÁË?_ÁèÁÌÈ@@ï|êà/øøÁ>ÀèÁÌÈà|ñè|/øøÁ>Àä?Í>ÈÊÁÈÎ/%ÍÁÊÁÈÎ/%ÍÁË?_ÁèÁÌÈ@@ï|êà/øøÁ>ÀèÁÌÈñá+àá+àë ßêÁÈÍÊ>Î/%ÍÁÊÁÈÎ/%ÍÁë ßä|&ñáëêáèíê+ÊÁÈÎ/%ÍÁ

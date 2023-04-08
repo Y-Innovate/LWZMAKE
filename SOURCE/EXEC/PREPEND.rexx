@@ -1,18 +1,1 @@
-/* REXX */
-PARSE ARG someText prependText
-SAY COPIES('*',100)
-SAY '* PREPEND'
-SAY COPIES('*',100)
-SAY 'Starting text:   'someText
-SAY 'Text to prepend: 'prependText
-retValue = ""
-prependCount = WORDS(prependText)
-IF prepentCount > 0 THEN DO
-   retValue = WORD(prependText,1) || someText
-   DO I = 2 TO prependCount
-      retValue = retValue" "WORD(prependText,I) || someText
-   END
-END
-SAY 'Return value:    'retValue
-SAY COPIES('-',100)
-RETURN retValue
+êáìì& êëá êåË?_ÁèÁÌÈøÊÁøÁ>ÀèÁÌÈë ßä|&ñáëë ß&êá&á+àë ßä|&ñáëë ßëÈ/ÊÈÑ>ÅÈÁÌÈË?_ÁèÁÌÈë ßèÁÌÈÈ?øÊÁøÁ>ÀøÊÁøÁ>ÀèÁÌÈÊÁÈî/%ÍÁøÊÁøÁ>Àä?Í>Èï|êàëøÊÁøÁ>ÀèÁÌÈñãøÊÁøÁ>Èä?Í>Èèçá+à|ÊÁÈî/%ÍÁï|êàøÊÁøÁ>ÀèÁÌÈ@@Ë?_ÁèÁÌÈà|ñè|øÊÁøÁ>Àä?Í>ÈÊÁÈî/%ÍÁÊÁÈî/%ÍÁï|êàøÊÁøÁ>ÀèÁÌÈñ@@Ë?_ÁèÁÌÈá+àá+àë ßêÁÈÍÊ>Î/%ÍÁÊÁÈî/%ÍÁë ßä|&ñáëêáèíê+ÊÁÈî/%ÍÁ

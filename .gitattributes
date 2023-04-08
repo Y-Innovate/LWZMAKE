@@ -1,0 +1,9 @@
+# Catch-all at the top
+*  zos-working-tree-encoding=IBM-1047
+
+# Git's files (which MUST be ASCII or UTF-8)
+.gitattributes  zos-working-tree-encoding=ISO8859-1
+.gitignore      zos-working-tree-encoding=ISO8859-1
+
+# Non source files in ISO8859-1
+LICENSE.txt     zos-working-tree-encoding=ISO8859-1

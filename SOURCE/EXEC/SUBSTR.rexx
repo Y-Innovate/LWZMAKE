@@ -1,17 +1,1 @@
-/* REXX */
-PARSE ARG someText startIndex substrLen
-SAY COPIES('*',100)
-SAY '* SUBSTR'
-SAY COPIES('*',100)
-SAY 'Text:        'someText
-SAY 'Start index: 'startIndex
-SAY 'Length:      'substrLen
-IF substrLen == "" THEN DO
-   retValue = SUBSTR(someText,startIndex)
-END
-ELSE DO
-   retValue = SUBSTR(someText,startIndex,substrLen)
-END
-SAY 'Return value:   'retvalue
-SAY COPIES('-',100)
-RETURN retvalue
+êáìì& êëá êåË?_ÁèÁÌÈËÈ/ÊÈñ>ÀÁÌËÍÂËÈÊ<Á>ë ßä|&ñáëë ßëíâëèêë ßä|&ñáëë ßèÁÌÈË?_ÁèÁÌÈë ßëÈ/ÊÈÑ>ÀÁÌËÈ/ÊÈñ>ÀÁÌë ß<Á>ÅÈÇËÍÂËÈÊ<Á>ñãËÍÂËÈÊ<Á>èçá+à|ÊÁÈî/%ÍÁëíâëèêË?_ÁèÁÌÈËÈ/ÊÈñ>ÀÁÌá+àá<ëáà|ÊÁÈî/%ÍÁëíâëèêË?_ÁèÁÌÈËÈ/ÊÈñ>ÀÁÌËÍÂËÈÊ<Á>á+àë ßêÁÈÍÊ>Î/%ÍÁÊÁÈÎ/%ÍÁë ßä|&ñáëêáèíê+ÊÁÈÎ/%ÍÁ
