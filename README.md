@@ -86,7 +86,7 @@ When all prerequisites have been processed, `LWZMAKE` will then compare the curr
 `LWZMAKE` has 2 special variables:
 
 - **`$@`** which is resolved to the current target name, if that is a member in PDS, this is the fully qualified data set name and the member, e.g. `SOME.DATA.SET(MEMBER)`
-- **`$%`** which is resolved to the member name of the current target, if the target is a member in a PDS
+- **`$%`** which is resolved to the member name of the current target if the target is a member in a PDS, or it's resolved to the file name without its path if the target is a USS file. Otherwise the variable is empy.
 
 Both of these special variables can only be used in recipes or on the right-hand side of a rule (so after the `:` character).
 
@@ -116,3 +116,29 @@ Consider the following sample sequence of assignments:
     targets := $(jclpds1) $(jclpds2)
 
 The value assigned to variable 'targets' is going to be `QUAL1.DEF.JCL QUAL1.DEF.JCL`. The conditional assignment of 'jclpds1' is skipped, because at that point 'jclpds1' already exists. It's only at the very last statement that any variable gets resolved and by that time 'app' contains '$(hlq).DEF' for both 'jclpds1' and 'jclpds2'.
+
+## REXX
+`LWZMAKE` reuses any REXX environment it finds. If `LWZMAKE` is the main program in your JCL step, then you only have basic REXX capabilities at your disposal. If `LWZMAKE` was started under for example IKJEFT01, you have access to TSO commands. When `LWZMAKE` was started from within an ISPF environment, you have access to ISPF functionality like JCL skeletons, ISPF tables, library management services, etc. There's a sample in this repository called `ISPFMAKE.jcl` with a JCL procedure for running `LWZMAKE` under ISPF.
+
+Any REXX invoked in a `makefile` is searched in the `SYSEXEC` DD concatenation.
+
+### Calling REXX in a recipe
+REXX's are invoked in a recipe by coding the recipe prefix `-` followed by the `CALL` keyword, the name of the REXX you wish to run and optionally a parameter string.
+
+    - CALL <REXX exec> [<parameter string>]
+
+Any REXX called in a recipe should return `0` to indicate success. Any other return value indicates a failure and will cause `LWZMAKE` to terminate.
+
+### REXX functions
+You can also invoke REXX as a function for example in a variable assignment, for example:
+
+    var1 := ${function REXXFUNC,ABC 123}
+
+Or more generically:
+
+<pre>--+-$(-+-function--<i>REXX_exec_name</i>--+-----------------------+--+-)-+--
+  '-${-'                           '--,--<i>parameter_string</i>--'  '-}-'</pre>
+
+Functions can be invoked anywhere where variables can be placed. A REXX function is resolved to whatever the REXX returns, so be careful with how you handle a failure within a REXX function, since the return value can not indicate a failure. The only way a REXX function can terminate `LWZMAKE` is by causing a REXX interpreter error (for example by trying to calculate with a non-numeric variable). 
+
+## Builtin functions
