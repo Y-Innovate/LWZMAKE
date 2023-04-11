@@ -2,7 +2,7 @@
 z/OS Light Weight Z make utility
 
 ## Introduction
-**`LWZMAKE`** is an incremental build and/or deploy tool loosely based on **`make`** (well known in the *nix world). It's a tool specific for the Z System platform, with an emphasis on traditional 'MVS' partitioned data sets (PDS(E)'s and their members).
+**`LWZMAKE`** is an incremental build and deploy tool loosely based on **`make`** (well known in the *nix world). It's a tool specific for the Z System platform, with an emphasis on traditional 'MVS' partitioned data sets (PDS(E)'s and their members).
 
 Just like `make` does, `LWZMAKE` can 'update files from others whenever the others change', e.g. copy members from source PDS's to target PDS's but only when the source PDS's members were updated more recently than the target ones. For PDS's that contain text members `LWZMAKE` uses ISPF statistics to determine which member was updated more recently. For load modules `LWZMAKE` invokes the z/OS binder utility to extract the link-edit date from the load module. For USS files it uses the last modified time.
 
@@ -49,7 +49,7 @@ The next two lines:
 
 are what's known as a **`rule`**. This first sample `rule` defines the "phony" target `ALL` and specifies on what files that target is dependent. A **`target`** is something `LWZMAKE` will potentially build. In a `rule` one or more `targets` can be specified left of the `:` character.  
 Right of the `:` character can optionally be `files` and or other `targets` that the ones left of the `:` character are dependent on.  
-Designating a target as **`phony`** tells `LWZMAKE` the target is not a file with a last modified date & time, but rather just a name to get its prerequisites built.
+Designating a target as **`phony`** tells `LWZMAKE` the target is not a file with a last modified date & time, but rather just a name used to get its prerequisites built.
 
     # Copy MEM1 and MEM2, but only if they changed
 
@@ -57,7 +57,7 @@ The next line is a comment line, which is ignored by `LWZMAKE`. Comments don't n
 
     $(targets) : $(srchlq).PDS.JCL($%)
 
-Then follows our second sample `rule` in which the value of the targets variable, so our 2 members in fully qualified data set names, are defined as targets (because they precede the `:` character). And those targets have one prerequisite, which is a source PDS with a special variable **`$%`** as the member name. This `$%` variable resolves to the same member name as the target currently being built. So in this example, when `MYUSR.PDS.JCL(MEM1)` is being built, the prerequisite resolves to `SOMEUSR.PDS.JCL(MEM1)`, and for `MYUSR.PDS.JCL(MEM2)` it becomes `SOMEUSR.PDS.JCL(MEM2)`.
+Then follows our second sample `rule` in which the value of the 'targets' variable, so our 2 members in fully qualified data set names, are defined as targets (because they precede the `:` character). And those targets have one prerequisite, which is a source PDS with a special variable **`$%`** as the member name. This `$%` variable resolves to the same member name as the target currently being built. So in this example, when `MYUSR.PDS.JCL(MEM1)` is being built, the prerequisite resolves to `SOMEUSR.PDS.JCL(MEM1)`, and for `MYUSR.PDS.JCL(MEM2)` it becomes `SOMEUSR.PDS.JCL(MEM2)`.
 
     - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
     -              MEMBER($%)
@@ -77,3 +77,7 @@ To utilize `LWZMAKE` to its full potential, it's important to understand that it
 2. In the second phase `LWZMAKE` will apply its incremental logic to whatever target is was told to build. During this 2nd phase the following variables are resolved:
     - every target `LWZMAKE` has a `rule` for, if the rule has prerequisites, so whatever is on the right hand side of the `:` character, any variables used in those prerequisites are resolved
     - if `LWZMAKE` decides a target should be built, it will execute the `recipe` lines directly following the rule statement, normally the lines starting with `-` on position 1, until a statement is found without the `-` or end of file. Any variables found in the recipe lines are resolved.
+
+`LWZMAKE` is either told via a command switch (more on this later) what target to build in phase 2, or it will use the first target in the first rule it encounters in the `makefile`. In the example above that is the target `ALL`. It will first go through all of a target's prerequisites, checking whether those prerequisites are declared as targets themselves. If so, `LWZMAKE` will process those rules first, and it does so recursively. So if the rules for those prerequisites have prerequisites of their own, and those are also declared as targets in other rules, those get processed first, etc.
+
+When all prerequisites have been processed, `LWZMAKE` will then compare the current target's last modified date with each of the prerequisites' and if any of the prerequisites were modified more recently, the recipe below the rule (if present) is executed, in other words the target is built.
