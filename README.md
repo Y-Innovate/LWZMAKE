@@ -81,3 +81,38 @@ To utilize `LWZMAKE` to its full potential, it's important to understand that it
 `LWZMAKE` is either told via a command switch (more on this later) what target to build in phase 2, or it will use the first target in the first rule it encounters in the `makefile`. In the example above that is the target `ALL`. It will first go through all of a target's prerequisites, checking whether those prerequisites are declared as targets themselves. If so, `LWZMAKE` will process those rules first, and it does so recursively. So if the rules for those prerequisites have prerequisites of their own, and those are also declared as targets in other rules, those get processed first, etc.
 
 When all prerequisites have been processed, `LWZMAKE` will then compare the current target's last modified date with each of the prerequisites' and if any of the prerequisites were modified more recently, the recipe below the rule (if present) is executed, in other words the target is built.
+
+## Special variables
+`LWZMAKE` has 2 special variables:
+
+- **`$@`** which is resolved to the current target name, if that is a member in PDS, this is the fully qualified data set name and the member, e.g. `SOME.DATA.SET(MEMBER)`
+- **`$%`** which is resolved to the member name of the current target, if the target is a member in a PDS
+
+Both of these special variables can only be used in recipes or on the right-hand side of a rule (so after the `:` character).
+
+So if, for example in the `makefile` above, instead of copying source members to the target PDS we only wished to list the data set name and member, we could have used this recipe:
+
+    - CALL JUSTECHO $@
+
+`JUSTECHO` is another tiny sample REXX that simply echos back whatever parameter it was passed. In our example the `$@` resolves to `MYUSR.PDS.JCL(MEM1)` and `MYUSR.PDS.JCL(MEM2)`.
+
+## 3 types of assignments
+To assign a variable a value, `LWZMAKE` knows of 3 different assignment operators:
+
+- **`:=`** for direct assignment, any variables used in the value part of the assignment are immediately resolved, or if the assignment is in a recipe they are resolved when the recipe is executed
+- **`=`** for unresolved assignment, any variables used in the value part of the assignment are left unresolved. Only when these variables are used in another assignment, or in a rule of recipe do they get resolved.
+- **`?=`** for conditional assignment, which only assigns a variable a value if the variable does not exist yet. If the variable was already assigned a value before, the conditional assignment statement is skipped. If the variable is indeed new, then the conditional assignment behaves like direct assignment.
+
+When a variable is resolved, `LWZMAKE` does so recursively, meaning that if the resolved value contains another variable, that gets resolved too, and `LWZMAKE` will keep going until no other variables are found.
+
+Consider the following sample sequence of assignments:
+
+    hlq     =  QUAL1
+    app     =  $(hlq).ABC
+    jclpds1 =  $(app).JCL
+    app     =  $(hlq).DEF
+    jclpds1 ?= $(app).JCL.NEW
+    jclpds2 =  $(app).JCL
+    targets := $(jclpds1) $(jclpds2)
+
+The value assigned to variable 'targets' is going to be `QUAL1.DEF.JCL QUAL1.DEF.JCL`. The conditional assignment of 'jclpds1' is skipped, because at that point 'jclpds1' already exists. It's only at the very last statement that any variable gets resolved and by that time 'app' contains '$(hlq).DEF' for both 'jclpds1' and 'jclpds2'.
