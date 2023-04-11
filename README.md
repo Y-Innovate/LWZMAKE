@@ -130,15 +130,66 @@ REXX's are invoked in a recipe by coding the recipe prefix `-` followed by the `
 Any REXX called in a recipe should return `0` to indicate success. Any other return value indicates a failure and will cause `LWZMAKE` to terminate.
 
 ### REXX functions
-You can also invoke REXX as a function for example in a variable assignment, for example:
-
-    var1 := ${function REXXFUNC,ABC 123}
-
-Or more generically:
+You can also invoke REXX as a function for example in a variable assignment:
 
 <pre>--+-$(-+-function--<i>REXX_exec_name</i>--+-----------------------+--+-)-+--
   '-${-'                           '--,--<i>parameter_string</i>--'  '-}-'</pre>
 
+For example, consider a REXX called 'RVRSWRDS' (reverse words ;-)):
+
+    /* REXX */
+    arg1 = Arg(1)
+    wordcount = Words(arg1)
+    
+    ret = ""
+    
+    If wordcount > 0 Then Do
+      ret = Word(arg1,wordcount)
+      
+      Do I = wordcount - 1 To 1 By -1
+        ret = ret" "Word(arg1,I)
+      End
+    End
+    
+    Return ret
+
+Such a function could be invoked like this and produce the result that the comment line describes:
+
+    var1 := ${function RVRSWRDS,ABC 123}
+    # var1 := 123 ABC
+
 Functions can be invoked anywhere where variables can be placed. A REXX function is resolved to whatever the REXX returns, so be careful with how you handle a failure within a REXX function, since the return value can not indicate a failure. The only way a REXX function can terminate `LWZMAKE` is by causing a REXX interpreter error (for example by trying to calculate with a non-numeric variable). 
 
 ## Builtin functions
+There are a few builtin functions that are so common that is was worth writing a routine for in `LWZMAKE`. These are:
+
+### Memberlist
+<pre>--+-$(-+-memberlist--<i>PDS_data_set_name</i>--+--------------------+--+-)-+--
+  '-${-+                                '--,--<i>member_filter</i>--'  '-}-'</pre>
+
+For example, with SOME.DATA.SET containing members AA001, AA002, AB001 and AB002:
+
+    someds := SOME.DATA.SET
+    
+    mems1 := $(memberlist $(someds))
+    # mem1 := AA001 AA002 AB001 AB002
+    
+    mems2 := ${memberlist $(someds),AA}
+    # mems2 := AA001 AA002
+
+`memberlist` retrieves a PDS(E)'s directory and lists the member names as a space delimited list.  
+The *member_filter* is optional and limits the returned member names to only ones that *start* with *member_filter*.
+
+### Addpdsname
+<pre>                                           v------<------¬
+--+-$(-+-addpdsname--<i>PDS_data_set_name</i>--,--+-<i>member_name</i>-+-)-+--
+  '-${-'                                                 '-}-+</pre>
+
+For example:
+
+    mems  := FOO BAR
+    tgtds := SOME.PDS.COB
+    tgts  := ${addpdsname $(tgtds),$(mems)}
+    # tgts := SOME.PDS.COB(FOO) SOME.PDS.COB(BAR)
+
+`addpdsname` adds the *PDS_data_set_name* to each *member_name* to form a complete data set name. Exactly one *PDS_data_set_name* is required. When after the comma no *member_name* is provided, the function returns an empty string. If multiple *member_names* are provided, they need to be space delimited.
