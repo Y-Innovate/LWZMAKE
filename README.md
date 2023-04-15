@@ -2,7 +2,7 @@
 z/OS Light Weight Z make utility
 
 ## Introduction
-**`LWZMAKE`** is an incremental build and deploy tool loosely based on **`make`** (well known in the *nix world). It's a tool specific for the Z System platform, with an emphasis on traditional 'MVS' partitioned data sets (PDS(E)'s and their members).
+**`LWZMAKE`** is an incremental build and deploy tool loosely based on **`make`** (well known in the Unix/Linux world). It's a tool specific for the Z System platform, with an emphasis on traditional 'MVS' partitioned data sets (PDS(E)'s and their members).
 
 Just like `make` does, `LWZMAKE` can 'update files from others whenever the others change', e.g. copy members from source PDS's to target PDS's but only when the source PDS's members were updated more recently than the target ones. For PDS's that contain text members `LWZMAKE` uses ISPF statistics to determine which member was updated more recently. For load modules `LWZMAKE` invokes the z/OS binder utility to extract the link-edit date from the load module. For USS files it uses the last modified time.
 
@@ -36,9 +36,11 @@ Let's break that down:
 
 The first two lines are easy enough to understand, they're simple **direct assignments** of a value to a variable name. Those variable names can then be used throughout the rest of the `makefile` by enclosing them in `$(..)` or `${..}`.
 
+This is demonstrated in the third line which refers to the `tgthlq` variable in the assignment of `targets`.
+
     targets := $(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)
 
-This is demonstrated in the third line which refers to the `tgthlq` variable in the assignment of `targets`. Directly after this line the variable `targets` contains:
+Directly after this line the variable `targets` contains:
 
     MYUSR.PDS.JCL(MEM1) MYUSR.PDS.JCL(MEM2)
 
@@ -48,21 +50,25 @@ The next two lines:
     ALL : $(targets)
 
 are what's known as a **`rule`**. This first sample `rule` defines the "phony" target `ALL` and specifies on what files that target is dependent. A **`target`** is something `LWZMAKE` will potentially build. In a `rule` one or more `targets` can be specified left of the `:` character.  
-Right of the `:` character can optionally be `files` and or other `targets` that the ones left of the `:` character are dependent on.  
+Right of the `:` character can optionally be `files` and/or other `targets` that the ones left of the `:` character are dependent on.  
 Designating a target as **`phony`** tells `LWZMAKE` the target is not a file with a last modified date & time, but rather just a name used to get its prerequisites built.
-
-    # Copy MEM1 and MEM2, but only if they changed
 
 The next line is a comment line, which is ignored by `LWZMAKE`. Comments don't need to be on separate lines, if `LWZMAKE` encounters the `#` character it will ignore the rest of the line.
 
+    # Copy MEM1 and MEM2, but only if they changed
+
+Then follows our second sample `rule` in which the value of the 'targets' variable, so our 2 members in fully qualified data set names, are defined as targets (because they precede the `:` character).
+
     $(targets) : $(srchlq).PDS.JCL($%)
 
-Then follows our second sample `rule` in which the value of the 'targets' variable, so our 2 members in fully qualified data set names, are defined as targets (because they precede the `:` character). And those targets have one prerequisite, which is a source PDS with a special variable **`$%`** as the member name. This `$%` variable resolves to the same member name as the target currently being built. So in this example, when `MYUSR.PDS.JCL(MEM1)` is being built, the prerequisite resolves to `SOMEUSR.PDS.JCL(MEM1)`, and for `MYUSR.PDS.JCL(MEM2)` it becomes `SOMEUSR.PDS.JCL(MEM2)`.
+Those targets have one prerequisite, which is a source PDS with a special variable **`$%`** as the member name. This `$%` variable resolves to the same member name as the target currently being built. So in this example, when `MYUSR.PDS.JCL(MEM1)` is being built, the prerequisite resolves to `SOMEUSR.PDS.JCL(MEM1)`, and for `MYUSR.PDS.JCL(MEM2)` it becomes `SOMEUSR.PDS.JCL(MEM2)`.
+
+Below a rule are optionally lines that tell `LWZMAKE` what to do if it decides a target should be built, known as a **`recipe`**.
 
     - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
     -              MEMBER($%)
 
-Below a rule are optionally lines that tell `LWZMAKE` what to do if it decides a target should be built, known as a **`recipe`**. Such lines are coded with a `recipe prefix` which defaults to the `-` character. In this example a REXX called `IEBCOPY` is invoked, which parses the parameter it is passed (which is everything starting from `PDSIN` down to and including `MEMBER($%)`), dynamically allocates the required DD's and calls the IEBCOPY utility.
+Such lines are coded with a `recipe prefix` which defaults to the `-` character. In this example a REXX called `IEBCOPY` is invoked, which parses the parameter it is passed (which is everything starting from `PDSIN` down to and including `MEMBER($%)`), dynamically allocates the required DD's and calls the IEBCOPY utility.
 
 One more thing this `recipe` demonstrates is the `\` continuation character. This effectively turns these last 2 lines into one long string. And as you can see in the example, a continued recipe line still has to begin with the `recipe prefix` on position 1.
 
@@ -75,7 +81,7 @@ To utilize `LWZMAKE` to its full potential, it's important to understand that it
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;All other variables are left intact, so unresolved.
 
 2. In the second phase `LWZMAKE` will apply its incremental logic to whatever target is was told to build. During this 2nd phase the following variables are resolved:
-    - every target `LWZMAKE` has a `rule` for, if the rule has prerequisites, so whatever is on the right hand side of the `:` character, any variables used in those prerequisites are resolved
+    - every target which `LWZMAKE` has a `rule` for, if the rule has prerequisites, so whatever is on the right hand side of the `:` character, any variables used in those prerequisites are resolved
     - if `LWZMAKE` decides a target should be built, it will execute the `recipe` lines directly following the rule statement, normally the lines starting with `-` on position 1, until a statement is found without the `-` or end of file. Any variables found in the recipe lines are resolved.
 
 `LWZMAKE` is either told via a command switch (more on this later) what target to build in phase 2, or it will use the first target in the first rule it encounters in the `makefile`. In the example above that is the target `ALL`. It will first go through all of a target's prerequisites, checking whether those prerequisites are declared as targets themselves. If so, `LWZMAKE` will process those rules first, and it does so recursively. So if the rules for those prerequisites have prerequisites of their own, and those are also declared as targets in other rules, those get processed first, etc.
@@ -85,8 +91,8 @@ When all prerequisites have been processed, `LWZMAKE` will then compare the curr
 ## Special variables
 `LWZMAKE` has 2 special variables:
 
-- **`$@`** which is resolved to the current target name, if that is a member in PDS, this is the fully qualified data set name and the member, e.g. `SOME.DATA.SET(MEMBER)`
-- **`$%`** which is resolved to the member name of the current target if the target is a member in a PDS, or it's resolved to the file name without its path if the target is a USS file. Otherwise the variable is empy.
+- **`$@`** is resolved to the current target name, if that is a member in PDS, this is the fully qualified data set name and the member, e.g. `SOME.DATA.SET(MEMBER)`
+- **`$%`** is resolved to the member name of the current target if the target is a member in a PDS, or it's resolved to the file name without its path if the target is a USS file. Otherwise the variable is empy.
 
 Both of these special variables can only be used in recipes or on the right-hand side of a rule (so after the `:` character).
 
@@ -100,7 +106,7 @@ So if, for example in the `makefile` above, instead of copying source members to
 To assign a variable a value, `LWZMAKE` knows of 3 different assignment operators:
 
 - **`:=`** for direct assignment, any variables used in the value part of the assignment are immediately resolved, or if the assignment is in a recipe they are resolved when the recipe is executed
-- **`=`** for unresolved assignment, any variables used in the value part of the assignment are left unresolved. Only when these variables are used in another assignment, or in a rule of recipe do they get resolved.
+- **`=`** for unresolved assignment, any variables used in the value part of the assignment are left unresolved. Only when these variables are used in another assignment, or in a rule or recipe do they get resolved.
 - **`?=`** for conditional assignment, which only assigns a variable a value if the variable does not exist yet. If the variable was already assigned a value before, the conditional assignment statement is skipped. If the variable is indeed new, then the conditional assignment behaves like direct assignment.
 
 When a variable is resolved, `LWZMAKE` does so recursively, meaning that if the resolved value contains another variable, that gets resolved too, and `LWZMAKE` will keep going until no other variables are found.
@@ -123,7 +129,7 @@ The value assigned to variable 'targets' is going to be `QUAL1.DEF.JCL QUAL1.DEF
 Any REXX invoked in a `makefile` is searched in the `SYSEXEC` DD concatenation.
 
 ### Calling REXX in a recipe
-REXX's are invoked in a recipe by coding the recipe prefix `-` followed by the `CALL` keyword, the name of the REXX you wish to run and optionally a parameter string.
+REXX's are invoked in a recipe by coding the recipe prefix `-` followed by the `CALL` keyword, then the name of the REXX you wish to run and optionally a parameter string.
 
     - CALL <REXX exec> [<parameter string>]
 
