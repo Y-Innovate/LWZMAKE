@@ -15,7 +15,7 @@
                                                                                 
 .USSHOME = /u/yin/ybtks                                                         
                                                                                 
-gitdir          := /u/yin/ybtks/LWZMAKE                                         
+gitdir          := @@GITDIR@@                                                   
                                                                                 
 feature         := ${sh cd $(gitdir);git branch | \                             
                      grep -E "^\\* (.*)$" | cut -d' ' -f2 }                     
@@ -25,6 +25,7 @@ hlq             := LWZM020.$(feature_upper)
                                                                                 
 asmlib          := $(hlq).ASM                                                   
 asmlstlib       := $(asmlib).LISTING                                            
+cpylib          := $(hlq).COPY                                                  
 jcllib          := $(hlq).JCL                                                   
 objlib          := $(hlq).OBJECT                                                
 sysadatalib     := $(hlq).SYSADATA                                              
@@ -32,21 +33,25 @@ eqalangxlib     := $(hlq).EQALANGX
 lkedlib         := $(hlq).LKED                                                  
 loadlib         := $(hlq).LOAD                                                  
 syslib_asma     := SYS1.MACLIB SYS1.MODGEN CEE.SCEEMAC HLA.SASMMAC2\            
-                   $(asmlib)                                                    
+                   $(cpylib)                                                    
 syslib_lked     := CEE.SCEELKED $(objlib)                                       
                                                                                 
-recfmFB80       := $(asmlib) $(jcllib) $(objlib) $(lkedlib)                     
+recfmFB80       := $(asmlib) $(cpylib) $(jcllib) $(objlib) $(lkedlib)           
 recfmFBA133     := $(asmlstlib)                                                 
 recfmVB32756    := $(sysadatalib)                                               
 recfmVB1562     := $(eqalangxlib)                                               
 recfmU          := $(loadlib)                                                   
                                                                                 
-asmdir          := $(gitdir)/SOURCE/ASM                                         
-jcldir          := $(gitdir)/SOURCE/JCL                                         
-lkeddir         := $(gitdir)/SOURCE/LKED                                        
+asmdir          := $(gitdir)/ASM                                                
+cpydir          := $(gitdir)/COPY                                               
+jcldir          := $(gitdir)/JCL                                                
+lkeddir         := $(gitdir)/LKED                                               
                                                                                 
 asmfiles        := ${sh cd $(asmdir);find * -prune -type f}                     
 asmmems         := ${stripext $(asmfiles)}                                      
+                                                                                
+cpyfiles        := ${sh cd $(cpydir);find * -prune -type f}                     
+cpymems         := ${stripext $(cpyfiles)}                                      
                                                                                 
 jclfiles        := ${sh cd $(jcldir);find * -prune -type f}                     
 jclmems         := ${stripext $(jclfiles)}                                      
@@ -54,22 +59,24 @@ jclmems         := ${stripext $(jclfiles)}
 lkedfiles       := ${sh cd $(lkeddir);find * -prune -type f}                    
 lkedmems        := ${stripext $(lkedfiles)}                                     
                                                                                 
-asmsrcs         := CEEUOPT LWZMAKE LWZMAVL LWZMFMG LWZMINP LWZMLOG \            
-                   LWZMPRS LWZMREX LWZMSTM LWZMSTR LWZMTOK LWZMUSS \            
-                   LWZMVCP                                                      
-                                                                                
 asmtgts         := ${addpdsname $(asmlib),$(asmmems)}                           
+cpytgts         := ${addpdsname $(cpylib),$(cpymems)}                           
 jcltgts         := ${addpdsname $(jcllib),$(jclmems)}                           
 lkedtgts        := ${addpdsname $(lkedlib),$(lkedmems)}                         
-objtgts         := ${addpdsname $(objlib),$(asmsrcs)}                           
+objtgts         := ${addpdsname $(objlib),$(asmmems)}                           
 loadtgts        := ${addpdsname $(loadlib),$(lkedmems)}                         
+                                                                                
+cpychanged      := 0                                                            
                                                                                 
 .PHONY BUILD_ALL                                                                
 BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\         
             $(recfmU)\                                                          
-            $(asmtgts) $(jcltgts) $(lkedtgts)\                                  
-            LIST_CPY\                                                           
+            $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)\                       
             $(loadtgts)                                                         
+                                                                                
+$(cpytgts) : $(cpydir)/$%.asm                                                   
+- cpychanged := 1                                                               
+- CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)                           
                                                                                 
 $(asmtgts) : $(asmdir)/$%.asm                                                   
 - CALL OGET '$(asmdir)/$%.asm' '$@' TEXT CONVERT(YES)                           
@@ -80,13 +87,7 @@ $(jcltgts) : $(jcldir)/$%.jcl
 $(lkedtgts) : $(lkeddir)/$%.lked                                                
 - CALL OGET '$(lkeddir)/$%.lked' '$@' TEXT CONVERT(YES)                         
                                                                                 
-.PHONY LIST_CPY                                                                 
-LIST_CPY :                                                                      
-- cpysrcs := ${function NOTIN,SET1(${memberlist $(asmlib)})\                    
--                             SET2($(asmsrcs))}                                 
-- cpysrcs := ${addpdsname $(asmlib),$(cpysrcs)}                                 
-                                                                                
-$(objtgts) : $(asmlib)($%) $(cpysrcs)                                           
+$(objtgts) : $(asmlib)($%) $(cpychanged)                                        
 - CALL ASMA SYSIN($(asmlib)($%)) SYSLIN($(objlib)($%))\                         
 -           SYSLIB($(syslib_asma)) SYSADATA($(sysadatalib)($%))\                
 -           SYSPRINT($(asmlstlib)($%)) PARM(ADATA,GOFF,LIST(133))\              
@@ -94,6 +95,9 @@ $(objtgts) : $(asmlib)($%) $(cpysrcs)
 - CALL TOUCHMEM DATASET($(objlib)($%))                                          
 - CALL TOUCHMEM DATASET($(asmlstlib)($%))                                       
 - CALL TOUCHMEM DATASET($(sysadatalib)($%))                                     
+- CALL EQALANGX SYSADATA($(sysadatalib)($%))\                                   
+-               IDILANGX($(eqalangxlib)($%)) PARM(ASM ERROR)                    
+- CALL TOUCHMEM DATASET($(eqalangxlib)($%))                                     
                                                                                 
 $(loadtgts) : $(objtgts) $(lkedlib)($%)                                         
 - CALL LKED SYSLIN($(lkedlib)($%)) SYSLMOD($(loadlib)($%))\                     

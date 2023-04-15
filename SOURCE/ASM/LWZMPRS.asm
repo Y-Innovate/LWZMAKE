@@ -976,6 +976,8 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
          DO WHILE=(CLC,varBuildTgtP07+vt-VARIANT(4),NE,=A(VT_NULL))             
             MVC   currIndexP07,nextIndexP07                                     
 *                                                                               
+            MINSTANT GUID=G_IFFO_GUID,WORK=WORKP07,OBJPTR=IFFO_P07              
+*                                                                               
             L     R2,varBuildTgtP07+value-VARIANT                               
 *                                                                               
             IAVL_Query OBJECT=IAVL_targets,WORK=WORKP07,               X        
@@ -1027,22 +1029,32 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
                   BASR  R14,R15  * Perform build statements                     
                ENDIF                                                            
 *                                                                               
-*           ELSE                                                                
-*              IF (CLI,firstBuild,EQ,C'Y') THEN                                 
-*                 ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKP07                      
-*                 ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP07,   X        
+            ELSE                                                                
+*                                                                               
+               L     R2,STR_lpString-STR_obj(,R2)                               
+*                                                                               
+               IFMG_Stat OBJECT=G_IFMG,WORK=WORKP07,FILE=0(,R2),       X        
+               IFFO=IFFO_P07                                                    
+*                                                                               
+               CLC   G_RETCODE,=A(0)                                            
+               BNE   PRS#07_RET                                                 
+*                                                                               
+               L     R3,IFFO_P07                                                
+               IF (CLI,FFO_exists-FFO_obj(R3),NE,C'Y') THEN                     
+                  ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKP07                      
+                  ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP07,   X        
                ZSTR=MAK106E_P07                                                 
-*                 ISTB_AppendString OBJECT=G_ISTB_tmp,WORK=WORKP07,    X        
+                  ISTB_AppendString OBJECT=G_ISTB_tmp,WORK=WORKP07,    X        
                ISTR=varBuildTgtP07+(value-VARIANT)                              
 *                                                                               
-*                 L     R2,G_ISTB_tmp                                           
-*                 L     R2,STB_lpBuf-STB_obj(,R2)                               
-*                 ILOG_Write OBJECT=G_ILOG,WORK=WORKP07,LINE=0(,R2),   X        
+                  L     R2,G_ISTB_tmp                                           
+                  L     R2,STB_lpBuf-STB_obj(,R2)                               
+                  ILOG_Write OBJECT=G_ILOG,WORK=WORKP07,LINE=0(,R2),   X        
                LOGLEVEL=LOG_LEVEL_ERROR                                         
 *                                                                               
-*                 MVC   G_RETCODE,=A(8)                                         
-*                 B     PRS#07_RET                                              
-*              ENDIF                                                            
+                  MVC   G_RETCODE,=A(8)                                         
+                  B     PRS#07_RET                                              
+               ENDIF                                                            
             ENDIF                                                               
 *                                                                               
             IAV2_Next OBJECT=PARMIAV2TGTSP07,WORK=WORKP07,             X        
@@ -1331,8 +1343,6 @@ PRS#70   CEEENTRY AUTO=WORKDSAP70_SIZ,MAIN=NO,BASE=R10
 *                                                                               
          L     R7,12(,R1)        * Parm 4 is ptr to IFFO object                 
          ST    R7,PARMIFFOPTRP70 * Save in local var                            
-*                                                                               
-         MINSTANT GUID=G_IFFO_GUID,WORK=WORKP70,OBJPTR=0(,R7)                   
 *                                                                               
          L     R7,0(,R7)                                                        
 TGTFFO   USING FFO_obj,R7                                                       
