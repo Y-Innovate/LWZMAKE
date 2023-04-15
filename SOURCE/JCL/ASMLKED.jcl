@@ -21,7 +21,7 @@
 //          DD DISP=SHR,DSN=SYS1.MODGEN                                         
 //          DD DISP=SHR,DSN=&CEEHLQ..SCEEMAC                                    
 //          DD DISP=SHR,DSN=&HLAHLQ..SASMMAC2                                   
-//          DD DISP=SHR,DSN=&LWZMHLQ..ASM                                       
+//          DD DISP=SHR,DSN=&LWZMHLQ..COPY                                      
 //SYSIN     DD DISP=SHR,DSN=&LWZMHLQ..ASM(&MEMBER)                              
 //SYSLIN    DD DISP=SHR,DSN=&LWZMHLQ..OBJECT(&MEMBER)                           
 //SYSADATA  DD DISP=SHR,DSN=&LWZMHLQ..SYSADATA(&MEMBER)                         
