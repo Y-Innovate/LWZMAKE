@@ -399,3 +399,9 @@ If you need TSO commands in your REXX EXECs, you need to run LWZMAKE from TSO:
     //LWZMINP   DD DISP=SHR,DSN=MY.APP.CNTL(MAKEFILE)
     //LWZMLOG   DD SYSOUT=*,DCB=(RECFM=FB,LRECL=160)
     //SYSTSPRT  DD SYSOUT=*
+
+- Again, the parameter is optional (more on this later)
+- STEPLIB is only needed if your REXX EXECs need certain load modules
+
+### LWZMAKE in ISPF
+There's a JCL procedure in this Git repository you can use to run LWZMAKE in ISPF, see [ISPFMAKE.jcl](SOURCE/JCL/ISPFMAKE.jcl).
