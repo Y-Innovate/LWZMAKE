@@ -169,7 +169,7 @@ Functions can be invoked anywhere where variables can be placed. A REXX function
 ## Builtin functions
 There are a few builtin functions that are so common that is was worth writing a routine for in `LWZMAKE`. These are:
 
-### Memberlist
+### memberlist
 <pre>--+-$(-+-memberlist--<i>PDS_data_set_name</i>--+--------------------+--+-)-+--
   '-${-+                                '--,--<i>member_filter</i>--'  '-}-'</pre>
 
@@ -186,10 +186,10 @@ For example, with SOME.DATA.SET containing members AA001, AA002, AB001 and AB002
 `memberlist` retrieves a PDS(E)'s directory and lists the member names as a space delimited list.  
 The *member_filter* is optional and limits the returned member names to only ones that *start* with *member_filter*.
 
-### Addpdsname
+### addpdsname
 <pre>                                           v------<------¬
---+-$(-+-addpdsname--<i>PDS_data_set_name</i>--,--+-<i>member_name</i>-+-)-+--
-  '-${-'                                                 '-}-+</pre>
+--+-$(-+-addpdsname--<i>PDS_data_set_name</i>--,--+-<i>member_name</i>-+--+-)-+--
+  '-${-'                                                    '-}-+</pre>
 
 For example:
 
@@ -199,3 +199,74 @@ For example:
     # tgts := SOME.PDS.COB(FOO) SOME.PDS.COB(BAR)
 
 `addpdsname` adds the *PDS_data_set_name* to each *member_name* to form a complete data set name. Exactly one *PDS_data_set_name* is required. When after the comma no *member_name* is provided, the function returns an empty string. If multiple *member_names* are provided, they need to be space delimited.
+
+### append
+<pre>                                    v------------<------------¬
+--+-$(-+-append--<i>text_to_append</i>--,--+-<i>words_that_get_appended</i>-+--+-)-+--
+  '-${-'                                                         '-}-+</pre>
+  
+For example:
+
+    suffix := 00
+    mems   := WORDA WORDB WORDC
+    mems   := ${append $(suffix),$(mems)}
+    # mems := WORDA00 WORDB00 WORDC00
+
+`append` adds a *text_to_append* as a suffix to every space delimited word in *words_that_get_appended*.
+
+### prepend
+<pre>                                      v-------------<------------¬
+--+-$(-+-prepend--<i>text_to_prepend</i>--,--+-<i>words_that_get_prepended</i>-+--+-)-+--
+  '-${-'                                                            '-}-+</pre>
+  
+For example:
+
+    prefix := A
+    mems   := WORD1 WORD2 WORD3
+    mems   := ${prepend $(prefix),$(mems)}
+    # mems := AWORD1 AWORD2 AWORD3
+
+`prepend` adds a *text_to_prepend* as a prefix to every space delimited word in *words_that_get_prepended*.
+
+### stripext
+<pre>                   v----------------<---------------¬
+--+-$(-+-stripext--+-<i>filename_to_strip_of_extension</i>-+--+-)-+--
+  '-${-'                                               '-}-'</pre>
+
+For example:
+
+    files := file1.txt file2.txt file_without_ext file3.txt
+    files := ${stripext $(files)}
+    # files := file1 file2 file_without_ext file3
+    
+`stripext` strips everything after the last period (.), including the period, found in each space delimited word in *filename_to_strip_of_extension*. If there's no period then the word is untouched.
+
+## Executing shell command lines
+There's one more builtin function for executing shell command lines: sh.
+
+### sh
+<pre>--+-$(-+-sh--<i>shell_command(s)</i>--+-)-+--
+  '-${-'                       '-}-'</pre>
+
+For example, with a folder *somedir* that contains COB01.cbl, COB02.cbl and COB03.cbl:
+
+    .USSHOME = /u/yin/ybtk  # directory to use as USS home dir
+    
+    mydir   := ~/somedir
+    myfiles := ${sh cd $(mydir);find * -prune -type f}
+    # myfiles := COB01.cbl COB02.cbl COB03.cbl
+
+`sh` executes *shell_command(s)* by calling the spawn callable service BPX1SPN. This can be one single command, or multiple commands separated by the command delimter ;.
+
+As you can see in the example, a special variable `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands.
+
+Although being able to execute shell commands opens a large range of capabilities, be aware that there's no way to indicate an error in the shell command line instructions that are executed. If one of the shell commands has an error, you will simply get the stdout and stderr output returned.
+
+So for example:
+
+    .USSHOME = /u/yin/ybtk
+    
+    test := ${sh not_a_valid_command}
+    # test := not_a_valid_command: FSUM7351 not found
+
+and `LWZMAKE` will still end with CC 0.
