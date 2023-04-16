@@ -258,7 +258,7 @@ For example, with a folder *somedir* that contains COB01.cbl, COB02.cbl and COB0
 
 `sh` executes *shell_command(s)* by calling the spawn callable service BPX1SPN. This can be one single command, or multiple commands separated by the command delimter ;.
 
-As you can see in the example, a special variable `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands.
+As you can see in the example, a special register `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands.
 
 Although being able to execute shell commands opens a large range of capabilities, be aware that there's no way to indicate an error in the shell command line instructions that are executed. If one of the shell commands has an error, you will simply get the stdout and stderr output returned.
 
@@ -270,3 +270,54 @@ So for example:
     # test := not_a_valid_command: FSUM7351 not found
 
 and `LWZMAKE` will still end with CC 0.
+
+## Special registers
+`LWZMAKE` has these special registers:
+
+### .PHONY
+`.PHONY` is followed by one or more target names that are to be considered "phony" targets. Marking a target as phony tells `LWZMAKE` not to consider it a real file name and therefor not to look for a last modified date. Phony targets are always built, regardless of whether there are prerequisites and what their last modified dates are.
+
+For example:
+
+    tgts := AAA BBB CCC
+    
+    .PHONY ALL
+    ALL : $(tgts)
+    
+    .PHONY $(tgts)
+    $(tgts) :
+    - CALL JUSTECHO $@
+
+will result in 3 lines in SYSTSPRT
+
+    AAA
+    BBB
+    CCC
+
+Having the line with `.PHONY` just before the rule statement is just good practice, the line can be anywhere in the `makefile`. This script for example would have the exact same result:
+
+    tgts := AAA BBB CCC
+    
+    ALL : $(tgts)
+    
+    $(tgts) :
+    - CALL JUSTECHO $@
+    
+    .PHONY ALL $(tgts)
+
+### .USSHOME
+`.USSHOME` is a variable that is assigned a USS directory that `LWZMAKE` uses as the home directory when executing shell commands with the `$(sh ..)` function.
+
+For example:
+
+    .USSHOME = /tmp  # instead of my own home dir, use /tmp
+    
+    var1 := ${sh myscript.sh}
+
+Assuming there's a script `myscript.sh` in /tmp then `var1` will now contain the output of that script.
+
+### .RECIPEPREFIX
+`.RECIPEPREFIX`
+
+### .BUILDWHEN
+`.BUILDWHEN`
