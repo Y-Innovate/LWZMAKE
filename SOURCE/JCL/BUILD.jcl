@@ -24,7 +24,7 @@ feature         := ${sh cd $(gitdir);git branch | \
                      grep -E "^\\* (.*)$" | cut -d' ' -f2 }                     
 feature_upper   := ${sh echo "$(feature)"|tr 'a-z' 'A-Z'}                       
                                                                                 
-hlq             := LWZM020.$(feature_upper)                                     
+hlq             := <your_hlq>.$(feature_upper)  # <== choose a HLQ              
                                                                                 
 asmlib          := $(hlq).ASM                                                   
 asmlstlib       := $(asmlib).LISTING                                            
