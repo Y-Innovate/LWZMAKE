@@ -77,7 +77,7 @@ BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\
                                                                                 
 $(cpytgts) : $(cpydir)/$%.asm                                                   
 - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)                           
-- CALL TOUCHMEM DATASET($(asmtgts))                                             
+- x := ${sh touch $(asmfiles)}                                                  
                                                                                 
 $(asmtgts) : $(asmdir)/$%.asm                                                   
 - CALL OGET '$(asmdir)/$%.asm' '$@' TEXT CONVERT(YES)                           
