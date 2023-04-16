@@ -317,7 +317,19 @@ For example:
 Assuming there's a script `myscript.sh` in /tmp then `var1` will now contain the output of that script.
 
 ### .RECIPEPREFIX
-`.RECIPEPREFIX`
+`.RECIPEPREFIX` is a variable that contains a single character that is to be used as the recipe prefix in the rest of the `makefile`. Its default value is `-` which is used in the examples in this documentation. However if you have need of the `-` character for other reasons, you can switch to another recipe prefix.
+
+For example:
+
+    .RECIPEPREFIX = ^
+    
+    MYTARGET :
+    ^ CALL JUSTECHO -$@-
 
 ### .BUILDWHEN
-`.BUILDWHEN`
+`.BUILDWHEN` is a variable which influences `LWZMAKE's` decisions on when to build a target. It has only a couple of accepted values:
+
+- **`TOM`** is the **default**, it stands for `Timestamp Old or Missing`, meaning `LWZMAKE` will build a target if its last modified date is older than that of its prerequisites, or if the target doesn't exist (it's missing).
+- `TUM` stands for `Timestamp Unequal or Missing`, meaning `LWZMAKE` will build a target if its last modified date is unequal to that of its prerequisites, or if the target doesn't exist (it's missing).
+- `TO` stands for `Timestamp Old`, meaning `LWZMAKE` will build a target if its last modified date is older than that of its prerequisites, but it will skip the target if it doesn't exist.
+- `TU` stands for `Timestamp Unequal`, meaning `LWZMAKE` will build a target if its last modified date is unequal to that of its prerequisites, but it will skip the target if it doesn't exist.
