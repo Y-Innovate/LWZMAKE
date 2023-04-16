@@ -404,4 +404,16 @@ If you need TSO commands in your REXX EXECs, you need to run LWZMAKE from TSO:
 - STEPLIB is only needed if your REXX EXECs need certain load modules
 
 ### LWZMAKE in ISPF
-There's a JCL procedure in this Git repository you can use to run LWZMAKE in ISPF, see [ISPFMAKE.jcl](SOURCE/JCL/ISPFMAKE.jcl).
+There's a JCL procedure in this Git repository you can use to run `LWZMAKE` in ISPF, see [ISPFMAKE.jcl](SOURCE/JCL/ISPFMAKE.jcl).
+
+Using this procedure running `LWZMAKE` from ISPF looks like this:
+
+    //* Run LWZMAKE from ISPF to build my app
+    //ZMAKE   EXEC PROC=ISPFMAKE,
+    //             LWZMHLQ=LWZMAKE.MASTER,
+    //             MAKEPARM='-T BUILD_APP',
+    //             MAKEFILE=MY.APP.CNTL(MAKEFILE),
+    //             EXECLIB=LWZMAKE.MASTER.EXEC
+    
+- Yet again, the parameter is optional, you can omit the MAKEPARM parameter
+- If your REXX EXECs need certail load modules, you will have to alter the ISPFMAKE.jcl procedure and add additional load libraries to the ISPLLIB DD concatenation
