@@ -364,6 +364,38 @@ For example:
 
     uncond := 1
     
-    MY.APP.OBJ(COB01) : $(uncond)
+    MY.APP.OBJ(COB01) : MY.APP.COB(COB01) $(uncond)
     - CALL JUSTECHO $@
 
+## Running LWZMAKE
+As mentioned before, `LWZMAKE` reuses any REXX environment it finds, which makes is it important to choose the best way to run it based on the REXX's you wish to execute and the functionality they require.
+
+### Plain LWZMAKE
+The simplest way to run `LWZMAKE` is by running it as the main JCL STEP program:
+
+    //* Run LWZMAKE to build my app
+    //ZMAKE   EXEC PGM=LWZMAKE,PARM='-t BUILD_APP'
+    //STEPLIB   DD DISP=SHR,DSN=LWZMAKE.MASTER.LOAD
+    //SYSEXEC   DD DISP=SHR,DSN=LWZMAKE.MASTER.EXEC
+    //LWZMINP   DD DISP=SHR,DSN=MY.APP.CNTL(MAKEFILE)
+    //LWZMLOG   DD SYSOUT=*,DCB=(RECFM=FB,LRECL=160)
+    //SYSTSPRT  DD SYSOUT=*
+
+- The optional parameter specifies the target to build (more on this later)
+- STEPLIB needs to at least contain the `LWZMAKE` load module. If your REXX's invoke other loads, then their load libraries should be in STEPLIB also
+- SYSEXEC is where `LWZMAKE` looks for your REXX EXECs. There are a number of sample REXX EXECs in this Git repository.
+- LWZMINP is the DD that contains the `makefile`.
+- LWZMLOG is where `LWZMAKE` writes its execution log
+- SYSTSPRT is where REXX EXEC output goes
+
+### LWZMAKE in TSO
+If you need TSO commands in your REXX EXECs, you need to run LWZMAKE from TSO:
+
+    //* Run LWZMAKE from TSO to build my app
+    //ZMAKE   EXEC PGM=IKJEFT1B
+    //SYSEXEC   DD DISP=SHR,DSN=LWZMAKE.MASTER.EXEC
+    //SYSTSIN   DD *
+    CALL 'LWZMAKE.MASTER.LOAD(LWZMAKE)' '-T BUILD_APP'
+    //LWZMINP   DD DISP=SHR,DSN=MY.APP.CNTL(MAKEFILE)
+    //LWZMLOG   DD SYSOUT=*,DCB=(RECFM=FB,LRECL=160)
+    //SYSTSPRT  DD SYSOUT=*
