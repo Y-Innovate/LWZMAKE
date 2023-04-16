@@ -1,7 +1,7 @@
-//YBTKSA   JOB 'BUILD LWZMAKE',CLASS=A,MSGCLASS=A,NOTIFY=&SYSUID                
+//<jobstmt>  <== add your own job statement                                     
 //*                                                                             
 //      EXPORT SYMLIST=*                                                        
-//         SET LWZMHLQ=LWZM020                                                  
+//         SET LWZMHLQ=<HLQ>  <== replace with your LWZMAKE HLQ                 
 //      JCLLIB ORDER=(&LWZMHLQ..CNTL)                                           
 //*                                                                             
 //ZMAKE   EXEC PROC=ISPFMAKE,                                                   
@@ -13,7 +13,10 @@
 //ZMAKE.LWZMINP DD *                                                            
 # build LWZMAKE using LWZMAKE                                                   
                                                                                 
-.USSHOME = /u/yin/ybtks                                                         
+.USSHOME = <homedir>  # <== set to your own home directory                      
+                                                                                
+CEEHLQ          := CEE  # <== set to your LE data set HLQ                       
+HLAHLQ          := HLA  # <== set to your HLASM data set HLQ                    
                                                                                 
 gitdir          := @@GITDIR@@                                                   
                                                                                 
@@ -32,9 +35,9 @@ sysadatalib     := $(hlq).SYSADATA
 eqalangxlib     := $(hlq).EQALANGX                                              
 lkedlib         := $(hlq).LKED                                                  
 loadlib         := $(hlq).LOAD                                                  
-syslib_asma     := SYS1.MACLIB SYS1.MODGEN CEE.SCEEMAC HLA.SASMMAC2\            
-                   $(cpylib)                                                    
-syslib_lked     := CEE.SCEELKED $(objlib)                                       
+syslib_asma     := SYS1.MACLIB SYS1.MODGEN $(CEEHLQ).SCEEMAC\                   
+                   $(HLAHLQ) $(cpylib)                                          
+syslib_lked     := $(CEEHLQ).SCEELKED $(objlib)                                 
                                                                                 
 recfmFB80       := $(asmlib) $(cpylib) $(jcllib) $(objlib) $(lkedlib)           
 recfmFBA133     := $(asmlstlib)                                                 
@@ -66,8 +69,6 @@ lkedtgts        := ${addpdsname $(lkedlib),$(lkedmems)}
 objtgts         := ${addpdsname $(objlib),$(asmmems)}                           
 loadtgts        := ${addpdsname $(loadlib),$(lkedmems)}                         
                                                                                 
-cpychanged      := 0                                                            
-                                                                                
 .PHONY BUILD_ALL                                                                
 BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\         
             $(recfmU)\                                                          
@@ -75,8 +76,8 @@ BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\
             $(loadtgts)                                                         
                                                                                 
 $(cpytgts) : $(cpydir)/$%.asm                                                   
-- cpychanged := 1                                                               
 - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)                           
+- CALL TOUCHMEM DATASET($(asmtgts))                                             
                                                                                 
 $(asmtgts) : $(asmdir)/$%.asm                                                   
 - CALL OGET '$(asmdir)/$%.asm' '$@' TEXT CONVERT(YES)                           
@@ -87,7 +88,7 @@ $(jcltgts) : $(jcldir)/$%.jcl
 $(lkedtgts) : $(lkeddir)/$%.lked                                                
 - CALL OGET '$(lkeddir)/$%.lked' '$@' TEXT CONVERT(YES)                         
                                                                                 
-$(objtgts) : $(asmlib)($%) $(cpychanged)                                        
+$(objtgts) : $(asmlib)($%)                                                      
 - CALL ASMA SYSIN($(asmlib)($%)) SYSLIN($(objlib)($%))\                         
 -           SYSLIB($(syslib_asma)) SYSADATA($(sysadatalib)($%))\                
 -           SYSPRINT($(asmlstlib)($%)) PARM(ADATA,GOFF,LIST(133))\              
