@@ -36,7 +36,7 @@ eqalangxlib     := $(hlq).EQALANGX
 lkedlib         := $(hlq).LKED                                                  
 loadlib         := $(hlq).LOAD                                                  
 syslib_asma     := SYS1.MACLIB SYS1.MODGEN $(CEEHLQ).SCEEMAC\                   
-                   $(HLAHLQ) $(cpylib)                                          
+                   $(HLAHLQ).SASMMAC2 $(cpylib)                                 
 syslib_lked     := $(CEEHLQ).SCEELKED $(objlib)                                 
                                                                                 
 recfmFB80       := $(asmlib) $(cpylib) $(jcllib) $(objlib) $(lkedlib)           
