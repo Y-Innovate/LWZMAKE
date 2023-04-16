@@ -333,3 +333,37 @@ For example:
 - `TUM` stands for `Timestamp Unequal or Missing`, meaning `LWZMAKE` will build a target if its last modified date is unequal to that of its prerequisites, or if the target doesn't exist (it's missing).
 - `TO` stands for `Timestamp Old`, meaning `LWZMAKE` will build a target if its last modified date is older than that of its prerequisites, but it will skip the target if it doesn't exist.
 - `TU` stands for `Timestamp Unequal`, meaning `LWZMAKE` will build a target if its last modified date is unequal to that of its prerequisites, but it will skip the target if it doesn't exist.
+
+## More on rules
+As stated above, a `rule` statement declares `targets` and their `prerequisites`:
+
+<pre>  v----<---¬     v----<---¬
+--+-<i>target</i>-+--<b>:</b>--+-<i>prereq</i>-+--</pre>
+
+For example:
+
+    # Compile COBOL source to get object module
+    # Prerequisite to each object module is a COBOL source with the same
+    # member name ($%) and a shared copybook LCOB01
+    MY.APP.OBJ(COB01) MY.APP.OBJ(COB02) : MY.APP.COB($%) MY.APP.CPY(LCOB01)
+
+A *target* that isn't declared PHONY is assumed to be a file, which can be a member in a PDS(E), a sequential data set or a USS file. In every case it needs to be fully qualified, so MVS data sets are not prefixed with you user's HLQ and the USS files need to start with a forward slash /.
+
+A rule is optionally followed by a `recipe`, which are the steps `LWZMAKE` is to take to build the target(s). If there's no recipe, the logging will still mention `LWZMAKE` builds a target, but apart from the logging line nothing else will happen for that target.
+
+If more than 1 target in a rule share the same recipe, that recipe will possibly be executed for each of those targets, meaning `LWZMAKE` will process those recipe lines over and over.
+
+*prereqs* can be other targets (real or PHONY) or they can be files that `LWZMAKE` doesn't know how to build, but merely checks for their existence and compares their last modified dates.  
+If they are defined as targets too, whether in a different rule or in the same one doesn't matter, that target gets processed first.
+
+After potentially processing the prerequisites' recipes there is still a check for the prereqs existence and their last modified date. So even if a prereq was just built, it is not assumed that as a result the prereq has to thereby exist.
+
+A special prerequisite comes in the form of a binary value of `0` or `1`. A prerequisite of `0` is ignored, but a `1` makes the build of the current target unconditional. This value 0 or 1 can of course be derived from a resolved variable or function.
+
+For example:
+
+    uncond := 1
+    
+    MY.APP.OBJ(COB01) : $(uncond)
+    - CALL JUSTECHO $@
+
