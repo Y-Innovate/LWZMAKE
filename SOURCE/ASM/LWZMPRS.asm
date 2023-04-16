@@ -142,6 +142,7 @@ PSS#06A                      DC    A(PSS#06)   * AlterLastState
 PSS#07A                      DC    A(PSS#07)   * Push                           
 PSS#08A                      DC    A(PSS#08)   * Pop                            
 PSS#09A                      DC    A(PSS#09)   * SetPhase                       
+PSS#10A                      DC    A(PSS#10)   * SetRecipePrefix                
 *                                                                               
                              DS    0F                                           
 MAK501D_PRS                  DC    C'MAK501D Created IPRS object '              
@@ -5277,6 +5278,13 @@ ti4            USING TFO_obj,R4
 *                                                                               
             IPSS_Pop OBJECT=IPSS_ps_P99,WORK=WORKP99                            
 *                                                                               
+            L     R2,ITFO_ti3_P99                                               
+            L     R2,TFO_ISTB_token-TFO_obj(,R2)                                
+            L     R2,STB_lpBuf-STB_obj(,R2)                                     
+*                                                                               
+            IPSS_SetRecipePrefix OBJECT=IPSS_ps_P99,WORK=WORKP99,      X        
+               PREFIX=0(R2)                                                     
+*                                                                               
 *           Instantiate a RecipeprefixStatement                                 
             MINSTANT GUID=G_IST4_GUID,WORK=WORKP99,                    X        
                OBJPTR=IST4_recipeprf_P99                                        
@@ -6430,6 +6438,8 @@ LWZMPRS  CSECT
          DROP                                                                   
 *                                                                               
 PSS#09   MSETPB OBJ=PSS,PROP=PSS_cPhase                                         
+*                                                                               
+PSS#10   MSETPB OBJ=PSS,PROP=PSS_cRecipePrefix                                  
 *                                                                               
 * Scan state expected bit flags                                                 
 *                                                                               
