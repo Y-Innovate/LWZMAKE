@@ -7,3 +7,6 @@
 
 # Non source files in ISO8859-1
 LICENSE.txt     zos-working-tree-encoding=ISO8859-1
+
+# Load in binary
+BINARY/LOAD/LWZMAKE.load  binary
