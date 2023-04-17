@@ -266,3 +266,13 @@ Starting with the *recfm\** targets which are in rules all the way at the bottom
 Then follow `$(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)`, which resolve to the total list of all of the source members in PDS's that make up `LWZMAKE`.
 
 Finally there's `$(loadtgts)` which resolves to the `LWZMAKE` load module we want to have at the end of the build.
+
+Everything after this rule are other rules and recipes for certain build tasks.
+
+Beginning with the rule to get `SOURCE/COPY/*` files copied to the COPY PDS.
+
+    $(cpytgts) : $(cpydir)/$%.asm
+    - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)
+    - x := ${sh cd $(asmdir);touch $(asmfiles)}
+    
+`$(cpytgts)` resolves to the full list of 
