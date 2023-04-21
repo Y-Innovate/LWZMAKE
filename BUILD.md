@@ -275,4 +275,47 @@ Beginning with the rule to get `SOURCE/COPY/*` files copied to the COPY PDS.
     - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)
     - x := ${sh cd $(asmdir);touch $(asmfiles)}
     
-`$(cpytgts)` resolves to the full list of 
+`$(cpytgts)` resolves to the full list of fully qualified data sets for all the COPY members. Each is checked against one prerequisite, which is the identically named (`$%`) USS file with the .asm extension attached to it and located in the `$(cpydir)` USS directory for COPY files.
+
+If `LWZMAKE` determines that a USS copy file has a more recent modified date than it's equally named target in the PDS, or if the target in the PDS doesn't exist, then the recipe is executed.
+
+The recipe consists of 2 actions:
+
+- invoke the REXX EXEC called OGET which copies the USS file to the PDS and converts the coded character set on the go (in this case only from IBM-1047 to IBM-037, which doesn't change much except square brackets [] and the not ¬ sign).
+- execute a small shell command line that sets the last modified date of the `$(asmfiles)` to 'now' (meaning all of the Assembler sources other than COPY files, so the ones that are actually ran through the assembler utility). This makes sure that all the `$(asmfiles)` get built whenever a COPY member changes, even when the Assembler source itself didn't change, and should the build fail, then a rerun of the job will pick these up all the same.
+
+The next couple of lines are more of the same:
+
+    $(asmtgts) : $(asmdir)/$%.asm
+    - CALL OGET '$(asmdir)/$%.asm' '$@' TEXT CONVERT(YES)
+    
+    $(jcltgts) : $(jcldir)/$%.jcl
+    - CALL OGET '$(jcldir)/$%.jcl' '$@' TEXT CONVERT(YES)
+    
+    $(lkedtgts) : $(lkeddir)/$%.lked
+    - CALL OGET '$(lkeddir)/$%.lked' '$@' TEXT CONVERT(YES)
+    
+These rules & recipes get the other source USS files copied to their identically named targets in PDS's whenever the USS file is modified more recently or if the targets in the PDS's don't exist.
+
+Next is the target that does the actual Assembler execution:
+
+    $(objtgts) : $(asmlib)($%)
+    - CALL ASMA SYSIN($(asmlib)($%)) SYSLIN($(objlib)($%))\
+    -           SYSLIB($(syslib_asma)) SYSADATA($(sysadatalib)($%))\
+    -           SYSPRINT($(asmlstlib)($%)) PARM(ADATA,GOFF,LIST(133))\
+    -           PRINTSUCCESS(NO)
+    - CALL TOUCHMEM DATASET($(objlib)($%))
+    - CALL TOUCHMEM DATASET($(asmlstlib)($%))
+    - CALL TOUCHMEM DATASET($(sysadatalib)($%))
+    - CALL EQALANGX SYSADATA($(sysadatalib)($%))\
+    -               IDILANGX($(eqalangxlib)($%)) PARM(ASM ERROR)
+    - CALL TOUCHMEM DATASET($(eqalangxlib)($%))
+
+This rule applies to all `$(objtgts)` which are all the object modules that should exist after a successful Assembly of each of the asm sources. Each object module is dependent on its identically named (`$%`) Assembler source in the `$(asmlib)` PDS (previously copied from the `$(asmdir)` USS directory). If the asm source was modified more recently than the corresponding object module, or if the object module doesn't exist, the recipe is executed.
+
+The recipe consists of a number of tasks:
+
+- A REXX EXEC called ASMA parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the ASMA90 utility to Assemble a source. What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/ASMA.rexx).
+- 3 x TOUCHMEM sets the last modified date & time for 3 Assembly output members to 'now' because the Assembler doesn't automatically do so.
+- A REXX EXEC called EQALANGX parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the EQALANGX utility to produce a side file needed for debugging. What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/EQALANGX.rexx).
+- Finally one more TOUCHMEM to set the last modified date & time for the just created EQALANGX file to 'now' because the utility doesn't automatically do so.
