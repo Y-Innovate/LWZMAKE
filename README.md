@@ -400,7 +400,7 @@ If you need TSO commands in your REXX EXECs, you need to run LWZMAKE from TSO:
     //LWZMLOG   DD SYSOUT=*,DCB=(RECFM=FB,LRECL=160)
     //SYSTSPRT  DD SYSOUT=*
 
-- Again, the parameter is optional (more on this later)
+- The parameter is optional (more on this later)
 - STEPLIB is only needed if your REXX EXECs need certain load modules
 
 ### LWZMAKE in ISPF
@@ -415,5 +415,32 @@ Using this procedure running `LWZMAKE` from ISPF looks like this:
     //             MAKEFILE=MY.APP.CNTL(MAKEFILE),
     //             EXECLIB=LWZMAKE.MASTER.EXEC
     
-- Yet again, the parameter is optional, you can omit the MAKEPARM parameter
+- The parameter is optional, you can omit the MAKEPARM parameter
 - If your REXX EXECs need certail load modules, you will have to alter the ISPFMAKE.jcl procedure and add additional load libraries to the ISPLLIB DD concatenation
+
+### Parameters to LWZMAKE
+`LWZMAKE` accepts 2 parameters:
+
+- <code>-t <<i>target to build</i>></code>
+- <code>-v <<i>log level</i>></code>
+
+*target_to_build* specifies which target `LWZMAKE` is supposed to build in phase 2 of its execution. Whatever is specified, it's parsed áfter phase 1, so you can use variables. For example given this `makefile`:
+
+    hlq := QUAL1
+    src := $(hlq).PDS.OLD(MEM1)
+    tgt := $(hlq).PDS(MEM1)
+    
+    $(tgt) : $(src)
+    - CALL JUSTECHO $@
+
+it is perfectly valid to tell `LWZMAKE` to build <code>-t $(tgt)</code> and `QUAL1.PDS(MEM1)` will be built.
+
+*log level* is a number that controls how detailed `LWZMAKE` will log its activities in the file attached to the `LWZMLOG` DD name. Valid values are:
+
+- `0` = LOG_LEVEL_NONE: no logging produced
+- `1` = LOG_LEVEL_ERROR: only error messages logged
+- `2` = LOG_LEVEL_WARNING: error and warning messages logged
+- <code>***3***</code> = LOG_LEVEL_INFO: error, warning and informational messages logged. This is the default.
+- `4` = LOG_LEVEL_DEBUG: all of the above, plus debugging messages logged.
+- `5` = LOG_LEVEL_DEBUG2: extra debug (only for investigating support issues)
+- `6` = LOG_LEVEL_DEBUG3: extra extra debug (only for investigating support issues)
