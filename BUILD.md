@@ -330,3 +330,45 @@ Then follows the rule for link-editing our load module:
 For `LWZMAKE` there's actually only one load module, but for consistency the same type of variables are used here. So this rule applies to all `$(loadtgts)` which is just `LWZMAKE`. It is dependent on all `$(objtgts)` object modules and the identically named link-edit input member in the `$(lkedlib)` PDS. If any of the object modules or the link-edit input member are modified more recently than the `LWZMAKE` load module, or if the load module doesn't exist, the recipe is executed.
 
 The recipe has only one task which is to call the REXX EXEC called LKED, which parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the IEWBLINK utility (IEWL and HEWL are alias of IEWBLINK). What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/LKED.rexx).
+
+Finally there's a few targets just to get some PDS's allocated. These are actually the first dependencies of the `BUILD_ALL` target, but they're all the way at the bottom because they're the least interesting. The first is:
+
+    $(recfmFB80) :
+    - CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B) LRECL(80)\
+    -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+    - CALL TSOCMD FREE DATASET('$@')
+
+The `$(recfmFB80)` variable expands to all the build input and output PDS's of record length 80 and fixed blocked record format. There's no dependency so all `LWZMAKE` does is test if it exists and if not execute the recipe, which is to invoke the REXX EXEC called TSOCMD twice, one time to allocate the data set and another to free it. TSOCMD takes whatever parameter it was passed and tries to execute it as a TSO command.
+
+The rest of the rules:
+
+    $(recfmFBA133) :
+    - CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B,A) LRECL(133)\
+    -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+    - CALL TSOCMD FREE DATASET('$@')
+
+    $(recfmVB32756) :
+    - CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(V,B) LRECL(32756)\
+    -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+    - CALL TSOCMD FREE DATASET('$@')
+
+    $(recfmVB1562) :
+    - CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(V,B) LRECL(1562)\
+    -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+    - CALL TSOCMD FREE DATASET('$@')
+
+    $(recfmU) :
+    - CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(U) LRECL(0) BLKSIZE(32760)\
+    -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)
+    - CALL TSOCMD FREE DATASET('$@')
+
+are more of the same, but for the different PDS characteristics. Each `recfm*` variable expands to a different set of PDS's that share the same record length and format.
+
+Let's do one more walkthrough of what happens in an incremental build when for example the source `SOURCE/ASM/LWZMAKE.asm` is updated.
+
+- During phase 1 all of the assignments are executed, `LWZMAKE` remembers each to the variables and their values. The rules and recipes are parsed and also committed to memory, but not executed yet.
+- Assume the build was executed either without a parameter or with `-t BUILD_ALL`. This means that phase 2 starts with `BUILD_ALL` as the target to build.
+- Its first dependencies are the `recfm*` variables that resolve to all the build input and output PDS names. `LWZMAKE` finds the rules for those, which have no dependencies, so they're simple allocated if they don't exist yet, but we're walking through an incremental build, so let's assume all of them already exist, so no allocations are performed.
+- The next dependencies of `BUILD_ALL` are all of the source PDS members (ASM, COPY, JCL and LKED). They in turn are each dependent on identically named files with the proper file extensions attached and in their respective USS directories. `LWZMAKE` will go through each of them and compare last modified dates and it will find that only `$(asmdir)/LWZMAKE.asm` is newer than `$(asmlib)(LWZMAKE)`, so that USS file is copied to the PDS. The rest is left untouched.
+- The last dependency of `BUILD_ALL` is the `LWZMAKE` load module. It in turn is dependent on all the object modules and the link-edit input member. The object modules in turn are dependent on the identically names ASM source members. So `LWZMAKE` processes those rules first, comparing all ASM source members and the identically named object modules. Of those, only the `$(asmlib)(LWZMAKE)` member is more recently updated than its object module, so the recipe for Assembling is only executed for that source, producing the `$(objlib)(LWZMAKE)` object module and updating the last modified date and time. Once all object module targets are checked and processed (one) `LWZMAKE` continues with the rule of the load module, comparing each of its dependent object module's modified date and times with that of the load module. At that point one is more recent, namely the `$(objlib)(LWZMAKE)` object module just produced. This causes `LWZMAKE` to execute the link-edit recipe and the load module is produced fresh.
+- At the end `LWZMAKE`, having gone through `BUILD_ALL` dependencies it will 'build' `BUILD_ALL` itself, but since it has no recipe, nothing happens.
