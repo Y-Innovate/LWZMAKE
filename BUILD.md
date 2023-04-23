@@ -316,6 +316,17 @@ This rule applies to all `$(objtgts)` which are all the object modules that shou
 The recipe consists of a number of tasks:
 
 - A REXX EXEC called ASMA parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the ASMA90 utility to Assemble a source. What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/ASMA.rexx).
-- 3 x TOUCHMEM sets the last modified date & time for 3 Assembly output members to 'now' because the Assembler doesn't automatically do so.
+- 3 x TOUCHMEM sets the last modified date & time for 3 Assembly output members to 'now' because the Assembler doesn't automatically do so. There's really only need to do so on the object module as that is the only build output used in future builds to compare against source files. But it's just good practice to have all ISPF statistics reflect the latest changes as much as possible.
 - A REXX EXEC called EQALANGX parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the EQALANGX utility to produce a side file needed for debugging. What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/EQALANGX.rexx).
 - Finally one more TOUCHMEM to set the last modified date & time for the just created EQALANGX file to 'now' because the utility doesn't automatically do so.
+
+Then follows the rule for link-editing our load module:
+
+    $(loadtgts) : $(objtgts) $(lkedlib)($%)
+    - CALL LKED SYSLIN($(lkedlib)($%)) SYSLMOD($(loadlib)($%))\
+    -           SYSLIB($(syslib_lked)) PARM(LIST,XREF,RENT,REUS)\
+    -           PRINTSUCCESS(NO)
+
+For `LWZMAKE` there's actually only one load module, but for consistency the same type of variables are used here. So this rule applies to all `$(loadtgts)` which is just `LWZMAKE`. It is dependent on all `$(objtgts)` object modules and the identically named link-edit input member in the `$(lkedlib)` PDS. If any of the object modules or the link-edit input member are modified more recently than the `LWZMAKE` load module, or if the load module doesn't exist, the recipe is executed.
+
+The recipe has only one task which is to call the REXX EXEC called LKED, which parses the parameter it was passed, dynamically allocates the necessary DD's and invokes the IEWBLINK utility (IEWL and HEWL are alias of IEWBLINK). What each parameter means is described in the comments at the top of the [REXX EXEC](SOURCE/EXEC/LKED.rexx).
