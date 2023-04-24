@@ -77,6 +77,7 @@ To utilize `LWZMAKE` to its full potential, it's important to understand that it
 1. In the first phase the `makefile` is parsed, meaning it's checked for correct syntax and semantics. During this 1st phase the following variables are resolved:
     - variables in direct assignments, but only ones outside recipes
     - variables used on the left hand side of rule statements, so before the `:` character.
+    - variables used in .PHONY statements
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;All other variables are left intact, so unresolved.
 
