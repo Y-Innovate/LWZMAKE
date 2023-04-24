@@ -1,7 +1,15 @@
 # How LWZMAKE builds itself
-The first build of `LWZMAKE` will have to be with a regular JCL, there's a sample JCL in this Git repository for just that purpose, see [ASMLKED.jcl](SOURCE/JCL/ASMLKED.jcl).
+A build with `LWZMAKE` needs the binary, which you can either copy from [BINARY/LOAD/LWZMAKE.load](BINARY/LOAD/LWZMAKE.load) to a load library with a USS shell command like:
 
-If you do have an `LWZMAKE` load module, you can use `LWZMAKE` to build `LWZMAKE`. There's another sample JCL in this Git repository for that as well, see [BUILD.jcl](SOURCE/JCL/BUILD.jcl). This JCL goes together with shell script [build.sh](SOURCE/build.sh). The JCL is not meant to be submitted interactively, but rather you should run `build.sh` which will submit `BUILD.jcl` for you.  
+    cp BINARY/LOAD/LWZMAKE.load "//'<HLQs>.LOAD(LWZMAKE)'"
+
+Or you can build it with the sample JCL with regular Assembly and link-edit steps in this Git repository, see [SOURCE/JCL/ASMLKED.jcl](SOURCE/JCL/ASMLKED.jcl).
+
+Once you have an `LWZMAKE` load module, you can use `LWZMAKE` to build `LWZMAKE`. There's another sample JCL in this Git repository for that as well, see [SOURCE/JCL/BUILD.jcl](SOURCE/JCL/BUILD.jcl). This JCL goes together with shell script [SOURCE/build.sh](SOURCE/build.sh). The JCL is not meant to be submitted interactively, but rather you should:
+
+- copy [SOURCE/JCL/JOBSTMT.jcl.template](SOURCE/JCL/JOBSTMT.jcl.template) to `SOURCE/JCL/JOBSTMT.jcl` and update it so that it contains a valid job statement
+- run [SOURCE/build.sh](SOURCE/build.sh) which will prepend `SOURCE/JCL/BUILD.jcl` with the job statement in `SOURCE/JCL/JOBSTMT.jcl`, do some text replacements and submit the job for you.
+
 The reason for doing it with `build.sh` is so that you don't have to put your home directory and your repository clone's directory in `BUILD.jcl` (causing a change which Git will want you to commit).
 
 This page takes the `makefile` in BUILD.jcl apart to explain bit by bit what it's doing.
