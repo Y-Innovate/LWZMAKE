@@ -242,9 +242,33 @@ For example:
 `stripext` strips everything after the last period (.), including the period, found in each space delimited word in *filename_to_strip_of_extension*. If there's no period then the word is untouched.
 
 ## Executing shell command lines
+Shell commands can be used in assignments and in recipes. `LWZMAKE` executes shell commands by calling the spawn callable service BPX1SPN. This can be one single command, or multiple commands separated by the command delimter ;.
+
+### .USSHOME required
+A special register `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands. For example:
+
+    .USSHOME = /u/yin/ybtk  # directory to use as USS home dir
+    
+### SH in a recipe
+You can issue a shell command line in a recipe similar to how you would call a REXX EXEC.
+
+    - SH <command line>
+
+For example, to copy an augmented JCL (by putting a job statement in front of it) from USS to a PDS you could:
+
+    mypds  := QUAL1.PDS.JCL
+    mydir  := /some/directory
+    myjobs := FOOBAR
+    tgts   := ${addpdsname $(mypds),$(myjobs)}
+    
+    $(tgts) : $(mydir)/$%.jcl
+    - SH cd $(mydir);cat JOBSTMT.jcl $%.jcl > JOB.tmp
+    - CALL OGET '$(mydir)/JOB.tmp' '$@' TEXT CONVERT(YES)
+    - SH rm $(mydir)/JOB.tmp
+
+### SH the builtin function
 There's one more builtin function for executing shell command lines: sh.
 
-### sh
 <pre>--+-$(-+-sh--<i>shell_command(s)</i>--+-)-+--
   '-${-'                       '-}-'</pre>
 
@@ -253,12 +277,8 @@ For example, with a folder *somedir* that contains COB01.cbl, COB02.cbl and COB0
     .USSHOME = /u/yin/ybtk  # directory to use as USS home dir
     
     mydir   := ~/somedir
-    myfiles := ${sh cd $(mydir);find * -prune -type f}
+    myfiles := ${sh cd $(mydir);find *.cbl -prune -type f}
     # myfiles := COB01.cbl COB02.cbl COB03.cbl
-
-`sh` executes *shell_command(s)* by calling the spawn callable service BPX1SPN. This can be one single command, or multiple commands separated by the command delimter ;.
-
-As you can see in the example, a special register `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands.
 
 Although being able to execute shell commands opens a large range of capabilities, be aware that there's no way to indicate an error in the shell command line instructions that are executed. If one of the shell commands has an error, you will simply get the stdout and stderr output returned.
 
