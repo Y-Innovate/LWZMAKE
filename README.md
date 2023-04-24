@@ -437,7 +437,7 @@ Using this procedure running `LWZMAKE` from ISPF looks like this:
     //             EXECLIB=LWZMAKE.MASTER.EXEC
     
 - The parameter is optional, you can omit the MAKEPARM parameter
-- If your REXX EXECs need certail load modules, you will have to alter the ISPFMAKE.jcl procedure and add additional load libraries to the ISPLLIB DD concatenation
+- If your REXX EXECs need certain load modules, you will have to alter the ISPFMAKE.jcl procedure and add additional load libraries to the ISPLLIB DD concatenation
 
 ### Parameters to LWZMAKE
 `LWZMAKE` accepts 2 parameters:
