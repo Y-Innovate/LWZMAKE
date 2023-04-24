@@ -2,7 +2,7 @@
 The first build of `LWZMAKE` will have to be with a regular JCL, there's a sample JCL in this Git repository for just that purpose, see [ASMLKED.jcl](SOURCE/JCL/ASMLKED.jcl).
 
 If you do have an `LWZMAKE` load module, you can use `LWZMAKE` to build `LWZMAKE`. There's another sample JCL in this Git repository for that as well, see [BUILD.jcl](SOURCE/JCL/BUILD.jcl). This JCL goes together with shell script [build.sh](SOURCE/build.sh). The JCL is not meant to be submitted interactively, but rather you should run `build.sh` which will submit `BUILD.jcl` for you.  
-The reason for doing it with `build.sh` is so that you don't have to put your repository clone's directory in `BUILD.jcl` (causing a change which Git will want you to commit).
+The reason for doing it with `build.sh` is so that you don't have to put your home directory and your repository clone's directory in `BUILD.jcl` (causing a change which Git will want you to commit).
 
 This page takes the `makefile` in BUILD.jcl apart to explain bit by bit what it's doing.
 
@@ -10,7 +10,7 @@ Here's the entire makefile:
 
     # build LWZMAKE using LWZMAKE
 
-    .USSHOME = <homedir>  # <== set to your own home directory
+    .USSHOME = @@HOMEDIR@@  # <== change if you want a different home dir
 
     CEEHLQ          := CEE  # <== set to your LE data set HLQ
     HLAHLQ          := HLA  # <== set to your HLASM data set HLQ
@@ -21,8 +21,9 @@ Here's the entire makefile:
                          grep -E "^\\* (.*)$" | cut -d' ' -f2 }
     feature_upper   := ${sh echo "$(feature)"|tr 'a-z' 'A-Z'}
 
-    hlq             := <your_hlq>.$(feature_upper)  # <== choose a HLQ
+    hlq             := &LWZMHLQ..$(feature_upper)  # <== choose a HLQ
 
+    execlib         := $(hlq).EXEC
     asmlib          := $(hlq).ASM
     asmlstlib       := $(asmlib).LISTING
     cpylib          := $(hlq).COPY
@@ -36,29 +37,35 @@ Here's the entire makefile:
                        $(HLAHLQ).SASMMAC2 $(cpylib)
     syslib_lked     := $(CEEHLQ).SCEELKED $(objlib)
 
-    recfmFB80       := $(asmlib) $(cpylib) $(jcllib) $(objlib) $(lkedlib)
+    recfmFB80       := $(execlib) $(asmlib) $(cpylib) $(jcllib) $(objlib)\
+                       $(lkedlib)
     recfmFBA133     := $(asmlstlib)
     recfmVB32756    := $(sysadatalib)
     recfmVB1562     := $(eqalangxlib)
     recfmU          := $(loadlib)
 
+    execdir         := $(gitdir)/EXEC
     asmdir          := $(gitdir)/ASM
     cpydir          := $(gitdir)/COPY
     jcldir          := $(gitdir)/JCL
     lkeddir         := $(gitdir)/LKED
 
-    asmfiles        := ${sh cd $(asmdir);find * -prune -type f}
+    execfiles       := ${sh cd $(execdir);find *.rexx -prune -type f}
+    execmems        := ${stripext $(execfiles)}
+    
+    asmfiles        := ${sh cd $(asmdir);find *.asm -prune -type f}
     asmmems         := ${stripext $(asmfiles)}
     
-    cpyfiles        := ${sh cd $(cpydir);find * -prune -type f}
+    cpyfiles        := ${sh cd $(cpydir);find *.asm -prune -type f}
     cpymems         := ${stripext $(cpyfiles)}
 
-    jclfiles        := ${sh cd $(jcldir);find * -prune -type f}
+    jclfiles        := ${sh cd $(jcldir);find *.jcl -prune -type f}
     jclmems         := ${stripext $(jclfiles)}
 
-    lkedfiles       := ${sh cd $(lkeddir);find * -prune -type f}
+    lkedfiles       := ${sh cd $(lkeddir);find *.lked -prune -type f}
     lkedmems        := ${stripext $(lkedfiles)}
 
+    exectgts        := ${addpdsname $(execlib),$(execmems)}
     asmtgts         := ${addpdsname $(asmlib),$(asmmems)}
     cpytgts         := ${addpdsname $(cpylib),$(cpymems)}
     jcltgts         := ${addpdsname $(jcllib),$(jclmems)}
@@ -69,9 +76,12 @@ Here's the entire makefile:
     .PHONY BUILD_ALL
     BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\
                 $(recfmU)\
-                $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)\
+                $(exectgts) $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)\
                 $(loadtgts)
 
+    $(exectgts) : $(execdir)/$%.rexx
+    - CALL OGET '$(execdir)/$%.rexx' '$@' TEXT CONVERT(YES)
+    
     $(cpytgts) : $(cpydir)/$%.asm
     - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)
     - x := ${sh cd $(asmdir);touch $(asmfiles)}
@@ -129,16 +139,16 @@ Here's the entire makefile:
 
 So let's start with the first line (after the top comment)
 
-    .USSHOME = <homedir>  # <== set to your own home directory
+    .USSHOME = @@HOMEDIR@@  # <== change if you want a different home dir
     
-We need to set the `.USSHOME` special register because we want to use `${sh..}` later on.
+We need to set the `.USSHOME` special register because we want to use `${sh..}` later on. You should leave the weird value of `@@HOMEDIR@@` because it is substituted by the `build.sh` shell script with your home directory.
 
 The next 2 lines are meant to make it easy to customize the `makefile` to your site which might have LE and HLASM installed in different HLQ's.
 
     CEEHLQ          := CEE  # <== set to your LE data set HLQ
     HLAHLQ          := HLA  # <== set to your HLASM data set HLQ
 
-The next line declares the `gitdir` variable, which you should leave the weird value of `@@GITDIR@@`.
+The next line declares the `gitdir` variable, which you should also leave the weird value of `@@GITDIR@@`.
 
     gitdir          := @@GITDIR@@
     
@@ -165,12 +175,13 @@ The next line simply converts the found branch name to upper case (to be used as
 
 The next line declares the `hlq` variable, which is appended with multiple low level qualifiers to create MVS data sets to store the `LWZMAKE` sources and build outputs.
 
-    hlq             := <your_hlq>.$(feature_upper)  # <== choose a HLQ
+    hlq             := &LWZMHLQ..$(feature_upper)  # <== choose a HLQ
 
-You are supposed to update *<your_hlq>* to a high level qualifier of your choice. As you can see, the currently checked out Git branch name becomes a qualifier in the data set names.
+You can leave the `&LWZMHLQ.` variable there to have all the allocated PDS's to start with the same HLQ as your LWZMAKE binary used to do this build. But can change it to a high level qualifier of your choice. As you can see, the currently checked out Git branch name becomes a qualifier in the data set names.
 
 The following lines define all of the MVS data set names needed to store all of `LWZMAKE's` source files and build outputs.
 
+    execlib         := $(hlq).EXEC
     asmlib          := $(hlq).ASM
     asmlstlib       := $(asmlib).LISTING
     cpylib          := $(hlq).COPY
@@ -191,9 +202,10 @@ The next lines assign 2 variables a list of data set names. `syslib_asma` is use
                        $(HLAHLQ).SASMMAC2 $(cpylib)
     syslib_lked     := $(CEEHLQ).SCEELKED $(objlib)
 
-The next 5 lines group the source and build output PDS's by their physical characteristics.
+The next 6 lines group the source and build output PDS's by their physical characteristics.
 
-    recfmFB80       := $(asmlib) $(cpylib) $(jcllib) $(objlib) $(lkedlib)
+    recfmFB80       := $(execlib) $(asmlib) $(cpylib) $(jcllib) $(objlib)\
+                       $(lkedlib)
     recfmFBA133     := $(asmlstlib)
     recfmVB32756    := $(sysadatalib)
     recfmVB1562     := $(eqalangxlib)
@@ -201,45 +213,50 @@ The next 5 lines group the source and build output PDS's by their physical chara
 
 The *recfm\** variables are used further on as build targets to make sure all these data sets get allocated before the real building begins.
  
-The next 4 lines declare variables with the `LWZMAKE` source directories in USS.
+The next 5 lines declare variables with the `LWZMAKE` source directories in USS.
  
+    execdir         := $(gitdir)/EXEC
     asmdir          := $(gitdir)/ASM
     cpydir          := $(gitdir)/COPY
     jcldir          := $(gitdir)/JCL
     lkeddir         := $(gitdir)/LKED
  
-The next line lists the files in the `$(asmdir)` directory and stores it in the `asmfiles` variable.
+The next line lists the files in the `$(execdir)` directory and stores it in the `execfiles` variable.
 
-    asmfiles        := ${sh cd $(asmdir);find * -prune -type f}
+    execfiles       := ${sh cd $(execdir);find *.rexx -prune -type f}
 
-`find * -prune -type f` will search for only files (no directories) because of `-type f` and it will not traverse any subdirectories because of `-prune` (there shouldn't be any, but just to be on the safe side).  
-So `asmfiles` will contain `CEEUOPT.asm LWZMAKE.asm LWZMAVL.asm LWZMFMG.asm LWZMINP.asm LWZMLOG.asm LWZMPRS.asm LWZMREX.asm LWZMSTM.asm LWZMSTR.asm LWZMTOK.asm LWZMUSS.asm LWZMVCP.asm`.
+`find *.rexx -prune -type f` will search for only files (no directories) because of `-type f` and it will not traverse any subdirectories because of `-prune` (there shouldn't be any, but just to be on the safe side).  
+So `execfiles` will contain a list of REXX EXECs like `APNDALL.rexx APPEND.rexx ASMA.rexx ... WRITEREC.rexx`.
 
-The next line strips each of those `asmfiles` of their file extensions.
+The next line strips each of those `execfiles` of their file extensions.
 
-    asmmems         := ${stripext $(asmfiles)}
+    execmems        := ${stripext $(execfiles)}
     
-So `asmmems` will contain `CEEUOPT LWZMAKE LWZMAVL LWZMFMG LWZMINP LWZMLOG LWZMPRS LWZMREX LWZMSTM LWZMSTR LWZMTOK LWZMUSS LWZMVCP`.
+So `execmems` will contain a list like `APNDALL APPEND ASMA ... WRITEREC`.
 
 The next couple of lines repeat these same 2 variable assignments for the other source types.
 
-    cpyfiles        := ${sh cd $(cpydir);find * -prune -type f}
+    asmfiles        := ${sh cd $(asmdir);find *.asm -prune -type f}
+    asmmems         := ${stripext $(asmfiles)}
+    
+    cpyfiles        := ${sh cd $(cpydir);find *.asm -prune -type f}
     cpymems         := ${stripext $(cpyfiles)}
 
-    jclfiles        := ${sh cd $(jcldir);find * -prune -type f}
+    jclfiles        := ${sh cd $(jcldir);find *.jcl -prune -type f}
     jclmems         := ${stripext $(jclfiles)}
 
-    lkedfiles       := ${sh cd $(lkeddir);find * -prune -type f}
+    lkedfiles       := ${sh cd $(lkeddir);find *.lked -prune -type f}
     lkedmems        := ${stripext $(lkedfiles)}
 
-The next line turns the `asmmems` source member names into fully qualified data set names by adding the `asmlib` variable's data set name and member brackets.
+The next line turns the `execmems` source member names into fully qualified data set names by adding the `execlib` variable's data set name and member brackets.
 
-    asmtgts         := ${addpdsname $(asmlib),$(asmmems)}
+    exectgts        := ${addpdsname $(execlib),$(execmems)}
 
-So if for example your `hlq` variable contains `LWZMAKE.MASTER` and `asmlib` contains `LWZMAKE.MASTER.ASM`, then `asmtgts` will contain `LWZMAKE.MASTER.ASM(CEEUOPT) LWZMAKE.MASTER.ASM(LWZMAKE) LWZMAKE.MASTER.ASM(LWZMAVL) LWZMAKE.MASTER.ASM(LWZMFMG) LWZMAKE.MASTER.ASM(LWZMINP) LWZMAKE.MASTER.ASM(LWZMLOG) LWZMAKE.MASTER.ASM(LWZMPRS) LWZMAKE.MASTER.ASM(LWZMREX) LWZMAKE.MASTER.ASM(LWZMSTM) LWZMAKE.MASTER.ASM(LWZMSTR) LWZMAKE.MASTER.ASM(LWZMTOK) LWZMAKE.MASTER.ASM(LWZMUSS) LWZMAKE.MASTER.ASM(LWZMVCP)`.
+So if for example your `hlq` variable contains `LWZMAKE.MASTER` and `execlib` contains `LWZMAKE.MASTER.EXEC`, then `exectgts` will contain a list like `LWZMAKE.MASTER.EXEC(APNDALL) LWZMAKE.MASTER.EXEC(APPEND) LWZMAKE.MASTER.EXEC(ASMA) ... LWZMAKE.MASTER.EXEC(WRITEREC)`.
 
 The next couple of lines repeat the same step for the other source types.
 
+    asmtgts         := ${addpdsname $(asmlib),$(asmmems)}
     cpytgts         := ${addpdsname $(cpylib),$(cpymems)}
     jcltgts         := ${addpdsname $(jcllib),$(jclmems)}
     lkedtgts        := ${addpdsname $(lkedlib),$(lkedmems)}
@@ -254,7 +271,7 @@ Now follows the most important rule statement in the `makefile` which defines th
     .PHONY BUILD_ALL
     BUILD_ALL : $(recfmFB80) $(recfmFBA133) $(recfmVB32756) $(recfmVB1562)\
                 $(recfmU)\
-                $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)\
+                $(exectgts) $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)\
                 $(loadtgts)
 
 `BUILD_ALL` itself is PHONY, so not a real data set name, and there's no recipe below this rule. That is because `BUILD_ALL` is merely an anchor to link lots of other targets to in the form of prerequisites to get those built in the proper order.
@@ -263,13 +280,24 @@ Now follows the most important rule statement in the `makefile` which defines th
 
 Starting with the *recfm\** targets which are in rules all the way at the bottom of the `makefile`.
 
-Then follow `$(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)`, which resolve to the total list of all of the source members in PDS's that make up `LWZMAKE`.
+Then follow `$(exectgts) $(cpytgts) $(asmtgts) $(jcltgts) $(lkedtgts)`, which resolve to the total list of all of the source members in PDS's that make up `LWZMAKE`.
 
 Finally there's `$(loadtgts)` which resolves to the `LWZMAKE` load module we want to have at the end of the build.
 
 Everything after this rule are other rules and recipes for certain build tasks.
 
-Beginning with the rule to get `SOURCE/COPY/*` files copied to the COPY PDS.
+Beginning with the rule to get `SOURCE/EXEC/*` files copied to the EXEC PDS.
+
+    $(exectgts) : $(execdir)/$%.rexx
+    - CALL OGET '$(execdir)/$%.rexx' '$@' TEXT CONVERT(YES)
+
+`$(exectgts)` resolves to the full list of fully qualified data sets for all the EXEC members. Each is checked against one prerequisite, which is the identically named (`$%`) USS file with the .rexx extension attached to it and located in the `$(execdir)` USS directory for REXX EXEC files.
+
+If `LWZMAKE` determines that a USS .rexx file has a more recent modified date than it's equally named target in the PDS, or if the target in the PDS doesn't exist, then the recipe is executed.
+
+The recipe consists of one line to invoke the REXX EXEC called OGET which copies the USS file to the PDS and converts the coded character set on the go (in this case only from IBM-1047 to IBM-037, which doesn't change much except square brackets [] and the not ¬ sign).
+
+Then there's a similar rule to get `SOURCE/COPY/*` files copied to the COPY PDS.
 
     $(cpytgts) : $(cpydir)/$%.asm
     - CALL OGET '$(cpydir)/$%.asm' '$@' TEXT CONVERT(YES)
@@ -279,7 +307,7 @@ Beginning with the rule to get `SOURCE/COPY/*` files copied to the COPY PDS.
 
 If `LWZMAKE` determines that a USS copy file has a more recent modified date than it's equally named target in the PDS, or if the target in the PDS doesn't exist, then the recipe is executed.
 
-The recipe consists of 2 actions:
+This recipe consists of 2 actions:
 
 - invoke the REXX EXEC called OGET which copies the USS file to the PDS and converts the coded character set on the go (in this case only from IBM-1047 to IBM-037, which doesn't change much except square brackets [] and the not ¬ sign).
 - execute a small shell command line that sets the last modified date of the `$(asmfiles)` to 'now' (meaning all of the Assembler sources other than COPY files, so the ones that are actually ran through the assembler utility). This makes sure that all the `$(asmfiles)` get built whenever a COPY member changes, even when the Assembler source itself didn't change, and should the build fail, then a rerun of the job will pick these up all the same.
