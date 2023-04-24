@@ -8,8 +8,8 @@ There is a job prepared for that purpose which works in the same way as the job 
 
 You need to:
 
-- copy [SAMPLES/JCL/JOBSTMT.jcl.template](SAMPLES/JCL/JOBSTMT.jcl.template) to `SAMPLES/JCL/JOBSTMT.jcl` and update it so that it contains a valid job statement
-- run [SAMPLES/build.sh](SAMPLES/build.sh) which will prepend `SAMPLES/JCL/BUILD.jcl` with the job statement in `SAMPLES/JCL/JOBSTMT.jcl`, do some text replacements and submit the job for you.
+- copy [SAMPLES/JCL/JOBSTMT.jcl.template](JCL/JOBSTMT.jcl.template) to `SAMPLES/JCL/JOBSTMT.jcl` and update it so that it contains a valid job statement
+- run [SAMPLES/build.sh](build.sh) which will prepend `SAMPLES/JCL/BUILD.jcl` with the job statement in `SAMPLES/JCL/JOBSTMT.jcl`, do some text replacements and submit the job for you.
 
 The reason for doing it with `build.sh` is so that you don't have to put your home directory and your repository clone's directory in `BUILD.jcl` (causing a change which Git will want you to commit).
 
