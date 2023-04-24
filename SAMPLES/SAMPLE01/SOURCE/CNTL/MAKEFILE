@@ -1,6 +1,0 @@
-# Makefile for SAMPLE01
-.RECIPEPREFIX = -   # use - as the recipe prefix char
-
-.PHONY HELLO_WORLD
-HELLO_WORLD :
-- CALL HELLO

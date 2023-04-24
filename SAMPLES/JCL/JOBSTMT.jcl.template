@@ -1,0 +1,5 @@
+//<jobstmt>  <== add your own job statement                                     
+//*                                                                             
+//      EXPORT SYMLIST=*                                                        
+//         SET LWZMHLQ=<HLQ>  <== replace with your LWZMAKE HLQ                 
+//      JCLLIB ORDER=(&LWZMHLQ..CNTL)                                           

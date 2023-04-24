@@ -977,9 +977,15 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
          DO WHILE=(CLC,varBuildTgtP07+vt-VARIANT(4),NE,=A(VT_NULL))             
             MVC   currIndexP07,nextIndexP07                                     
 *                                                                               
-            MINSTANT GUID=G_IFFO_GUID,WORK=WORKP07,OBJPTR=IFFO_P07              
-*                                                                               
             L     R2,varBuildTgtP07+value-VARIANT                               
+            L     R3,STR_lpString-STR_obj(,R2)                                  
+*                                                                               
+            IF (CLC,STR_nStrLen-STR_obj(4,R2),EQ,=A(1)),ANDIF,         X        
+               (CLI,0(R3),EQ,C'1'),OR,(CLI,0(R3),EQ,C'0') THEN                  
+               B     PRS#07_SKIP_TGT                                            
+            ENDIF                                                               
+*                                                                               
+            MINSTANT GUID=G_IFFO_GUID,WORK=WORKP07,OBJPTR=IFFO_P07              
 *                                                                               
             IAVL_Query OBJECT=IAVL_targets,WORK=WORKP07,               X        
                NAME_IN=STR_lpString-STR_obj(R2),                       X        
@@ -1058,6 +1064,7 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
                ENDIF                                                            
             ENDIF                                                               
 *                                                                               
+PRS#07_SKIP_TGT EQU   *                                                         
             IAV2_Next OBJECT=PARMIAV2TGTSP07,WORK=WORKP07,             X        
                INDEX_IN=currIndexP07,INDEXPTR_OUT=nextIndexP07,        X        
                VARIANT_OUT=varBuildTgtP07                                       

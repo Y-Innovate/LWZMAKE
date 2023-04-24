@@ -1,0 +1,301 @@
+//*-------------------------------------------------------------------*         
+//* JCL to invoke LWZMAKE in ISPF to create SAMPLEnn PDS's            *         
+//*                                                                   *         
+//* Use <LWZMAKE_gitdir>/SOURCE/build.sh to run the build. It updates *         
+//* this JCL by filling in @@HOMEDIR@@ and @@GITDIR@@ and prepends    *         
+//* JOBSTMT.jcl before submitting it.                                 *         
+//*                                                                   *         
+//* Make sure you copy JOBSTMT.jcl.template to JOBSTMT.jcl and change *         
+//* it according to your needs.                                       *         
+//*-------------------------------------------------------------------*         
+//ZMAKE   EXEC PROC=ISPFMAKE,                                                   
+//             LWZMHLQ=&LWZMHLQ,                                                
+//             MAKEPARM='-t BUILD_ALL',                                         
+//*            MAKEFILE=&YDMOHLQ..MAKEFILE(BUILD),                              
+//             EXECLIB=&LWZMHLQ..EXEC,                                          
+//             DYNAMNBR.ZMAKE=100                                               
+//ZMAKE.LWZMINP DD *                                                            
+# build samples using LWZMAKE                                                   
+                                                                                
+.USSHOME = @@HOMEDIR@@                                                          
+                                                                                
+gitdir          := @@GITDIR@@                                                   
+                                                                                
+feature         := ${sh cd $(gitdir);git branch | \                             
+                     grep -E "^\\* (.*)$" | cut -d' ' -f2 }                     
+feature_upper   := ${sh echo "$(feature)"|tr 'a-z' 'A-Z'}                       
+                                                                                
+hlq             := LWZM020.$(feature_upper)                                     
+                                                                                
+sampds          := $(hlq).SAMPLE01.JCL \                                        
+                   $(hlq).SAMPLE01.EXEC \                                       
+                   $(hlq).SAMPLE02.JCL \                                        
+                   $(hlq).SAMPLE03.JCL \                                        
+                   $(hlq).SAMPLE04.JCL \                                        
+                   $(hlq).SAMPLE04.EXEC \                                       
+                   $(hlq).SAMPLE05.JCL \                                        
+                   $(hlq).SAMPLE05.EXEC \                                       
+                   $(hlq).SAMPLE06.JCL \                                        
+                   $(hlq).SAMPLE07.JCL \                                        
+                   $(hlq).SAMPLE07.ASM \                                        
+                   $(hlq).SAMPLE07.LKED \                                       
+                   $(hlq).SAMPLE08.JCL \                                        
+                   $(hlq).SAMPLE08.COB \                                        
+                   $(hlq).SAMPLE08.LKED \                                       
+                   $(hlq).SAMPLE09.JCL \                                        
+                   $(hlq).SAMPLE09.SRCPDS \                                     
+                   $(hlq).SAMPLE09.TGTPDS \                                     
+                   $(hlq).SAMPLE10.JCL \                                        
+                   $(hlq).SAMPLE10.TEMPLATE \                                   
+                   $(hlq).SAMPLE11.JCL \                                        
+                   $(hlq).SAMPLE11.EXEC                                         
+                                                                                
+samp01jclmems   := BUILD                                                        
+samp01execmems  := HELLO                                                        
+                                                                                
+samp02jclmems   := BUILD                                                        
+                                                                                
+samp03jclmems   := BUILD                                                        
+                                                                                
+samp04jclmems   := BUILD                                                        
+samp04execmems  := ALLOCDS                                                      
+                                                                                
+samp05jclmems   := BUILD                                                        
+samp05execmems  := ALLOCDS                                                      
+                                                                                
+samp06jclmems   := BUILD                                                        
+                                                                                
+samp07jclmems   := BUILD                                                        
+samp07asmmems   := SHA1 TSHA1                                                   
+samp07lkedmems  := SHA1 TSHA1                                                   
+                                                                                
+samp08jclmems   := BUILD                                                        
+samp08cobmems   := COB01 COB02                                                  
+samp08lkedmems  := COB01 COB02                                                  
+                                                                                
+samp09jclmems   := BUILD                                                        
+samp09srcmems   := MEM1 MEM2                                                    
+samp09tgtmems   := MEM1                                                         
+                                                                                
+samp10jclmems   := BUILD                                                        
+samp10rslvmems  := RESOLVE1 RESOLVE2                                            
+samp10tpltmems  := WHYJCL                                                       
+                                                                                
+samp11jclmems   := BUILD                                                        
+samp11execmems  := NEXTNR                                                       
+                                                                                
+samp01jcls      := ${addpdsname $(hlq).SAMPLE01.JCL,$(samp01jclmems)}           
+samp01execs     := ${addpdsname $(hlq).SAMPLE01.EXEC,$(samp01execmems)}         
+                                                                                
+samp02jcls      := ${addpdsname $(hlq).SAMPLE02.JCL,$(samp02jclmems)}           
+                                                                                
+samp03jcls      := ${addpdsname $(hlq).SAMPLE03.JCL,$(samp03jclmems)}           
+                                                                                
+samp04jcls      := ${addpdsname $(hlq).SAMPLE04.JCL,$(samp04jclmems)}           
+samp04execs     := ${addpdsname $(hlq).SAMPLE04.EXEC,$(samp04execmems)}         
+                                                                                
+samp05jcls      := ${addpdsname $(hlq).SAMPLE05.JCL,$(samp05jclmems)}           
+samp05execs     := ${addpdsname $(hlq).SAMPLE05.EXEC,$(samp05execmems)}         
+                                                                                
+samp06jcls      := ${addpdsname $(hlq).SAMPLE06.JCL,$(samp06jclmems)}           
+                                                                                
+samp07jcls      := ${addpdsname $(hlq).SAMPLE07.JCL,$(samp07jclmems)}           
+samp07asms      := ${addpdsname $(hlq).SAMPLE07.ASM,$(samp07asmmems)}           
+samp07lkeds     := ${addpdsname $(hlq).SAMPLE07.LKED,$(samp07lkedmems)}         
+                                                                                
+samp08jcls      := ${addpdsname $(hlq).SAMPLE08.JCL,$(samp08jclmems)}           
+samp08cobs      := ${addpdsname $(hlq).SAMPLE08.COB,$(samp08cobmems)}           
+samp08lkeds     := ${addpdsname $(hlq).SAMPLE08.LKED,$(samp08lkedmems)}         
+                                                                                
+samp09jcls      := ${addpdsname $(hlq).SAMPLE09.JCL,$(samp09jclmems)}           
+samp09srcs      := ${addpdsname $(hlq).SAMPLE09.SRCPDS,$(samp09srcmems)}        
+samp09tgts      := ${addpdsname $(hlq).SAMPLE09.TGTPDS,$(samp09tgtmems)}        
+                                                                                
+samp10jcls      := ${addpdsname $(hlq).SAMPLE10.JCL,$(samp10jclmems)}           
+samp10rslvs     := ${addpdsname $(hlq).SAMPLE10.JCL,$(samp10rslvmems)}          
+samp10tplts     := ${addpdsname $(hlq).SAMPLE10.TEMPLATE,\                      
+                     $(samp10tpltmems)}                                         
+                                                                                
+samp11jcls      := ${addpdsname $(hlq).SAMPLE11.JCL,$(samp11jclmems)}           
+samp11execs     := ${addpdsname $(hlq).SAMPLE11.EXEC,$(samp11execmems)}         
+                                                                                
+samp01jcldir    := $(gitdir)/SAMPLE01/SOURCE/JCL                                
+samp01execdir   := $(gitdir)/SAMPLE01/SOURCE/EXEC                               
+                                                                                
+samp02jcldir    := $(gitdir)/SAMPLE02/SOURCE/JCL                                
+                                                                                
+samp03jcldir    := $(gitdir)/SAMPLE03/SOURCE/JCL                                
+                                                                                
+samp04jcldir    := $(gitdir)/SAMPLE04/SOURCE/JCL                                
+samp04execdir   := $(gitdir)/SAMPLE04/SOURCE/EXEC                               
+                                                                                
+samp05jcldir    := $(gitdir)/SAMPLE05/SOURCE/JCL                                
+samp05execdir   := $(gitdir)/SAMPLE05/SOURCE/EXEC                               
+                                                                                
+samp06jcldir    := $(gitdir)/SAMPLE06/SOURCE/JCL                                
+                                                                                
+samp07jcldir    := $(gitdir)/SAMPLE07/SOURCE/JCL                                
+samp07asmdir    := $(gitdir)/SAMPLE07/SOURCE/ASM                                
+samp07lkeddir   := $(gitdir)/SAMPLE07/SOURCE/LKED                               
+                                                                                
+samp08jcldir    := $(gitdir)/SAMPLE08/SOURCE/JCL                                
+samp08cobdir    := $(gitdir)/SAMPLE08/SOURCE/COB                                
+samp08lkeddir   := $(gitdir)/SAMPLE08/SOURCE/LKED                               
+                                                                                
+samp09jcldir    := $(gitdir)/SAMPLE09/SOURCE/JCL                                
+samp09srcdir    := $(gitdir)/SAMPLE09/SOURCE/SRCPDS                             
+samp09tgtdir    := $(gitdir)/SAMPLE09/SOURCE/TGTPDS                             
+                                                                                
+samp10jcldir    := $(gitdir)/SAMPLE10/SOURCE/JCL                                
+samp10rslvdir   := $(gitdir)/SAMPLE10/SOURCE/JCL                                
+samp10tpltdir   := $(gitdir)/SAMPLE10/SOURCE/TEMPLATE                           
+                                                                                
+samp11jcldir    := $(gitdir)/SAMPLE11/SOURCE/JCL                                
+samp11execdir   := $(gitdir)/SAMPLE11/SOURCE/EXEC                               
+                                                                                
+.PHONY BUILD_ALL                                                                
+BUILD_ALL : $(sampds) SAMPLE01 SAMPLE02 SAMPLE03 SAMPLE04 SAMPLE05\             
+                      SAMPLE06 SAMPLE07 SAMPLE08 SAMPLE09 SAMPLE10\             
+                      SAMPLE11                                                  
+                                                                                
+.PHONY SAMPLE01                                                                 
+SAMPLE01 : $(samp01jcls) $(samp01execs)                                         
+                                                                                
+.PHONY SAMPLE02                                                                 
+SAMPLE02 : $(samp02jcls)                                                        
+                                                                                
+.PHONY SAMPLE03                                                                 
+SAMPLE03 : $(samp03jcls)                                                        
+                                                                                
+.PHONY SAMPLE04                                                                 
+SAMPLE04 : $(samp04jcls) $(samp04execs)                                         
+                                                                                
+.PHONY SAMPLE05                                                                 
+SAMPLE05 : $(samp05jcls) $(samp05execs)                                         
+                                                                                
+.PHONY SAMPLE06                                                                 
+SAMPLE06 : $(samp06jcls)                                                        
+                                                                                
+.PHONY SAMPLE07                                                                 
+SAMPLE07 : $(samp07jcls) $(samp07asms) $(samp07lkeds)                           
+                                                                                
+.PHONY SAMPLE08                                                                 
+SAMPLE08 : $(samp08jcls) $(samp08cobs) $(samp08lkeds)                           
+                                                                                
+.PHONY SAMPLE09                                                                 
+SAMPLE09 : $(samp09jcls) $(samp09srcs) $(samp09tgts)                            
+                                                                                
+.PHONY SAMPLE10                                                                 
+SAMPLE10 : $(samp10jcls) $(samp10rslvs) $(samp10tplts)                          
+                                                                                
+.PHONY SAMPLE11                                                                 
+SAMPLE11 : $(samp11jcls) $(samp11execs)                                         
+                                                                                
+$(samp01jcls) : $(samp01jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp01jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE01@@/$(hlq).SAMPLE01/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp01execs) : $(samp01execdir)/$%.rexx                                       
+- CALL OGET '$(samp01execdir)/$%.rexx' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(samp02jcls) : $(samp02jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp02jcldir)/$%.jcl > JOB.tmp          
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp03jcls) : $(samp03jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp03jcldir)/$%.jcl > JOB.tmp          
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp04jcls) : $(samp04jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp04jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE04@@/$(hlq).SAMPLE04/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp04execs) : $(samp04execdir)/$%.rexx                                       
+- CALL OGET '$(samp04execdir)/$%.rexx' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(samp05jcls) : $(samp05jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp05jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE05@@/$(hlq).SAMPLE05/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp05execs) : $(samp05execdir)/$%.rexx                                       
+- CALL OGET '$(samp05execdir)/$%.rexx' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(samp06jcls) : $(samp06jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp06jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE06@@/$(hlq).SAMPLE06/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp07jcls) : $(samp07jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp07jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE07@@/$(hlq).SAMPLE07/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp07asms) : $(samp07asmdir)/$%.asm                                          
+- CALL OGET '$(samp07asmdir)/$%.asm' '$@' TEXT CONVERT(YES)                     
+                                                                                
+$(samp07lkeds) : $(samp07lkeddir)/$%.lked                                       
+- CALL OGET '$(samp07lkeddir)/$%.lked' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(samp08jcls) : $(samp08jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp08jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE08@@/$(hlq).SAMPLE08/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp08cobs) : $(samp08cobdir)/$%.cbl                                          
+- CALL OGET '$(samp08cobdir)/$%.cbl' '$@' TEXT CONVERT(YES)                     
+                                                                                
+$(samp08lkeds) : $(samp08lkeddir)/$%.lked                                       
+- CALL OGET '$(samp08lkeddir)/$%.lked' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(samp09jcls) : $(samp09jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp09jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE09@@/$(hlq).SAMPLE09/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp09srcs) : $(samp09srcdir)/$%                                              
+- CALL OGET '$(samp09srcdir)/$%' '$@' TEXT CONVERT(YES)                         
+                                                                                
+$(samp09tgts) : $(samp09tgtdir)/$%                                              
+- CALL OGET '$(samp09tgtdir)/$%' '$@' TEXT CONVERT(YES)                         
+                                                                                
+$(samp10jcls) : $(samp10jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp10jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp10rslvs) : $(samp10rslvdir)/$%                                            
+- CALL OGET '$(samp10rslvdir)/$%' '$@' TEXT CONVERT(YES)                        
+                                                                                
+$(samp10tplts) : $(samp10tpltdir)/$%.jcl                                        
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp10tpltdir)/$%.jcl | \               
+-    sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp11jcls) : $(samp11jcldir)/$%.jcl                                          
+- SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp11jcldir)/$%.jcl | \                
+-    sed "s/@@SAMPLE11@@/$(hlq).SAMPLE11/g" > JOB.tmp                           
+- CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
+- SH rm $(gitdir)/JOB.tmp                                                       
+                                                                                
+$(samp11execs) : $(samp11execdir)/$%.rexx                                       
+- CALL OGET '$(samp11execdir)/$%.rexx' '$@' TEXT CONVERT(YES)                   
+                                                                                
+$(sampds) :                                                                     
+- CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B) LRECL(80)\                     
+-             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)                   
+- CALL TSOCMD FREE DATASET('$@')                                                
+/*                                                                              
