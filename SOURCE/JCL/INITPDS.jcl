@@ -26,7 +26,7 @@
 //* Copy files                                                                  
 //*                                                                             
 //COPY    EXEC PGM=IKJEFT1B                                                     
-//SYSPROC   DD DISP=SHR,DSN=SYS1.SBPXEXEC                                       
+//SYSPROC   DD DISP=SHR,DSN=SYS1.SBPXEXEC      <=== CHECK                       
 //SYSTSIN   DD *,SYMBOLS=EXECSYS                                                
 OGET '&GITDIR/SOURCE/EXEC/ASMA.rexx' -                                          
      '&LWZMHLQ..&BRANCH.EXEC(ASMA)' -                                           
@@ -42,6 +42,9 @@ OGET '&GITDIR/SOURCE/EXEC/TOUCHMEM.rexx' -
      TEXT CONVERT(YES)                                                          
 OGET '&GITDIR/SOURCE/EXEC/TSOCMD.rexx' -                                        
      '&LWZMHLQ..&BRANCH.EXEC(TSOCMD)' -                                         
+     TEXT CONVERT(YES)                                                          
+OGET '&GITDIR/SOURCE/JCL/ISPFMAKE.jcl' -                                        
+     '&LWZMHLQ..&BRANCH.JCL(ISPFMAKE)' -                                        
      TEXT CONVERT(YES)                                                          
 OSHELL cp '&GITDIR/BINARY/LOAD/LWZMAKE.load' -                                  
           "//'&LWZMHLQ..&BRANCH.LOAD(LWZMAKE)'"                                 
