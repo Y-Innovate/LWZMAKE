@@ -11,10 +11,9 @@
 //ZMAKE   EXEC PROC=ISPFMAKE,                                                   
 //             LWZMHLQ=&LWZMHLQ,                                                
 //             MAKEPARM='-t BUILD_ALL',                                         
-//*            MAKEFILE=&YDMOHLQ..MAKEFILE(BUILD),                              
 //             EXECLIB=&LWZMHLQ..EXEC,                                          
 //             DYNAMNBR.ZMAKE=100                                               
-//ZMAKE.LWZMINP DD *                                                            
+//ZMAKE.LWZMINP DD *,SYMBOLS=EXECSYS                                            
 # build samples using LWZMAKE                                                   
                                                                                 
 .USSHOME = @@HOMEDIR@@                                                          
@@ -25,7 +24,7 @@ feature         := ${sh cd $(gitdir);git branch | \
                      grep -E "^\\* (.*)$" | cut -d' ' -f2 }                     
 feature_upper   := ${sh echo "$(feature)"|tr 'a-z' 'A-Z'}                       
                                                                                 
-hlq             := LWZM020.$(feature_upper)                                     
+hlq             := &LWZMHLQ..$(feature_upper)                                   
                                                                                 
 sampds          := $(hlq).SAMPLE01.JCL \                                        
                    $(hlq).SAMPLE01.EXEC \                                       
