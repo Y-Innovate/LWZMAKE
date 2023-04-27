@@ -15,7 +15,10 @@
 //DD1       DD DISP=(MOD,CATLG),DSN=&LWZMHLQ..&BRANCH.EXEC,                     
 //             DCB=(RECFM=FB,LRECL=80,DSORG=PO),DSNTYPE=LIBRARY,                
 //             UNIT=SYSALLDA,SPACE=(CYL,(1,1))                                  
-//DD2       DD DISP=(MOD,CATLG),DSN=&LWZMHLQ..&BRANCH.LOAD,                     
+//DD2       DD DISP=(MOD,CATLG),DSN=&LWZMHLQ..&BRANCH.JCL,                      
+//             DCB=(RECFM=FB,LRECL=80,DSORG=PO),DSNTYPE=LIBRARY,                
+//             UNIT=SYSALLDA,SPACE=(CYL,(1,1))                                  
+//DD3       DD DISP=(MOD,CATLG),DSN=&LWZMHLQ..&BRANCH.LOAD,                     
 //             DCB=(RECFM=U,LRECL=0,BLKSIZE=32760,DSORG=PO),                    
 //             DSNTYPE=LIBRARY,UNIT=SYSALLDA,SPACE=(CYL,(1,1))                  
 //*-------------------------------------------------------------------*         
@@ -40,8 +43,7 @@ OGET '&GITDIR/SOURCE/EXEC/TOUCHMEM.rexx' -
 OGET '&GITDIR/SOURCE/EXEC/TSOCMD.rexx' -                                        
      '&LWZMHLQ..&BRANCH.EXEC(TSOCMD)' -                                         
      TEXT CONVERT(YES)                                                          
-OGET '&GITDIR/BINARY/LOAD/LWZMAKE.load' -                                       
-     '&LWZMHLQ..&BRANCH.LOAD(LWZMAKE)' -                                        
-     BINARY CONVERT(NO)                                                         
+OSHELL cp '&GITDIR/BINARY/LOAD/LWZMAKE.load' -                                  
+          "//'&LWZMHLQ..&BRANCH.LOAD(LWZMAKE)'"                                 
 /*                                                                              
 //SYSTSPRT  DD SYSOUT=*                                                         
