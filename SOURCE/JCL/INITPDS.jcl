@@ -37,6 +37,9 @@ OGET '&GITDIR/SOURCE/EXEC/EQALANGX.rexx' -
 OGET '&GITDIR/SOURCE/EXEC/LKED.rexx' -                                          
      '&LWZMHLQ..&BRANCH.EXEC(LKED)' -                                           
      TEXT CONVERT(YES)                                                          
+OGET '&GITDIR/SOURCE/EXEC/OGET.rexx' -                                          
+     '&LWZMHLQ..&BRANCH.EXEC(OGET)' -                                           
+     TEXT CONVERT(YES)                                                          
 OGET '&GITDIR/SOURCE/EXEC/TOUCHMEM.rexx' -                                      
      '&LWZMHLQ..&BRANCH.EXEC(TOUCHMEM)' -                                       
      TEXT CONVERT(YES)                                                          
