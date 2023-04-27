@@ -1,6 +1,6 @@
 //<JOBCARD> <=== FILL IN                                                        
 //*-------------------------------------------------------------------*         
-//* Thit job assembles and link-edits LWZMAKE without making use of   *         
+//* This job assembles and link-edits LWZMAKE without making use of   *         
 //* LWZMAKE (there's another job to do just that, but it requires a   *         
 //* load module LWZMAKE)                                              *         
 //*-------------------------------------------------------------------*         
