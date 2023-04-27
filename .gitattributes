@@ -1,4 +1,5 @@
 # Catch-all at the top
+*  text eol=lf
 *  zos-working-tree-encoding=IBM-1047
 
 # Git's files (which MUST be ASCII or UTF-8)
