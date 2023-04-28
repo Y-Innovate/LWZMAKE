@@ -192,7 +192,8 @@ SAMPLE11 : $(samp11jcls) $(samp11execs)
                                                                                 
 $(samp01jcls) : $(samp01jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp01jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE01@@/$(hlq).SAMPLE01/g" > JOB.tmp                           
+-    /bin/sed 's/@@SAMPLE01@@/$(hlq).SAMPLE01/g' | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -211,7 +212,8 @@ $(samp03jcls) : $(samp03jcldir)/$%.jcl
                                                                                 
 $(samp04jcls) : $(samp04jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp04jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE04@@/$(hlq).SAMPLE04/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE04@@/$(hlq).SAMPLE04/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -220,7 +222,8 @@ $(samp04execs) : $(samp04execdir)/$%.rexx
                                                                                 
 $(samp05jcls) : $(samp05jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp05jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE05@@/$(hlq).SAMPLE05/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE05@@/$(hlq).SAMPLE05/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -229,13 +232,15 @@ $(samp05execs) : $(samp05execdir)/$%.rexx
                                                                                 
 $(samp06jcls) : $(samp06jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp06jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE06@@/$(hlq).SAMPLE06/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE06@@/$(hlq).SAMPLE06/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
 $(samp07jcls) : $(samp07jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp07jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE07@@/$(hlq).SAMPLE07/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE07@@/$(hlq).SAMPLE07/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -247,7 +252,8 @@ $(samp07lkeds) : $(samp07lkeddir)/$%.lked
                                                                                 
 $(samp08jcls) : $(samp08jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp08jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE08@@/$(hlq).SAMPLE08/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE08@@/$(hlq).SAMPLE08/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -259,7 +265,8 @@ $(samp08lkeds) : $(samp08lkeddir)/$%.lked
                                                                                 
 $(samp09jcls) : $(samp09jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp09jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE09@@/$(hlq).SAMPLE09/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE09@@/$(hlq).SAMPLE09/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -271,7 +278,8 @@ $(samp09tgts) : $(samp09tgtdir)/$%
                                                                                 
 $(samp10jcls) : $(samp10jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp10jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
@@ -280,13 +288,15 @@ $(samp10rslvs) : $(samp10rslvdir)/$%
                                                                                 
 $(samp10tplts) : $(samp10tpltdir)/$%.jcl                                        
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp10tpltdir)/$%.jcl | \               
--    sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE10@@/$(hlq).SAMPLE10/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
 $(samp11jcls) : $(samp11jcldir)/$%.jcl                                          
 - SH cd $(gitdir);cat JCL/JOBSTMT.jcl $(samp11jcldir)/$%.jcl | \                
--    sed "s/@@SAMPLE11@@/$(hlq).SAMPLE11/g" > JOB.tmp                           
+-    /bin/sed "s/@@SAMPLE11@@/$(hlq).SAMPLE11/g" | \                            
+-    /bin/sed -E 's/( )*$//g' > JOB.tmp                                         
 - CALL OGET '$(gitdir)/JOB.tmp' '$@' TEXT CONVERT(YES)                          
 - SH rm $(gitdir)/JOB.tmp                                                       
                                                                                 
