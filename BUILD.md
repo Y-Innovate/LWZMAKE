@@ -1,4 +1,22 @@
 # How LWZMAKE builds itself
+After a fresh clone of this Git repository these are the necessary steps needed to have `LWZMAKE` build itself:
+
+- Copy these files from .jcl.template to .jcl
+  - [SOURCE/JCL/BUILD.jcl.template](SOURCE/JCL/BUILD.jcl.template) => SOURCE/JCL/BUILD.jcl
+  - [SOURCE/JCL/INITPDS.jcl.template](SOURCE/JCL/INITPDS.jcl.template) => SOURCE/JCL/INITPDS.jcl
+  - [SOURCE/JCL/ISPFMAKE.jcl.template](SOURCE/JCL/ISPFMAKE.jcl.template) => SOURCE/JCL/ISPFMAKE.jcl
+  - [SOURCE/JCL/JOBSTMT.jcl.template](SOURCE/JCL/JOBSTMT.jcl.template) => SOURCE/JCL/JOBSTMT.jcl
+  
+  There's an entry in .gitignore to exclude JCL's from the Git repo, so don't worry about muddying it up.
+- Edit each of them and change the files to suit your needs.  
+  In BUILD.jcl you need to check if CEEHLQ and HLAHLQ are set to the correct HLQ.  
+  In INITPDS.jcl you need to provide a job statement and fill in the variables LWZMHLQ and GITDIR.  
+  In ISPFMAKE.jcl you need to check if ISPHLQ is set to the correct HLQ, and perhaps check if the ISPF libraries are namd correcly (SISP%ENU).  
+  In JOBSTMT.jcl you need to provide a job statement and fill in the variable LWZMHLQ.
+- Run INITPDS.jcl.  
+  It will allocate 3 PDS's with the provided HLQ in LWZMHLQ. These PDS's are the EXEC, JCL and LOAD libraries and they will be populated with the minimum of members needed. Unlike the PDS's that `LWZMAKE` will build in a minute, there's no Git branch name in these data sets.
+- Run [SOURCE/build.sh](SOURCE/build.sh)
+
 A build with `LWZMAKE` needs the binary, which you can either copy from [BINARY/LOAD/LWZMAKE.load](BINARY/LOAD/LWZMAKE.load) to a load library with a USS shell command like:
 
     cp BINARY/LOAD/LWZMAKE.load "//'<HLQs>.LOAD(LWZMAKE)'"
