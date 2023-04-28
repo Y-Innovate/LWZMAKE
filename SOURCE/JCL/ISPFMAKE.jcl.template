@@ -25,10 +25,9 @@ $$
 //*                                                                             
 //ZMAKE   EXEC PGM=IKJEFT1B,REGION=256M,DYNAMNBR=30,COND=(0,NE)                 
 //SYSEXEC   DD DISP=SHR,DSN=&EXECLIB                                            
-//SYSPROC   DD DISP=SHR,DSN=ISP.SISPCLIB                                        
-//          DD DISP=(SHR,DELETE),DSN=&&PROC                                     
+//SYSPROC   DD DISP=(SHR,DELETE),DSN=&&PROC                                     
 //LWZMINP   DD DISP=SHR,DSN=&MAKEFILE                                           
-//EQADEBUG  DD DISP=SHR,DSN=&LWZMHLQ..EQALANGX                                  
+//*EQADEBUG DD DISP=SHR,DSN=&LWZMHLQ..EQALANGX                                  
 //ISPPROF   DD RECFM=FB,LRECL=80,SPACE=(TRK,(2,2,2))                            
 //ISPLLIB   DD DISP=SHR,DSN=&LWZMHLQ..LOAD                                      
 //*         DD DISP=SHR,DSN=<CICS_HLQ>.SDFHLOAD                                 
