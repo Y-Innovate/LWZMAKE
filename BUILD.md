@@ -15,22 +15,12 @@ After a fresh clone of this Git repository these are the necessary steps needed 
   In JOBSTMT.jcl you need to provide a job statement and fill in the variable LWZMHLQ.
 - Run INITPDS.jcl.  
   It will allocate 3 PDS's with the provided HLQ in LWZMHLQ. These PDS's are the EXEC, JCL and LOAD libraries and they will be populated with the minimum of members needed. Unlike the PDS's that `LWZMAKE` will build in a minute, there's no Git branch name in these data sets.
-- Run [SOURCE/build.sh](SOURCE/build.sh)
+- Run [SOURCE/build.sh](SOURCE/build.sh)  
+  It will create all of the `LWZMAKE` build source and output PDS's, copy the sources from USS to PDS's and Assemble and link-edit `LWZMAKE`.  
+  The reason for doing it with `build.sh` is so that you don't have to put your home directory and your repository clone's directory in `BUILD.jcl`. That way the build can be used by different people and the cloned repo can theoretically be moved somewhere else.
+- Optionally change SOURCE/JCL/JOBSTMT.jcl to append the MASTER branch name in the LWZMHLQ variable so that any incremental builds from now on use the previously built `LWZMAKE` and then you can delete the 3 PDS's created by the SOURCE/JCL/INITPDS.jcl job.
 
-A build with `LWZMAKE` needs the binary, which you can either copy from [BINARY/LOAD/LWZMAKE.load](BINARY/LOAD/LWZMAKE.load) to a load library with a USS shell command like:
-
-    cp BINARY/LOAD/LWZMAKE.load "//'<HLQs>.LOAD(LWZMAKE)'"
-
-Or you can build it with the sample JCL with regular Assembly and link-edit steps in this Git repository, see [SOURCE/JCL/ASMLKED.jcl](SOURCE/JCL/ASMLKED.jcl).
-
-Once you have an `LWZMAKE` load module, you can use `LWZMAKE` to build `LWZMAKE`. There's another sample JCL in this Git repository for that as well, see [SOURCE/JCL/BUILD.jcl](SOURCE/JCL/BUILD.jcl). This JCL goes together with shell script [SOURCE/build.sh](SOURCE/build.sh). The JCL is not meant to be submitted interactively, but rather you should:
-
-- copy [SOURCE/JCL/JOBSTMT.jcl.template](SOURCE/JCL/JOBSTMT.jcl.template) to `SOURCE/JCL/JOBSTMT.jcl` and update it so that it contains a valid job statement
-- run [SOURCE/build.sh](SOURCE/build.sh) which will prepend `SOURCE/JCL/BUILD.jcl` with the job statement in `SOURCE/JCL/JOBSTMT.jcl`, do some text replacements and submit the job for you.
-
-The reason for doing it with `build.sh` is so that you don't have to put your home directory and your repository clone's directory in `BUILD.jcl` (causing a change which Git will want you to commit).
-
-This page takes the `makefile` in BUILD.jcl apart to explain bit by bit what it's doing.
+The rest of this page takes the `makefile` in BUILD.jcl apart to explain bit by bit what it's doing.
 
 Here's the entire makefile:
 
