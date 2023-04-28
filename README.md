@@ -14,6 +14,8 @@ In a z/OS development setting, for example for a COBOL application, `LWZMAKE` al
 
 An incremental deploy works in exactly the same way. You deploy your entire application with `LWZMAKE`, which, again if your `makefile` was written correctly, will go through all deployable artifacts and figure out which ones in the set being deployed have a more recent last modified date than the ones at the environment being deployed to. The ones that are modified more recently are built (e.g. load modules copied from deploy input to runtime libraries), the rest is left untouched.
 
+This page further describes how `LWZMAKE` works. If you wish to get started on you own system, have a look at [BUILD.md](BUILD.md) for the steps to take after a fresh Git clone to get `LWZMAKE` to build itself.
+
 ## A tiny sample `makefile` explained
 Here's an example of a very simple `makefile`:
 
