@@ -1177,7 +1177,7 @@ STB#12   CEEENTRY AUTO=WORKDSAB12_SIZ,MAIN=NO,BASE=R10
          L     R6,STB_nBufSize   * Get stringbuffer size
          LR    R5,R6             * Copy it
          S     R5,STB_nStrLen    * Subtract current string length
-         IF (C,R5,LT,NEWSTRLENB12) THEN
+         IF (C,R5,LE,NEWSTRLENB12) THEN
             LA    R6,3(,R6)      * Add 2 for halfword prefix + 1 zero
             DO UNTIL=(C,R5,GT,NEWSTRLENB12)
                SLL   R6,2        * Buffer size x 4
