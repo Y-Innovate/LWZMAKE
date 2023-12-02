@@ -6,11 +6,11 @@
 //SYSTSIN   DD *,SYMBOLS=EXECSYS                                                
 CALL '&LWZMHLQ..LOAD(LWZMAKE)'                                                  
 //LWZMINP   DD *                                                                
-# Makefile for SAMPLE10                                                         
+#* Makefile for SAMPLE10                                                        
                                                                                 
 hlq        := @@SAMPLE10@@                                                      
 template   := $(hlq).TEMPLATE(WHYJCL)                                           
-resolves   := ${addpdsname $(hlq).JCL, \                                        
+resolves   := ${addpdsname $(hlq).JCL, +                                        
                  ${memberlist $(hlq).JCL, RESOL} }                              
 temppds    := ${function TEMPPDS}                                               
                                                                                 

@@ -5,7 +5,7 @@
 //STEPLIB   DD DISP=SHR,DSN=&LWZMHLQ..LOAD                                      
 //SYSEXEC   DD DISP=SHR,DSN=@@SAMPLE01@@.EXEC                                   
 //LWZMINP   DD *                                                                
-# Makefile for SAMPLE01                                                         
+#* Makefile for SAMPLE01                                                        
                                                                                 
 .PHONY HELLO_WORLD                                                              
 HELLO_WORLD :                                                                   

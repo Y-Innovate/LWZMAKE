@@ -5,7 +5,7 @@
 //STEPLIB   DD DISP=SHR,DSN=&LWZMHLQ..LOAD                                      
 //SYSEXEC   DD DISP=SHR,DSN=&LWZMHLQ..EXEC                                      
 //LWZMINP   DD *                                                                
-# Makefile for SAMPLE09                                                         
+#* Makefile for SAMPLE09                                                        
                                                                                 
 hlq     := @@SAMPLE09@@                                                         
 srcpds  := $(hlq).SRCPDS                                                        

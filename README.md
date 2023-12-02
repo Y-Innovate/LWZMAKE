@@ -22,13 +22,13 @@ Here's an example of a very simple `makefile`:
     srchlq  := SOMEUSR
     tgthlq  := MYUSR
     targets := $(tgthlq).PDS.JCL(MEM1) $(tgthlq).PDS.JCL(MEM2)
-    
+
     .PHONY ALL
     ALL : $(targets)
-    
-    # Copy MEM1 and MEM2, but only if they changed
+
+    #* Copy MEM1 and MEM2, but only if they changed
     $(targets) : $(srchlq).PDS.JCL($%)
-    - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+    - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) +
     -              MEMBER($%)
 
 Let's break that down:
@@ -51,13 +51,13 @@ The next two lines:
     .PHONY ALL
     ALL : $(targets)
 
-are what's known as a **`rule`**. This first sample `rule` defines the "phony" target `ALL` and specifies on what files that target is dependent. A **`target`** is something `LWZMAKE` will potentially build. In a `rule` one or more `targets` can be specified left of the `:` character.  
-Right of the `:` character can optionally be `files` and/or other `targets` that the ones left of the `:` character are dependent on.  
+are what's known as a **`rule`**. This first sample `rule` defines the "phony" target `ALL` and specifies on what files that target is dependent. A **`target`** is something `LWZMAKE` will potentially build. In a `rule` one or more `targets` can be specified left of the `:` character.
+Right of the `:` character can optionally be `files` and/or other `targets` that the ones left of the `:` character are dependent on.
 Designating a target as **`phony`** tells `LWZMAKE` the target is not a file with a last modified date & time, but rather just a name used to get its prerequisites built.
 
-The next line is a comment line, which is ignored by `LWZMAKE`. Comments don't need to be on separate lines, if `LWZMAKE` encounters the `#` character it will ignore the rest of the line.
+The next line is a comment line, which is ignored by `LWZMAKE`. Comments don't need to be on separate lines, if `LWZMAKE` encounters the `#*` characters it will ignore the rest of the line.
 
-    # Copy MEM1 and MEM2, but only if they changed
+    #* Copy MEM1 and MEM2, but only if they changed
 
 Then follows our second sample `rule` in which the value of the 'targets' variable, so our 2 members in fully qualified data set names, are defined as targets (because they precede the `:` character).
 
@@ -67,12 +67,12 @@ Those targets have one prerequisite, which is a source PDS with a special variab
 
 Below a rule are optionally lines that tell `LWZMAKE` what to do if it decides a target should be built, known as a **`recipe`**.
 
-    - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) \
+    - CALL IEBCOPY PDSIN($(srchlq).PDS.JCL) PDSOUT($(tgthlq).PDS.JCL) +
     -              MEMBER($%)
 
 Such lines are coded with a `recipe prefix` which defaults to the `-` character. In this example a REXX called `IEBCOPY` is invoked, which parses the parameter it is passed (which is everything starting from `PDSIN` down to and including `MEMBER($%)`), dynamically allocates the required DD's and calls the IEBCOPY utility.
 
-One more thing this `recipe` demonstrates is the `\` continuation character. This effectively turns these last 2 lines into one long string. And as you can see in the example, a continued recipe line still has to begin with the `recipe prefix` on position 1.
+One more thing this `recipe` demonstrates is the `+` continuation character. This effectively turns these last 2 lines into one long string. And as you can see in the example, a continued recipe line still has to begin with the `recipe prefix` on position 1.
 
 ## LWZMAKE 2 build phases
 To utilize `LWZMAKE` to its full potential, it's important to understand that it processes a `makefile` in 2 phases.
@@ -149,25 +149,25 @@ For example, consider a REXX called 'RVRSWRDS' (reverse words ;-)):
     /* REXX */
     arg1 = Arg(1)
     wordcount = Words(arg1)
-    
+
     ret = ""
-    
+
     If wordcount > 0 Then Do
       ret = Word(arg1,wordcount)
-      
+
       Do I = wordcount - 1 To 1 By -1
         ret = ret" "Word(arg1,I)
       End
     End
-    
+
     Return ret
 
 Such a function could be invoked like this and produce the result that the comment line describes:
 
     var1 := ${function RVRSWRDS,ABC 123}
-    # var1 := 123 ABC
+    #* var1 := 123 ABC
 
-Functions can be invoked anywhere where variables can be placed. A REXX function is resolved to whatever the REXX returns, so be careful with how you handle a failure within a REXX function, since the return value can not indicate a failure. The only way a REXX function can terminate `LWZMAKE` is by causing a REXX interpreter error (for example by trying to calculate with a non-numeric variable). 
+Functions can be invoked anywhere where variables can be placed. A REXX function is resolved to whatever the REXX returns, so be careful with how you handle a failure within a REXX function, since the return value can not indicate a failure. The only way a REXX function can terminate `LWZMAKE` is by causing a REXX interpreter error (for example by trying to calculate with a non-numeric variable).
 
 ## Builtin functions
 There are a few builtin functions that are so common that is was worth writing a routine for in `LWZMAKE`. These are:
@@ -179,14 +179,14 @@ There are a few builtin functions that are so common that is was worth writing a
 For example, with SOME.DATA.SET containing members AA001, AA002, AB001 and AB002:
 
     someds := SOME.DATA.SET
-    
+
     mems1 := $(memberlist $(someds))
-    # mem1 := AA001 AA002 AB001 AB002
-    
+    #* mem1 := AA001 AA002 AB001 AB002
+
     mems2 := ${memberlist $(someds),AA}
     # mems2 := AA001 AA002
 
-`memberlist` retrieves a PDS(E)'s directory and lists the member names as a space delimited list.  
+`memberlist` retrieves a PDS(E)'s directory and lists the member names as a space delimited list.
 The *member_filter* is optional and limits the returned member names to only ones that *start* with *member_filter*.
 
 ### addpdsname
@@ -199,7 +199,7 @@ For example:
     mems  := FOO BAR
     tgtds := SOME.PDS.COB
     tgts  := ${addpdsname $(tgtds),$(mems)}
-    # tgts := SOME.PDS.COB(FOO) SOME.PDS.COB(BAR)
+    #* tgts := SOME.PDS.COB(FOO) SOME.PDS.COB(BAR)
 
 `addpdsname` adds the *PDS_data_set_name* to each *member_name* to form a complete data set name. Exactly one *PDS_data_set_name* is required. When after the comma no *member_name* is provided, the function returns an empty string. If multiple *member_names* are provided, they need to be space delimited.
 
@@ -207,13 +207,13 @@ For example:
 <pre>                                    v------------<------------¬
 --+-$(-+-append--<i>text_to_append</i>--,--+-<i>words_that_get_appended</i>-+--+-)-+--
   '-${-'                                                         '-}-+</pre>
-  
+
 For example:
 
     suffix := 00
     mems   := WORDA WORDB WORDC
     mems   := ${append $(suffix),$(mems)}
-    # mems := WORDA00 WORDB00 WORDC00
+    #* mems := WORDA00 WORDB00 WORDC00
 
 `append` adds a *text_to_append* as a suffix to every space delimited word in *words_that_get_appended*.
 
@@ -221,13 +221,13 @@ For example:
 <pre>                                      v-------------<------------¬
 --+-$(-+-prepend--<i>text_to_prepend</i>--,--+-<i>words_that_get_prepended</i>-+--+-)-+--
   '-${-'                                                            '-}-+</pre>
-  
+
 For example:
 
     prefix := A
     mems   := WORD1 WORD2 WORD3
     mems   := ${prepend $(prefix),$(mems)}
-    # mems := AWORD1 AWORD2 AWORD3
+    #* mems := AWORD1 AWORD2 AWORD3
 
 `prepend` adds a *text_to_prepend* as a prefix to every space delimited word in *words_that_get_prepended*.
 
@@ -240,8 +240,8 @@ For example:
 
     files := file1.txt file2.txt file_without_ext file3.txt
     files := ${stripext $(files)}
-    # files := file1 file2 file_without_ext file3
-    
+    #* files := file1 file2 file_without_ext file3
+
 `stripext` strips everything after the last period (.), including the period, found in each space delimited word in *filename_to_strip_of_extension*. If there's no period then the word is untouched.
 
 ## Executing shell command lines
@@ -250,8 +250,8 @@ Shell commands can be used in assignments and in recipes. `LWZMAKE` executes she
 ### .USSHOME required
 A special register `.USSHOME` needs to be assigned a USS directory which is to function as the home directory for the given commands. For example:
 
-    .USSHOME = /u/yin/ybtk  # directory to use as USS home dir
-    
+    .USSHOME = /u/yin/ybtk  #* directory to use as USS home dir
+
 ### SH in a recipe
 You can issue a shell command line in a recipe similar to how you would call a REXX EXEC.
 
@@ -263,7 +263,7 @@ For example, to copy an augmented JCL (by putting a job statement in front of it
     mydir  := /some/directory
     myjobs := FOOBAR
     tgts   := ${addpdsname $(mypds),$(myjobs)}
-    
+
     $(tgts) : $(mydir)/$%.jcl
     - SH cd $(mydir);cat JOBSTMT.jcl $%.jcl > JOB.tmp
     - CALL OGET '$(mydir)/JOB.tmp' '$@' TEXT CONVERT(YES)
@@ -277,20 +277,20 @@ There's one more builtin function for executing shell command lines: sh.
 
 For example, with a folder *somedir* that contains COB01.cbl, COB02.cbl and COB03.cbl:
 
-    .USSHOME = /u/yin/ybtk  # directory to use as USS home dir
-    
+    .USSHOME = /u/yin/ybtk  #* directory to use as USS home dir
+
     mydir   := ~/somedir
     myfiles := ${sh cd $(mydir);find *.cbl -prune -type f}
-    # myfiles := COB01.cbl COB02.cbl COB03.cbl
+    #* myfiles := COB01.cbl COB02.cbl COB03.cbl
 
 Although being able to execute shell commands opens a large range of capabilities, be aware that there's no way to indicate an error in the shell command line instructions that are executed. If one of the shell commands has an error, you will simply get the stdout and stderr output returned.
 
 So for example:
 
     .USSHOME = /u/yin/ybtk
-    
+
     test := ${sh not_a_valid_command}
-    # test := not_a_valid_command: FSUM7351 not found
+    #* test := not_a_valid_command: FSUM7351 not found
 
 and `LWZMAKE` will still end with CC 0.
 
@@ -303,10 +303,10 @@ and `LWZMAKE` will still end with CC 0.
 For example:
 
     tgts := AAA BBB CCC
-    
+
     .PHONY ALL
     ALL : $(tgts)
-    
+
     .PHONY $(tgts)
     $(tgts) :
     - CALL JUSTECHO $@
@@ -320,12 +320,12 @@ will result in 3 lines in SYSTSPRT
 Having the line with `.PHONY` just before the rule statement is just good practice, the line can be anywhere in the `makefile`. This script for example would have the exact same result:
 
     tgts := AAA BBB CCC
-    
+
     ALL : $(tgts)
-    
+
     $(tgts) :
     - CALL JUSTECHO $@
-    
+
     .PHONY ALL $(tgts)
 
 ### .USSHOME
@@ -333,8 +333,8 @@ Having the line with `.PHONY` just before the rule statement is just good practi
 
 For example:
 
-    .USSHOME = /tmp  # instead of my own home dir, use /tmp
-    
+    .USSHOME = /tmp  #* instead of my own home dir, use /tmp
+
     var1 := ${sh myscript.sh}
 
 Assuming there's a script `myscript.sh` in /tmp then `var1` will now contain the output of that script.
@@ -345,7 +345,7 @@ Assuming there's a script `myscript.sh` in /tmp then `var1` will now contain the
 For example:
 
     .RECIPEPREFIX = ^
-    
+
     MYTARGET :
     ^ CALL JUSTECHO -$@-
 
@@ -365,9 +365,9 @@ As stated above, a `rule` statement declares `targets` and their `prerequisites`
 
 For example:
 
-    # Compile COBOL source to get object module
-    # Prerequisite to each object module is a COBOL source with the same
-    # member name ($%) and a shared copybook LCOB01
+    #* Compile COBOL source to get object module
+    #* Prerequisite to each object module is a COBOL source with the same
+    #* member name ($%) and a shared copybook LCOB01
     MY.APP.OBJ(COB01) MY.APP.OBJ(COB02) : MY.APP.COB($%) MY.APP.CPY(LCOB01)
 
 A *target* that isn't declared PHONY is assumed to be a file, which can be a member in a PDS(E), a sequential data set or a USS file. In every case it needs to be fully qualified, so MVS data sets are not prefixed with you user's HLQ and the USS files need to start with a forward slash /.
@@ -376,7 +376,7 @@ A rule is optionally followed by a `recipe`, which are the steps `LWZMAKE` is to
 
 If more than 1 target in a rule share the same recipe, that recipe will possibly be executed for each of those targets, meaning `LWZMAKE` will process those recipe lines over and over.
 
-*prereqs* can be other targets (real or PHONY) or they can be files that `LWZMAKE` doesn't know how to build, but merely checks for their existence and compares their last modified dates.  
+*prereqs* can be other targets (real or PHONY) or they can be files that `LWZMAKE` doesn't know how to build, but merely checks for their existence and compares their last modified dates.
 If they are defined as targets too, whether in a different rule or in the same one doesn't matter, that target gets processed first.
 
 After potentially processing the prerequisites' recipes there is still a check for the prereqs existence and their last modified date. So even if a prereq was just built, it is not assumed that as a result the prereq has to thereby exist.
@@ -386,7 +386,7 @@ A special prerequisite comes in the form of a binary value of `0` or `1`. A prer
 For example:
 
     uncond := 1
-    
+
     MY.APP.OBJ(COB01) : MY.APP.COB(COB01) $(uncond)
     - CALL JUSTECHO $@
 
@@ -437,7 +437,7 @@ Using this procedure running `LWZMAKE` from ISPF looks like this:
     //             MAKEPARM='-T BUILD_APP',
     //             MAKEFILE=MY.APP.CNTL(MAKEFILE),
     //             EXECLIB=LWZMAKE.MASTER.EXEC
-    
+
 - The parameter is optional, you can omit the MAKEPARM parameter
 - If your REXX EXECs need certain load modules, you will have to alter the ISPFMAKE.jcl procedure and add additional load libraries to the ISPLLIB DD concatenation
 
@@ -452,7 +452,7 @@ Using this procedure running `LWZMAKE` from ISPF looks like this:
     hlq := QUAL1
     src := $(hlq).PDS.OLD(MEM1)
     tgt := $(hlq).PDS(MEM1)
-    
+
     $(tgt) : $(src)
     - CALL JUSTECHO $@
 

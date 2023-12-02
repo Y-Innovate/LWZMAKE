@@ -6,7 +6,7 @@
 //SYSTSIN   DD *,SYMBOLS=EXECSYS                                                
 CALL '&LWZMHLQ..LOAD(LWZMAKE)' '-t ALL' ASIS                                    
 //LWZMINP   DD *                                                                
-# Makefile for SAMPLE06                                                         
+#* Makefile for SAMPLE06                                                        
                                                                                 
 hlq      := @@SAMPLE06@@                                                        
 objlib   := $(hlq).OBJECT                                                       
@@ -17,7 +17,7 @@ sometgts := $(objlib) $(loadlib)
 ALL : $(sometgts)                                                               
                                                                                 
 $(objlib) :                                                                     
-- CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B) LRECL(80)\                     
+- CALL TSOCMD ALLOC DATASET('$@') NEW RECFM(F,B) LRECL(80)+                     
 -             CYLINDERS SPACE(1,1) DSORG(PO) DSNTYPE(LIBRARY)                   
 - CALL TSOCMD FREE DATASET('$@')                                                
                                                                                 

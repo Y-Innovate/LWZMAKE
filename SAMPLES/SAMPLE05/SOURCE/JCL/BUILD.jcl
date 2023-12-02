@@ -5,7 +5,7 @@
 //STEPLIB   DD DISP=SHR,DSN=&LWZMHLQ..LOAD                                      
 //SYSEXEC   DD DISP=SHR,DSN=@@SAMPLE05@@.EXEC                                   
 //LWZMINP   DD *                                                                
-# Makefile for SAMPLE05                                                         
+#* Makefile for SAMPLE05                                                        
                                                                                 
 hlq      := @@SAMPLE05@@                                                        
 sometgts := $(hlq).NEWDS1                                                       
