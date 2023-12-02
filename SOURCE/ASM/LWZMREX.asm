@@ -470,13 +470,15 @@ REX#04   CEEENTRY AUTO=WORKDSAR04_SIZ,MAIN=NO,BASE=R10
                BASR  R14,R15
 *
                IF (C,R15,EQ,=A(0)),OR,(C,R15,EQ,=A(4)) THEN
-                  L     R2,ISTBPTR_retval_R04
-                  L     R3,REX_EVALBLK_Ptr
-                  LA    R3,EVALBLOCK_EVDATA-EVALBLOCK(,R3)
-                  ISTB_AppendZString OBJECT=0(,R2),WORK=WORKR04,       X
+                  IF (CLC,ISTBPTR_retval_R04,NE,=A(0)) THEN
+                     L     R2,ISTBPTR_retval_R04
+                     L     R3,REX_EVALBLK_Ptr
+                     LA    R3,EVALBLOCK_EVDATA-EVALBLOCK(,R3)
+                     ISTB_AppendZString OBJECT=0(,R2),WORK=WORKR04,    X
                ZSTR=0(,R3)
-               ELSE
-                  CALL  CEE3ABD,(=A(1005),=A(3)),MF=(E,WORKR04)
+                  ELSE
+                     CALL  CEE3ABD,(=A(1005),=A(3)),MF=(E,WORKR04)
+                  ENDIF
                ENDIF
             ENDIF
             DROP  R5
