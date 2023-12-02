@@ -339,7 +339,7 @@ TOK#05   CEEENTRY AUTO=WORKDSAT05_SIZ,MAIN=NO,BASE=(R10,R11)
                   ISTB_AppendChar OBJECT=TFO_ISTB_token,WORK=WORKT05,  X
                CHAR=IFO_cCurrChar
 *
-                  IF (CLI,IFO_cCurrChar,EQ,C'#') THEN
+                  IF (CLC,IFO_cCurrChar(2),EQ,=C'#*') THEN
                      MVC   TFO_tokenType,=A(TOKEN_TYPE_COMMENT)
                      MVC   TFO_nLine,IFO_nLine
                      MVC   TFO_pos,IFO_pos
@@ -381,8 +381,8 @@ TOK#05   CEEENTRY AUTO=WORKDSAT05_SIZ,MAIN=NO,BASE=(R10,R11)
                            DO WHILE=(CLI,IFO_bEOF,NE,C'Y',AND,         X
                CLI,IFO_cPeekChar,GT,X'00',AND,                         X
                CLI,IFO_cPeekChar,NE,C' ',AND,                          X
-               CLI,IFO_cPeekChar,NE,C'\',AND,                          X
-               CLI,IFO_cPeekChar,NE,C'#')
+               CLI,IFO_cPeekChar,NE,C'+',AND,                          X
+               CLC,IFO_cPeekChar(2),NE,=C'#*')
                               IIND_GetNextChar OBJECT=IIN_in,          X
                WORK=WORKT05,IIFO=IIFO_ii
 *
@@ -645,8 +645,8 @@ TOK#05   CEEENTRY AUTO=WORKDSAT05_SIZ,MAIN=NO,BASE=(R10,R11)
                      ENDIF
                   ENDIF
 *
-                  IF (CLI,IFO_cCurrChar,EQ,C'\') THEN
-                     IF (CLI,IFO_cPeekChar,NE,C'\') THEN
+                  IF (CLI,IFO_cCurrChar,EQ,C'+') THEN
+                     IF (CLI,IFO_cPeekChar,NE,C'+') THEN
                         L     R14,IPSS_ps_T05
                         IF (CLI,PSS_cPhase-PSS_obj(R14),NE,C'0') THEN
                            MVC   TFO_tokenType,=A(TOKEN_TYPE_CONTINUATIX
@@ -741,9 +741,9 @@ TOK#05_NORMAL     EQU   *
                      DO WHILE=(CLI,IFO_bEOF,NE,C'Y',AND,               X
                CLI,IFO_cPeekChar,GT,X'00',AND,                         X
                CLI,IFO_cPeekChar,NE,C' ',AND,                          X
-               CLI,IFO_cPeekChar,NE,C'\',AND,                          X
+               CLI,IFO_cPeekChar,NE,C'+',AND,                          X
                CLI,IFO_cPeekChar,NE,C'$',AND,                          X
-               CLI,IFO_cPeekChar,NE,C'#')
+               CLC,IFO_cPeekChar,NE,=C'#*')
                         IF (CLI,IFO_cPeekChar,EQ,C')'),OR,             X
                (CLI,IFO_cPeekChar,EQ,C'}') THEN
                            IF (CLC,lastState_T05,EQ,=A(PARSER_STATE_IN_X
@@ -1388,7 +1388,7 @@ TOKEN_NAME_CONDEQUALS        DC    C'?=',X'00'
                              DS    0F
 TOKEN_NAME_RULE              DC    C':',X'00'
                              DS    0F
-TOKEN_NAME_CONTINUATION      DC    C'\',X'00'
+TOKEN_NAME_CONTINUATION      DC    C'+',X'00'
                              DS    0F
 TOKEN_NAME_VARIABLE          DC    C'variable',X'00'
                              DS    0F
