@@ -11,7 +11,12 @@
          AGO   .GO_BRANCH
 .*
 .CHK_IIND_GUID ANOP
-         AIF   ('&GUID' NE 'G_IIND_GUID').CHK_IINS_GUID
+         AIF   ('&GUID' NE 'G_IIND_GUID').CHK_IINF_GUID
+         L     R15,=V(LWZMINP) * Get csect entry point
+         AGO   .GO_BRANCH
+.*
+.CHK_IINF_GUID ANOP
+         AIF   ('&GUID' NE 'G_IINF_GUID').CHK_IINS_GUID
          L     R15,=V(LWZMINP) * Get csect entry point
          AGO   .GO_BRANCH
 .*

@@ -69,6 +69,9 @@ USS#02A                      DC    A(USS#02)   * AddRef
 USS#03A                      DC    A(USS#03)   * Release
 USS#04A                      DC    A(USS#04)   * BPX1STA
 USS#05A                      DC    A(USS#05)   * Run command
+USS#06A                      DC    A(USS#06)   * BPX1OPN
+USS#07A                      DC    A(USS#07)   * BPX1CLO
+USS#08A                      DC    A(USS#08)   * BPX1RED
 *
                              DS    0F
 MAK501D_USS                  DC    C'MAK501D Created IUSS object '
@@ -773,8 +776,6 @@ ARG1LEN_U05                  DC    A(L'ARG1STR_U05)
 *ENV0LEN_U05                  DC    A(L'ENV0STR_U05)
 *
                              DS    0F
-MAK119E_U05                  DC    C'MAK119E BPX1xxx error ',X'00'
-                             DS    0F
 MAK316I_U05                  DC    C'MAK316I SH ',X'00'
 *
 WORKDSAU05                   DSECT
@@ -793,6 +794,321 @@ newLine_U05                  DS    C
 WORKDSAU05_SIZ               EQU   *-WORKDSAU05
 *
          BPXYINHE
+*
+LWZMUSS  CSECT
+*
+         DROP
+*
+* IUSS BPX1OPN Open file
+*
+USS#06   CEEENTRY AUTO=WORKDSAU06_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAU06,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING USS_obj,R8        * Address object DSECT
+*
+         MVC   PARMPATHU06,4(R1) * Parm 2 is len prefixed path
+*
+         L     R2,8(,R1)         * Parm 3 is FD return ptr
+         ST    R2,PARMFDRETVALU06
+         MVC   0(4,R2),=A(0)
+*
+         LT    R15,G_BPX1OPNA
+         IF (Z) THEN
+            MVC   G_LOADD,G_LOADL
+*
+            LOAD  EP=BPX1OPN,SF=(E,G_LOADD) * entry point BPX1OPN
+*
+            ST    R0,G_BPX1OPNA * and store in global var
+         ENDIF
+*
+         LA    R1,USS_PAR15A
+         L     R14,PARMPATHU06
+         XR    R15,R15
+         LH    R15,0(,R14)
+         ST    R15,PATHLENU06
+         LA    R15,PATHLENU06
+         ST    R15,0(,R1)
+         LA    R15,2(,R14)
+         ST    R15,4(,R1)
+         LA    R15,=X'02000082'
+         ST    R15,8(,R1)
+         LA    R15,=A(0)
+         ST    R15,12(,R1)
+         LA    R15,USS_RETVAL
+         ST    R15,16(,R1)
+         LA    R15,USS_RETCODE
+         ST    R15,20(,R1)
+         LA    R15,USS_REASON
+         ST    R15,24(,R1)
+         OI    24(R1),X'80'
+*
+         L     R15,G_BPX1OPNA
+         BASR  R14,R15
+*
+         IF (CLC,USS_RETVAL,EQ,=F'-1') THEN
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKU06
+            MVC   USS_MAK119E(22),=C'MAK119E BPX1OPN error '
+            MVI   USS_MAK119E+23,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU06,         X
+               ZSTR=USS_MAK119E
+*
+            MVC   G_DEC8(4),USS_RETCODE
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU06,         X
+               ZSTR=G_ZONED8
+*
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU06,         X
+               ZSTR==X'4000'
+*
+            MVC   G_DEC8,USS_REASON
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU06,         X
+               ZSTR=G_ZONED8
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKU06,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_ERROR
+*
+            MVC   G_RETCODE,=A(12)
+*
+            B     USS#06_RET
+         ENDIF
+*
+         L     R2,PARMFDRETVALU06
+         MVC   0(4,R2),USS_RETVAL
+*
+USS#06_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+WORKDSAU06                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKU06                      DS    4A
+PARMPATHU06                  DS    A
+PARMFDRETVALU06              DS    A
+PATHLENU06                   DS    F
+*
+WORKDSAU06_SIZ               EQU   *-WORKDSAU06
+*
+LWZMUSS  CSECT
+*
+         DROP
+*
+* IUSS BPX1CLO Close file
+*
+USS#07   CEEENTRY AUTO=WORKDSAU07_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAU07,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING USS_obj,R8        * Address object DSECT
+*
+         MVC   PARMFDU07,4(R1)   * Parm 2 is FD
+*
+         LT    R15,G_BPX1CLOA
+         IF (Z) THEN
+            MVC   G_LOADD,G_LOADL
+*
+            LOAD  EP=BPX1CLO,SF=(E,G_LOADD) * entry point BPX1CLO
+*
+            ST    R0,G_BPX1CLOA * and store in global var
+         ENDIF
+*
+         LA    R1,USS_PAR15A
+         LA    R15,PARMFDU07
+         ST    R15,0(,R1)
+         LA    R15,USS_RETVAL
+         ST    R15,4(,R1)
+         LA    R15,USS_RETCODE
+         ST    R15,8(,R1)
+         LA    R15,USS_REASON
+         ST    R15,12(,R1)
+         OI    12(R1),X'80'
+*
+         L     R15,G_BPX1CLOA
+         BASR  R14,R15
+*
+         IF (CLC,USS_RETVAL,EQ,=F'-1') THEN
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKU07
+            MVC   USS_MAK119E(22),=C'MAK119E BPX1CLO error '
+            MVI   USS_MAK119E+23,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU07,         X
+               ZSTR=USS_MAK119E
+*
+            MVC   G_DEC8(4),USS_RETCODE
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU07,         X
+               ZSTR=G_ZONED8
+*
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU07,         X
+               ZSTR==X'4000'
+*
+            MVC   G_DEC8,USS_REASON
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU07,         X
+               ZSTR=G_ZONED8
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKU07,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_ERROR
+*
+            MVC   G_RETCODE,=A(12)
+*
+            B     USS#07_RET
+         ENDIF
+*
+USS#07_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+WORKDSAU07                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKU07                      DS    3A
+PARMFDU07                    DS    A
+*
+WORKDSAU07_SIZ               EQU   *-WORKDSAU07
+*
+LWZMUSS  CSECT
+*
+         DROP
+*
+* IUSS BPX1RED Read character from file
+*
+USS#08   CEEENTRY AUTO=WORKDSAU08_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAU08,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING USS_obj,R8        * Address object DSECT
+*
+         MVC   PARMFDU08,4(R1)   * Parm 2 is FD
+*
+         MVC   PARMRETCHARU08,8(R1) * Parm 3 is return character
+*
+         L     R15,12(,R1)       * Parm 4 is return EOF
+         ST    R15,PARMRETEOFU08
+         MVI   0(R15),X'00'
+*
+         LT    R15,G_BPX1REDA
+         IF (Z) THEN
+            MVC   G_LOADD,G_LOADL
+*
+            LOAD  EP=BPX1RED,SF=(E,G_LOADD) * entry point BPX1RED
+*
+            ST    R0,G_BPX1REDA * and store in global var
+         ENDIF
+*
+         LA    R1,USS_PAR15A
+         LA    R15,PARMFDU08
+         ST    R15,0(,R1)
+         LA    R15,USS_BUFFER
+         ST    R15,USS_BUFFERA
+         LA    R15,USS_BUFFERA
+         ST    R15,4(,R1)
+         MVC   USS_ALET,=A(0)
+         LA    R15,USS_ALET
+         ST    R15,8(,R1)
+         MVC   USS_COUNT,=A(1)
+         LA    R15,USS_COUNT
+         ST    R15,12(,R1)
+         LA    R15,USS_RETVAL
+         ST    R15,16(,R1)
+         LA    R15,USS_RETCODE
+         ST    R15,20(,R1)
+         LA    R15,USS_REASON
+         ST    R15,24(,R1)
+         OI    24(R1),X'80'
+*
+         L     R15,G_BPX1REDA
+         BASR  R14,R15
+*
+         IF (CLC,USS_RETVAL,EQ,=F'-1') THEN
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKU08
+            MVC   USS_MAK119E(22),=C'MAK119E BPX1RED error '
+            MVI   USS_MAK119E+23,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU08,         X
+               ZSTR=USS_MAK119E
+*
+            MVC   G_DEC8(4),USS_RETCODE
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU08,         X
+               ZSTR=G_ZONED8
+*
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU08,         X
+               ZSTR==X'4000'
+*
+            MVC   G_DEC8,USS_REASON
+            UNPK  G_ZONED8(9),G_DEC8(5)
+            L     R15,G_HEXTAB
+            TR    G_ZONED8(8),0(R15)
+            MVI   G_ZONED8+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKU08,         X
+               ZSTR=G_ZONED8
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKU08,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_ERROR
+*
+            MVC   G_RETCODE,=A(12)
+*
+            B     USS#08_RET
+         ENDIF
+*
+         IF (CLC,USS_RETVAL,NE,=A(0)) THEN
+            L     R2,PARMRETCHARU08
+            MVC   0(1,R2),USS_BUFFER
+         ELSE
+            L     R2,PARMRETEOFU08
+            MVI   0(R2),X'01'
+         ENDIF
+*
+USS#08_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+WORKDSAU08                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKU08                      DS    3A
+PARMFDU08                    DS    A
+PARMRETCHARU08               DS    A
+PARMRETEOFU08                DS    A
+*
+WORKDSAU08_SIZ               EQU   *-WORKDSAU08
 *
 LWZMUSS  CSECT
 *

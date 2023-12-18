@@ -128,8 +128,24 @@ LWZMAKE  CEEENTRY AUTO=WORKDSA_SIZ,MAIN=YES,BASE=(R10,R11)
          ILOG_Write OBJECT=G_ILOG,WORK=WORK,LINE=MAK301I,              X
                LOGLEVEL=LOG_LEVEL_INFO
 *
-*        Instantiate a new IIND object
-         MINSTANT GUID=G_IIND_GUID,WORK=WORK,OBJPTR=IIND_MAIN
+         BAL   R7,FILETYPE       * Determine makefile file type
+*
+         CLC   G_RETCODE,=A(0)   * If something wrong
+         BNE   LWZMAKE_RET       * skip the rest
+*
+*        If makefile is data set, use IND
+         IF (CLI,datasetType,EQ,C'D') THEN DO
+*
+*           Instantiate a new IIND object
+            MINSTANT GUID=G_IIND_GUID,WORK=WORK,OBJPTR=IIND_MAIN
+*
+*        If makefile is unix file, use INF
+         ELSE
+*
+*           Instantiate a new IINF object
+            MINSTANT GUID=G_IINF_GUID,WORK=WORK,OBJPTR=IINF_MAIN
+*
+         ENDIF
 *
 *        Open makefile input data set
          IIND_Open OBJECT=IIND_MAIN,WORK=WORK,DDNAME==CL8'LWZMINP'
@@ -214,6 +230,8 @@ INIT     DS    0H
 *
          MVC   G_SWAREQL,SWAREQL
 *
+         MVC   G_GETDSABL,GETDSABL
+*
          CALL  CEEGTST,(=A(0),=A(4096),G_HEAP,FC),MF=(E,WORK)
 *
          IF (CLC,FC(8),NE,=XL8'0000000000000000') THEN
@@ -240,6 +258,8 @@ INIT     DS    0H
          MVC   G_IFMG_GUID,=XL16'FBAB8F58290646D4B25212007D9ADF5B'
          MVC   G_IIFO_GUID,=XL16'E7C15027869045AAB6B59095A150031A'
          MVC   G_IIND_GUID,=XL16'36BD513C7B064E7989594890E873DE69'
+         MVC   G_IINF_GUID,=XL16'E44AC6BDC9A3491E96AF326979C366EE'
+         MVC   G_IINS_GUID,=XL16'E1C8B43FBFC54BF3BCC39628052F8771'
          MVC   G_ILOG_GUID,=XL16'3CAFEC54D6FC461C8F68F55CC6030554'
          MVC   G_IPRS_GUID,=XL16'73D05C4DBA6D4285B3CF39B3B2E29F8B'
          MVC   G_IPSS_GUID,=XL16'16DC67F5C8B949309D54B8AEA83F9281'
@@ -462,6 +482,21 @@ PARMS    DS    0H
 PARMS_RET EQU   *
          BR    R7
 *
+* Determine makefile file type
+*
+FILETYPE DS    0H
+         MVI   datasetType,C'D'
+*
+         IFMG_DDNameToDSName OBJECT=G_IFMG,WORK=WORK,                  X
+               DDNAME==CL8'LWZMINP',DSNAME=datasetName
+*
+         IF (CLC,datasetName(3),EQ,=C'...') THEN
+            MVI   datasetType,C'F'
+         ENDIF
+*
+FILETYPE_RET EQU   *
+         BR    R7
+*
 * End of code
 *
          LTORG
@@ -504,6 +539,9 @@ STCKCONV_SIZ                 EQU   *-STCKCONVL
 SWAREQL                      SWAREQ MF=L
 SWAREQ_SIZ                   EQU   *-SWAREQL
 *
+GETDSABL                     GETDSAB MF=(L,GETDSABL)
+GETDSAB_SIZ                  EQU   *-GETDSABL
+*
 PPA      CEEPPA
 *
          CEECAA
@@ -526,7 +564,10 @@ IPSS_PARMS                   DS    A   * ParserState for parameters
 ITOK_PARMS                   DS    A   * Tokenizer for makefile
 *
 IIND_MAIN                    DS    A   * InputFromDataSet
-IIFO_MAIN                    DS    A   * InputInfo for IIND_MAIN
+                             ORG   IIND_MAIN
+IINF_MAIN                    DS    A   * InputFromFileSet
+                             ORG   *
+IIFO_MAIN                    DS    A   * InputInfo for IIN%_MAIN
 IPRS_MAIN                    DS    A   * Parser for makefile
 IPSS_MAIN                    DS    A   * ParserState for makefile
 ITOK_MAIN                    DS    A   * Tokenizer for makefile
@@ -534,6 +575,9 @@ ITOK_MAIN                    DS    A   * Tokenizer for makefile
 IAV2_buildTargets            DS    A   * ArrayList of target names
 *
 parameterCopy                DS    A
+*
+datasetType                  DS    C
+datasetName                  DS    CL44
 *
 WORKDSA_SIZ                  EQU   *-WORKDSA
 *

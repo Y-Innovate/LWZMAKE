@@ -30,6 +30,11 @@ G_SWAREQL                    DS    CL(8) * SWAREQ_SIZ
                              DS    0F
 G_SWAREQD                    DS    CL(8) * SWAREQ_SIZ
 *
+G_GETDSABL                   DS    0F
+                             DS    CL(16) * GETDSAB_SIZ
+G_GETDSABD                   DS    0F
+                             DS    CL(16) * GETDSAB_SIZ
+*
 G_GTST                       DS    A
 G_GTSTSIZ                    DS    F
 G_HEAP                       DS    A    * My own heap start block
@@ -42,6 +47,7 @@ G_IFFO_GUID                  DS    CL16
 G_IFMG_GUID                  DS    CL16
 G_IIFO_GUID                  DS    CL16
 G_IIND_GUID                  DS    CL16
+G_IINF_GUID                  DS    CL16
 G_IINS_GUID                  DS    CL16
 G_ILOG_GUID                  DS    CL16
 G_IPRS_GUID                  DS    CL16

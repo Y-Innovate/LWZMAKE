@@ -63,6 +63,45 @@ LWZMINP  CEEENTRY AUTO=WORKDSA_SIZ,MAIN=NO,BASE=R10
                LOGLEVEL=LOG_LEVEL_DEBUG2
             ENDIF
 *
+*        Was a new INF object requested?
+         ELSEIF (CLC,0(16,R6),EQ,G_IINF_GUID) THEN
+            MNEWOBJ OBJTYPE=INF,WORK=WORK * Alloc new object
+*
+*           Init obj attributes
+            LR    R7,R14
+            USING INF_obj,R7
+            MVI   INF_bOpen,C'N'
+            MVI   INF_bEOF,C'N'
+            MVI   INF_bEOL,C'Y'
+*
+*           Instantiate a new ISTB object
+            MINSTANT GUID=G_ISTB_GUID,WORK=WORK,                       X
+               OBJPTR=INF_ISTB_currLine
+*
+            DROP  R7
+*
+            ASI   G_OBJCOUNT,1   * Increate global obj count
+*
+            L     R15,G_ILOG
+            IF (CLI,13(R15),GE,LOG_LEVEL_DEBUG2) THEN
+               ST    R7,G_DEC8
+               UNPK  G_ZONED8(9),G_DEC8(5)
+               L     R15,G_HEXTAB
+               TR    G_ZONED8(8),0(R15)
+               MVI   G_ZONED8+8,X'00'
+*
+               ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORK
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORK,         X
+               ZSTR=MAK501D_INF
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORK,         X
+               ZSTR=G_ZONED8
+*
+               L     R2,G_ISTB_tmp
+               L     R2,STB_lpBuf-STB_obj(,R2)
+               ILOG_Write OBJECT=G_ILOG,WORK=WORK,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_DEBUG2
+            ENDIF
+*
 *        Was a new IINS object requested?
          ELSEIF (CLC,0(16,R6),EQ,G_IINS_GUID) THEN
             MNEWOBJ OBJTYPE=INS,WORK=WORK * Alloc new object
@@ -151,6 +190,14 @@ IND#05A                      DC    A(IND#05)   * Open
 IND#06A                      DC    A(IND#06)   * Close
 *
                              DS    0F
+INF#01A                      DC    A(INF#01)   * QueryInterface
+INF#02A                      DC    A(INF#02)   * AddRef
+INF#03A                      DC    A(INF#03)   * Release
+INF#04A                      DC    A(INF#04)   * GetNextChar
+INF#05A                      DC    A(INF#05)   * Open
+INF#06A                      DC    A(INF#06)   * Close
+*
+                             DS    0F
 INS#01A                      DC    A(INS#01)   * QueryInterface
 INS#02A                      DC    A(INS#02)   * AddRef
 INS#03A                      DC    A(INS#03)   * Release
@@ -164,6 +211,9 @@ IFO#03A                      DC    A(IFO#03)   * Release
 *
                              DS    0F
 MAK501D_IND                  DC    C'MAK501D Created IIND object '
+                             DC    X'00'
+                             DS    0F
+MAK501D_INF                  DC    C'MAK501D Created IINF object '
                              DC    X'00'
                              DS    0F
 MAK501D_INS                  DC    C'MAK501D Created IINS object '
@@ -194,6 +244,7 @@ WORKDSA_SIZ                  EQU   *-WORKDSA
          COPY  DSCOMOBJ          * Generic COM obj DSECT
 *
          COPY  DSIND             * IIND obj DSECT
+         COPY  DSINF             * IINF obj DSECT
          COPY  DSINS             * IINS obj DSECT
          COPY  DSIFO             * IIFO obj DSECT
          COPY  DSSTR             * ISTR obj DSECT
@@ -646,9 +697,9 @@ IND#99   CEEENTRY AUTO=WORKDSAD99_SIZ,MAIN=NO,BASE=R10
 *
 IND#99_EOF_RET EQU   *
          IF (CLI,IND_bEOF,NE,C'Y') THEN * Not EOF yet?
-            LA    R2,MAK504D
+            LA    R2,MAK504D_D99
          ELSE                    * Or EOF
-            LA    R2,MAK505D
+            LA    R2,MAK505D_D99
          ENDIF
          ILOG_Write OBJECT=G_ILOG,WORK=WORKD99,LINE=0(,R2),            X
                LOGLEVEL=LOG_LEVEL_DEBUG2
@@ -670,9 +721,9 @@ IND#99_RET EQU   *
          LTORG
 *
                              DS    0F
-MAK504D                      DC    C'MAK504D Read an input line',X'00'
+MAK504D_D99                  DC    C'MAK504D Read an input line',X'00'
                              DS    0F
-MAK505D                      DC    C'MAK505D Input file is EOF',X'00'
+MAK505D_D99                  DC    C'MAK505D Input file is EOF',X'00'
 *
 WORKDSAD99                   DSECT
 *
@@ -684,6 +735,385 @@ LINED99                      DS    CL80
                              DS    C
 *
 WORKDSAD99_SIZ               EQU   *-WORKDSAD99
+*
+LWZMINP  CSECT
+*
+         DROP
+*
+* IINF QueryInterface
+*
+INF#01   MQRYIFCE SUF=F01,IFACE=IINF
+*
+* IINF AddRef
+*
+INF#02   MADDREF
+*
+* IINF Release
+*
+INF#03   CEEENTRY AUTO=WORKDSAF03_SIZ,MAIN=NO,BASE=(R10)
+*
+         USING WORKDSAF03,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global DSECT
+*
+         L     R6,0(,R1)         * Param 1 points to this object
+         USING COM_obj,R6
+*
+         LT    R5,count          * Load current ref count
+         BZ    INF#03_RET        * Should never happen....
+         S     R5,=A(1)          * Decrease ref count
+         ST    R5,count          * Put new ref count back
+*
+*        If reference count dropped to 0, object can be freed
+         IF (Z) THEN
+            DROP  R6
+            USING INF_obj,R6
+*
+            ISTR_Release OBJECT=INF_ISTB_currLine,WORK=WORKF03
+            MVC   INF_ISTB_currLine,=A(0)
+*
+            DROP  R6
+            USING COM_obj,R6
+*
+            MVC   lpVtbl,=A(0)
+*
+*           L     R5,lpVtbl      * Get ptr to Vtbl
+*           S     R5,=A(8)       * Go back 8 bytes for eye catcher
+*           ST    R5,OBJPTRF03   * Put ptr in variable
+*           CALL  CEEFRST,(OBJPTRF03,FCF03),MF=(E,WORKF03)
+*
+            L     R15,G_OBJCOUNT
+            BCTR  R15,R0
+            ST    R15,G_OBJCOUNT
+*
+            L     R15,G_ILOG
+            IF (CLI,13(R15),GE,LOG_LEVEL_DEBUG2) THEN
+               ST    R6,G_DEC8
+               UNPK  G_ZONED8(9),G_DEC8(5)
+               L     R15,G_HEXTAB
+               TR    G_ZONED8(8),0(R15)
+               MVI   G_ZONED8+8,X'00'
+*
+               ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKF03
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF03,      X
+               ZSTR=MAK502D_INF
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF03,      X
+               ZSTR=G_ZONED8
+*
+               L     R2,G_ISTB_tmp
+               L     R2,STB_lpBuf-STB_obj(,R2)
+               ILOG_Write OBJECT=G_ILOG,WORK=WORKF03,LINE=0(,R2),    , X
+               LOGLEVEL=LOG_LEVEL_DEBUG2
+            ENDIF
+         ENDIF
+*
+INF#03_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+                             DS    0F
+MAK502D_INF                  DC    C'MAK502D Deleted IINF object '
+                             DC    X'00'
+*
+WORKDSAF03                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+OBJPTRF03                    DS    A
+WORKF03                      DS    3A
+*
+WORKDSAF03_SIZ               EQU   *-WORKDSAF03
+*
+LWZMINP  CSECT
+*
+         DROP
+*
+* IINF GetNextChar
+*
+INF#04   CEEENTRY AUTO=WORKDSAF04_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAF04,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING INF_obj,R8        * Address object DSECT
+*
+         L     R7,4(,R1)         * Parm 2 is IIFO ptr
+         ST    R7,IIFO_ii_F04    * Save as local var
+         USING IFO_obj,R7        * Addressability for ii
+*
+         MVI   IFO_cCurrChar,X'00'
+         MVI   IFO_cPeekChar,X'00'
+         MVI   IFO_cPeekChar2,X'00'
+         MVI   IFO_bEOL,C'N'
+         MVI   IFO_bEOF,C'N'
+         MVC   IFO_pos,INF_pos
+         MVC   IFO_nLine,INF_nLine
+*
+         IF (CLI,INF_bEOL,EQ,C'Y') THEN
+            L     R15,=A(INF#99) * Read next line
+            BASR  R14,R15
+*
+            MVC   IFO_nLine,INF_nLine
+         ENDIF
+*
+         ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKF04
+         ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF04,            X
+               ZSTR=MAK601D_INF
+*
+         IF (CLI,INF_bEOF,EQ,C'Y') THEN
+            MVI   IFO_bEOF,C'Y'
+*
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF04,         X
+               ZSTR==X'C5D6C600' * EOF
+         ELSE
+            IF (CLC,INF_pos,LT,INF_nCurrLineLength) THEN
+               ISTB_CharAt OBJECT=INF_ISTB_currLine,WORK=WORKF04,      X
+               POS=INF_pos,CHAROUT=INF_cCurrChar
+               MVC   IFO_cCurrChar,INF_cCurrChar
+               ASI   INF_pos,1
+               MVC   IFO_pos,INF_pos
+*
+               ISTB_AppendChar OBJECT=G_ISTB_tmp,WORK=WORKF04,         X
+               CHAR=IFO_cCurrChar
+*
+               IF (CLC,INF_pos,LT,INF_nCurrLineLength) THEN
+                  ISTB_CharAt OBJECT=INF_ISTB_currLine,WORK=WORKF04,   X
+               POS=INF_pos,CHAROUT=INF_cPeekChar
+                  MVC   IFO_cPeekChar,INF_cPeekChar
+*
+                  MVC   POSF04,INF_pos
+                  ASI   POSF04,1
+*
+                  IF (CLC,POSF04,LT,INF_nCurrLineLength) THEN
+                     ISTB_CharAt OBJECT=INF_ISTB_currLine,WORK=WORKF04,X
+               POS=POSF04,CHAROUT=INF_cPeekChar2
+                     MVC   IFO_cPeekChar2,INF_cPeekChar
+                  ENDIF
+               ENDIF
+            ELSE
+               MVI   INF_bEOL,C'Y'
+               MVI   IFO_bEOL,C'Y'
+*
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF04,      X
+               ZSTR==X'C5D6D300' * EOL
+            ENDIF
+         ENDIF
+*
+         L     R2,G_ISTB_tmp
+         L     R2,STB_lpBuf-STB_obj(,R2)
+         ILOG_Write OBJECT=G_ILOG,WORK=WORKF04,LINE=0(,R2),            X
+               LOGLEVEL=LOG_LEVEL_DEBUG3
+*
+INF#04_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+                             DS    0F
+MAK601D_INF                  DC    C'MAK601D Got next character ',X'00'
+*
+WORKDSAF04                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKF04                      DS    3A
+*
+IIFO_ii_F04                  DS    A
+*
+POSF04                       DS    F
+*
+WORKDSAF04_SIZ               EQU   *-WORKDSAF04
+*
+LWZMINP  CSECT
+*
+         DROP
+*
+* IINF Open
+*
+INF#05   CEEENTRY AUTO=WORKDSAF05_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAF05,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING INF_obj,R8        * Address object DSECT
+*
+         CLI   INF_bOpen,C'Y'    * If already open
+         BE    INF#05_RET        * Skip to end
+*
+         L     R2,4(,R1)         * Parm 2 is DD name ptr
+         MVC   INF_cDDName,0(R2) * Copy DD name
+*
+         IFMG_DDNameToPath OBJECT=G_IFMG,WORK=WORKF05,                 X
+               DDNAME=INF_cDDName,PATH=WPATHF05
+*
+         IUSS_BPX1OPN OBJECT=G_IUSS,WORK=WORKF05,PATH=WPATHF05,        X
+               FDESC_RETVAL=INF_FD
+*
+         IF (CLC,G_RETCODE,EQ,=A(0)) THEN
+            MVI   INF_bOpen,C'Y'  * Set flag that DCB is now open
+*
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKF05
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF05,         X
+               ZSTR=MAK303I_F05
+            MVC   WDDNAMEF05,INF_cDDName
+            MVI   WDDNAMEF05+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF05,         X
+               ZSTR=WDDNAMEF05
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKF05,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_INFO
+         ENDIF
+*
+INF#05_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+                             DS    0F
+*                                                          DDNAME__ RC
+MAK101E_F05                  DC    C'MAK101E Error opening ',X'00'
+                             DS    0F
+MAK303I_F05                  DC    C'MAK303I Opened input data set withX
+                DD name ',X'00'
+*
+WORKDSAF05                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKF05                      DS    4A
+*
+WPATHF05                     DS    A
+WDDNAMEF05                   DS    CL8,C
+*
+WORKDSAF05_SIZ               EQU   *-WORKDSAF05
+*
+LWZMINP  CSECT
+*
+         DROP
+*
+* IINF Close
+*
+INF#06   CEEENTRY AUTO=WORKDSAF06_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAF06,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         L     R8,0(,R1)         * Parm 1 is object ptr
+         USING INF_obj,R8        * Address object DSECT
+*
+         CLI   INF_bOpen,C'N'    * If not open
+         BE    INF#06_RET        * Skip to end
+*
+         IUSS_BPX1CLO OBJECT=G_IUSS,WORK=WORKF06,FDESC=INF_FD
+*
+         IF (CLC,G_RETCODE,EQ,=A(0)) THEN
+            MVI   INF_bOpen,C'N' * Set flag that DCB is now closed
+*
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKF06
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF06,         X
+               ZSTR=MAK304I_F06
+            MVC   WDDNAMEF06,INF_cDDName
+            MVI   WDDNAMEF06+8,X'00'
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF06,         X
+               ZSTR=WDDNAMEF06
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKF06,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_INFO
+         ENDIF
+*
+INF#06_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+                             DS    0F
+*                                                          DDNAME__ RC
+MAK102E_F06                  DC    C'MAK101E Error closing ',X'00'
+                             DS    0F
+MAK304I_F06                  DC    C'MAK304I Closed input data set withX
+                DD name ',X'00'
+*
+WORKDSAF06                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKF06                      DS    3A
+*
+WDDNAMEF06                   DS    CL8,C
+*
+WORKDSAF06_SIZ               EQU   *-WORKDSAF06
+*
+LWZMINP  CSECT
+*
+         DROP
+*
+* IINF Read a line
+*
+INF#99   CEEENTRY AUTO=WORKDSAF99_SIZ,MAIN=NO,BASE=R10
+*
+         USING WORKDSAF99,R13    * Address DSA and extra stg for vars
+*
+         USING GLOBAL,R9         * Address global area DSECT
+*
+         USING INF_obj,R8        * Address object DSECT
+*
+         MVI   INF_bEOL,C'N'     * Reset End-Of-Line to false
+*
+         ISTB_Init OBJECT=INF_ISTB_currLine,WORK=WORKF99
+*
+INF#99_RED EQU   *
+         IUSS_BPX1RED OBJECT=G_IUSS,WORK=WORKF99,FDESC=INF_FD,         X
+               RETCHAR=CHARF99,RETEOF=EOFF99
+*
+         IF (CLC,G_RETCODE,EQ,=A(0)) THEN
+            IF (CLI,EOFF99,EQ,X'00') THEN
+               IF (CLI,CHARF99,NE,X'15') THEN
+                  ISTB_AppendChar OBJECT=INF_ISTB_currLine,            X
+               WORK=WORKF99,CHAR=CHARF99
+*
+                  B     INF#99_RED
+               ELSE
+                  L     R14,INF_ISTB_currLine
+                  L     R14,STB_nStrLen-STB_Obj(,R14)
+                  ST    R14,INF_nCurrLineLength
+                  MVC   INF_pos,=A(0)  * Reset pos
+                  ASI   INF_nLine,1    * Increase line number
+               ENDIF
+            ELSE
+               MVI   INF_bEOF,C'Y'
+            ENDIF
+         ENDIF
+*
+INF#99_RET EQU   *
+         CEETERM
+*
+         LTORG
+*
+                             DS    0F
+MAK504D_F99                  DC    C'MAK504D Read an input line',X'00'
+                             DS    0F
+MAK505D_F99                  DC    C'MAK505D Input file is EOF',X'00'
+*
+WORKDSAF99                   DSECT
+*
+                             ORG   *+CEEDSASZ
+*
+WORKF99                      DS    4A
+*
+CHARF99                      DS    C
+EOFF99                       DS    C
+*
+WORKDSAF99_SIZ               EQU   *-WORKDSAF99
 *
 LWZMINP  CSECT
 *

@@ -8,6 +8,7 @@ IFMG_ReleasePtr              DS    A   *     Methods
 IFMG_StatPtr                 DS    A   * Stat
 IFMG_MemberlistPtr           DS    A   * Memberlist
 IFMG_DDNameToDSNamePtr       DS    A   * DDNameToDSName
+IFMG_DDNameToPathPtr         DS    A   * DDNameToPath
                              DS    0F
 IFMG_Vtbl_SIZ                EQU   *-IFMG_Vtbl
 *
@@ -87,4 +88,18 @@ IFMG_Vtbl_SIZ                EQU   *-IFMG_Vtbl
          L     R15,0(,R15)  * Point to start of Vtbl
          L     R15,IFMG_DDNameToDSNamePtr-IFMG_Vtbl(,R15)
          BASR  R14,R15      * Branch to DDNameToDSName entry point
+         MEND
+*
+         MACRO
+         IFMG_DDNameToPath &OBJECT=,&WORK=,&DDNAME=,&PATH=
+         L     R15,&OBJECT  * Ptr to Vtbl
+         LA    R1,&WORK     * Address execute storage
+         ST    R15,0(,R1)   * Set 'this' (ptr to Vtbl) as parm 1
+         LA    R14,&DDNAME  * Get ptr to DD name
+         ST    R14,4(,R1)   * Set ptr to DD name as parm 2
+         LA    R14,&PATH    * Get ptr to Path
+         ST    R14,8(,R1)   * Set ptr to Path as parm 3
+         L     R15,0(,R15)  * Point to start of Vtbl
+         L     R15,IFMG_DDNameToPathPtr-IFMG_Vtbl(,R15)
+         BASR  R14,R15      * Branch to DDNameToPath entry point
          MEND

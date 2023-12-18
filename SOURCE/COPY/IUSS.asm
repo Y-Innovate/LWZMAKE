@@ -7,6 +7,9 @@ IUSS_AddRefPtr               DS    A   *   COM
 IUSS_ReleasePtr              DS    A   *     Methods
 IUSS_BPX1STAPtr              DS    A   * Stat a USS file
 IUSS_BPX1SPNPtr              DS    A   * Execute a USS sh
+IUSS_BPX1OPNPtr              DS    A   * Open a USS file
+IUSS_BPX1CLOPtr              DS    A   * Close a USS file
+IUSS_BPX1REDPtr              DS    A   * Read a character
                              DS    0F
 IUSS_Vtbl_SIZ                EQU   *-IUSS_Vtbl
 *
@@ -66,4 +69,43 @@ IUSS_Vtbl_SIZ                EQU   *-IUSS_Vtbl
          L     R15,0(,R15)  * Point to start of Vtbl
          L     R15,IUSS_BPX1SPNPtr-IUSS_Vtbl(,R15)
          BASR  R14,R15      * Branch to BPX1SPN entry point
+         MEND
+*
+         MACRO
+         IUSS_BPX1OPN &OBJECT=,&WORK=,&PATH=,&FDESC_RETVAL=
+         L     R15,&OBJECT  * Ptr to Vtbl
+         LA    R1,&WORK     * Address execute storage
+         ST    R15,0(,R1)   * Set 'this' (ptr to Vtbl) as parm 1
+         MVC   4(4,R1),&PATH * Set USS path as parm 2
+         LA    R14,&FDESC_RETVAL * Get ptr to file descriptor
+         ST    R14,8(,R1)   * Set ptr to file descriptor as parm 3
+         L     R15,0(,R15)  * Point to start of Vtbl
+         L     R15,IUSS_BPX1OPNPtr-IUSS_Vtbl(,R15)
+         BASR  R14,R15      * Branch to BPX1OPN entry point
+         MEND
+*
+         MACRO
+         IUSS_BPX1CLO &OBJECT=,&WORK=,&FDESC=
+         L     R15,&OBJECT  * Ptr to Vtbl
+         LA    R1,&WORK     * Address execute storage
+         ST    R15,0(,R1)   * Set 'this' (ptr to Vtbl) as parm 1
+         MVC   4(4,R1),&FDESC * Set file descriptor as parm 2
+         L     R15,0(,R15)  * Point to start of Vtbl
+         L     R15,IUSS_BPX1CLOPtr-IUSS_Vtbl(,R15)
+         BASR  R14,R15      * Branch to BPX1CLO entry point
+         MEND
+*
+         MACRO
+         IUSS_BPX1RED &OBJECT=,&WORK=,&FDESC=,&RETCHAR=,&RETEOF=
+         L     R15,&OBJECT  * Ptr to Vtbl
+         LA    R1,&WORK     * Address execute storage
+         ST    R15,0(,R1)   * Set 'this' (ptr to Vtbl) as parm 1
+         MVC   4(4,R1),&FDESC * Set file descriptor as parm 2
+         LA    R14,&RETCHAR * Get ptr to return character
+         ST    R14,8(,R1)   * Set ptr to return character as parm 3
+         LA    R14,&RETEOF  * Get ptr to return EOF
+         ST    R14,12(,R1)  * Set ptr to return EOF as parm 3
+         L     R15,0(,R15)  * Point to start of Vtbl
+         L     R15,IUSS_BPX1REDPtr-IUSS_Vtbl(,R15)
+         BASR  R14,R15      * Branch to BPX1RED entry point
          MEND

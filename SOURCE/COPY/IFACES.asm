@@ -4,6 +4,7 @@
          COPY  IFMG
          COPY  IIFO
          COPY  IIND
+         COPY  IINF
          COPY  IINS
          COPY  ILOG
          COPY  IPRS
