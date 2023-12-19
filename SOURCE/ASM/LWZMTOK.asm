@@ -676,7 +676,9 @@ TOK#05   CEEENTRY AUTO=WORKDSAT05_SIZ,MAIN=NO,BASE=(R10,R11)
                (CLI,IFO_cPeekChar,EQ,C'v'),OR,                         X
                (CLI,IFO_cPeekChar,EQ,C'V'),OR,                         X
                (CLI,IFO_cPeekChar,EQ,C't'),OR,                         X
-               (CLI,IFO_cPeekChar,EQ,C'T') THEN
+               (CLI,IFO_cPeekChar,EQ,C'T'),OR,                         X
+               (CLI,IFO_cPeekChar,EQ,C'd'),OR,                         X
+               (CLI,IFO_cPeekChar,EQ,C'D') THEN
                      IPSS_GetLastState OBJECT=IPSS_ps_T05,WORK=WORKT05,X
                STATE_OUT=lastState_T05
 *
@@ -685,9 +687,13 @@ TOK#05   CEEENTRY AUTO=WORKDSAT05_SIZ,MAIN=NO,BASE=(R10,R11)
                         IF (CLI,IFO_cPeekChar,EQ,C'v'),OR,             X
                (CLI,IFO_cPeekChar,EQ,C'V') THEN
                            MVC   TFO_tokenType,=A(TOKEN_TYPE_LOGSWITCH)
-                        ELSE
+                        ELSEIF (CLI,IFO_cPeekChar,EQ,C't'),OR,         X
+               (CLI,IFO_cPeekChar,EQ,C'T') THEN
                            MVC   TFO_tokenType,=A(TOKEN_TYPE_TARGETSWITX
                CH)
+                        ELSE
+                           MVC   TFO_tokenType,=A(TOKEN_TYPE_DATASETSWIX
+               TCH)
                         ENDIF
                         MVC   TFO_nLine,IFO_nLine
                         MVC   TFO_pos,IFO_pos

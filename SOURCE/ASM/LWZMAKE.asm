@@ -462,7 +462,7 @@ PARMS    DS    0H
          ENDDO
 *
          CLC   G_RETCODE,=A(0)   * If something wrong
-         BNE   LWZMAKE_RET       * skip the rest
+         BNE   PARMS_RET         * skip the rest
 *
          ITOK_Release OBJECT=ITOK_PARMS,WORK=WORK
          MVC   ITOK_PARMS,=A(0)
@@ -597,6 +597,14 @@ HEAPSEGDS_SIZ                EQU   *-HEAPSEG
          COPY  VARIANT           * DSECT for typed value
 *
          MGLOBAL                 * Global area DSECT
+*
+*        CVT DSECT=YES,LIST=YES
+*
+*        IEFJESCT
+*
+*        IEFZB505 LOCEPAX=YES
+*
+*        IHADSAB
 *
 LWZMAKE  CSECT
 *
