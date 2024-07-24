@@ -31,6 +31,10 @@ CALL init
 CALL parseArguments
 
 IF g.error == 0 THEN DO
+   CALL do_tmpfile
+END
+
+IF g.error == 0 THEN DO
    CALL do_ogetu
 END
 
@@ -61,29 +65,196 @@ g.notouch = 0
 RETURN
 
 /**********************************************************************/
-/* Execute cp command                                                 */
+/* Execute tmpname command                                            */
+/**********************************************************************/
+do_tmpfile: PROCEDURE EXPOSE g. SIGL
+
+_x = SYSCALLS('ON')
+
+ADDRESS SYSCALL 'time'
+
+_time = RETVAL
+
+PARSE VAR g.pdsmem _someDataset'('_someMember')'
+
+g.tmpfile = '/tmp/'_someMember || _time
+
+RETURN
+
+/**********************************************************************/
+/* Copy USS file to PDS member                                        */
 /**********************************************************************/
 do_ogetu: PROCEDURE EXPOSE g. SIGL
 
 _pdsmem = STRREPLACE(g.pdsmem, "$", "\$")
 
-IF g.binary == 1 THEN
+IF g.binary == 1 THEN DO
    _cmd = "cp -B '"g.pathname"' "'"//'"'"_pdsmem"'"'"'
+
+   CALL BPXWUNIX _cmd,,_stdout.,_stderr.,,1
+
+   IF RESULT /= 0 THEN DO
+      g.error = 8
+
+      CALL log 'STDOUT'
+      DO i = 1 TO _stdout.0
+         CALL log _stdout.i
+      END
+      CALL log 'STDERR'
+      DO i = 1 TO _stderr.0
+         CALL log _stderr.i
+      END
+   END
+END
 ELSE IF g.load == 1 THEN DO
    _cmd = "cp -X '"g.pathname"' "'"//'"'"_pdsmem"'"'"'
+
+   CALL BPXWUNIX _cmd,,_stdout.,_stderr.,,1
+
+   IF RESULT /= 0 THEN DO
+      g.error = 8
+
+      CALL log 'STDOUT'
+      DO i = 1 TO _stdout.0
+         CALL log _stdout.i
+      END
+      CALL log 'STDERR'
+      DO i = 1 TO _stderr.0
+         CALL log _stderr.i
+      END
+   END
+
    g.notouch = 1
 END
-ELSE IF g.ibm1047 == 1 THEN
-   _cmd = "cp '"g.pathname"' "'"//'"'"_pdsmem"'"'"'
 ELSE DO
-   _cmd = 'tmpfile=`tmpname`;erÝ0¨=$?'
-   _cmd = _cmd";iconv -f IBM-1047 -t IBM-037 '"g.pathname"' > $tmpfile"';erÝ1¨=$?'
-   _cmd = _cmd';cp $tmpfile "//'"'"_pdsmem"'"'";erÝ2¨=$?'
-   _cmd = _cmd';rm $tmpfile;erÝ3¨=$?'
-   _cmd = _cmd';ÝÝ "${erÝ@¨}" = "0 0 0 0" ¨¨ || false'
-END
+   IF g.ibm1047 == 1 THEN
+      _cmd = "cp '"g.pathname"' '"g.tmpfile"'"
+   ELSE
+      _cmd = "iconv -f IBM-1047 -t IBM-037 -T '"g.pathname"' > '"g.tmpfile"'"
 
-g.error = UNIXCMD0(_cmd)
+   CALL BPXWUNIX _cmd,,_stdout.,_stderr.,,1
+
+   IF RESULT /= 0 THEN DO
+      g.error = 8
+
+      CALL log 'STDOUT'
+      DO i = 1 TO _stdout.0
+         CALL log _stdout.i
+      END
+      CALL log 'STDERR'
+      DO i = 1 TO _stderr.0
+         CALL log _stderr.i
+      END
+   END
+
+   IF g.error == 0 THEN DO
+      _x = SYSCALLS('ON')
+
+      path = g.tmpfile
+
+      ADDRESS SYSCALL 'readfile (path) file.'
+
+      IF RC >= 0 & RETVAL >= 0 & file.0 > 0 THEN DO
+         PARSE VAR g.pdsmem _someDataset'('_someMember')'
+
+         IF _someMember /= "" THEN DO
+            _lminit = "LMINIT DATAID(MYID)"
+            _lminit = _lminit || " DATASET('"_someDataset"')"
+            _lminit = _lminit || " ENQ(SHRW)"
+
+            ADDRESS ISPEXEC _lminit
+
+            IF RC /= 0 THEN DO
+               CALL log 'LMINIT failed with 'RC
+               g.error = 8
+            END
+
+            IF g.error == 0 THEN DO
+               _lmopen = "LMOPEN DATAID(&MYID) OPTION(OUTPUT)"
+
+               ADDRESS ISPEXEC _lmopen
+
+               IF RC /= 0 THEN DO
+                  CALL log 'LMOPEN failed with 'RC
+                  g.error = 8
+               END
+
+               IF g.error == 0 THEN DO
+                  DO I = 1 TO file.0
+                     rcd = file.I
+                     rcdlen = LENGTH(rcd)
+
+                     IF rcdlen == 0 THEN rcdlen = 1
+
+                     _lmput = "LMPUT DATAID(&MYID) MODE(INVAR) DATALOC(rcd)"
+                     _lmput = _lmput" DATALEN(&rcdlen)"
+
+                     ADDRESS ISPEXEC _lmput
+
+                     IF RC /= 0 THEN DO
+                        CALL log 'LMPUT failed with 'RC
+                        g.error = 8
+                        EXIT
+                     END
+                  END
+
+                  IF g.error == 0 THEN DO
+                     mem = _someMember
+
+                     _lmmrep = "LMMREP DATAID(&MYID) MEMBER(&mem)"
+
+                     ADDRESS ISPEXEC _lmmrep
+
+                     IF RC /= 0 & RC /= 8 THEN DO
+                        CALL log 'LMMREP failed with 'RC
+                        g.error = 8
+                     END
+                  END
+
+                  _lmclose = "LMCLOSE DATAID(&MYID)"
+
+                  ADDRESS ISPEXEC _lmclose
+
+                  IF RC /= 0 THEN DO
+                     CALL log 'LMCLOSE failed with 'RC
+                     g.error = 8
+                  END
+               END
+            END
+
+            IF g.error == 0 THEN DO
+               ADDRESS ISPEXEC "LMFREE DATAID(&MYID)"
+
+               IF RC /= 0 THEN DO
+                  CALL log 'LMFREE failed with 'RC
+                  g.error = 8
+               END
+            END
+         END
+      END
+      ELSE DO
+         CALL log 'readfile returned 'RC' 'RETVAL
+         g.error = 8
+      END
+
+      _cmd = "rm '"g.tmpfile"'"
+
+      CALL BPXWUNIX _cmd,,_stdout.,_stderr.,,1
+
+      IF RESULT /= 0 THEN DO
+         g.error = 8
+
+         CALL log 'STDOUT'
+         DO i = 1 TO _stdout.0
+            CALL log _stdout.i
+         END
+         CALL log 'STDERR'
+         DO i = 1 TO _stderr.0
+            CALL log _stderr.i
+         END
+      END
+   END
+END
 
 RETURN
 
@@ -492,7 +663,7 @@ IF g.error == 0 THEN DO
 
    _expected = g.parser.scanStateTable._state
    IF C2D(BITAND(D2C(_expected), ,
-                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
+                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN DO
      g.lexer.currToken = g.scanner.currChar
      SIGNAL lexerGetToken_complete
    END

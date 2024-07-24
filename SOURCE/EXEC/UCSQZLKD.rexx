@@ -1,4 +1,27 @@
 /* REXX */
+/**********************************************************************/
+/* Program    : UCSQZLKD                                              */
+/*                                                                    */
+/* Description: This program generates IEWL link edit input control   */
+/*              statements to link edit MQ ZPARM load modules.        */
+/*                                                                    */
+/* Environment: ISPF                                                  */
+/*                                                                    */
+/* Parameters : The program accepts a single parameter string with    */
+/*              the following syntax:                                 */
+/*                                                                    */
+/*              >>--'loadmod'--'mvs_data_set_name(member_name)'-->    */
+/*                                                                    */
+/* Returns    : 0 when file copies successfully                       */
+/*              8 when there was an error                             */
+/*                                                                    */
+/* Sample code:                                                       */
+/* _par = "'CSQZOQ1G' 'MY.LKED.PDS(MEMBER)'                           */
+/*                                                                    */
+/* CALL 'UCSQZLKD' _par                                               */
+/*                                                                    */
+/* _rc = RESULT                                                       */
+/**********************************************************************/
 PARSE ARG g.arg
 PARSE SOURCE . . g.rexxname .
 
@@ -7,7 +30,11 @@ CALL init
 CALL parseArguments
 
 IF g.error == 0 THEN DO
-   CALL createMember
+   CALL do_createmem
+END
+
+IF g.error == 0 & g.notouch == 0 THEN DO
+   CALL do_touch
 END
 
 EXIT g.error
@@ -18,92 +45,43 @@ EXIT g.error
 init: PROCEDURE EXPOSE g. SIGL
 
 SAY COPIES('*',100)
-SAY '* NEWDUMMY'
+SAY '* UCSQZLKD'
 SAY COPIES('*',100)
 
 g.error = 0
 
-g.newdummy = ""
+g.loadmod = ""
+g.pdsmem = ""
 
 RETURN
 
 /**********************************************************************/
-/* Create dummy member                                                */
+/* Create a member with link edit control statements                  */
 /**********************************************************************/
-createMember:
+do_createmem: PROCEDURE EXPOSE g. SIGL
 
-PARSE VAR g.newdummy _someDataset'('_someMember')'
+lines.1 = " INCLUDE OBJECT("g.loadmod")"
+lines.2 = " INCLUDE SYSLIB(CSQZPARM)"
+lines.3 = " ENTRY   CSQZMSTR"
+lines.4 = " NAME    "g.loadmod"(R)"
 
-IF _someMember /= "" THEN DO
-   _lminit = "LMINIT DATAID(MYID)"
-   _lminit = _lminit || " DATASET('"_someDataset"')"
-   _lminit = _lminit || " ENQ(EXCLU)"
+_rc = BPXWDYN("ALLOC DSN('"g.pdsmem"') SHR RTDDN(_ddn)")
 
-   ADDRESS ISPEXEC _lminit
+If _rc == 0 Then Do
+   Do I = 1 To 4
+      Push lines.I
 
-   IF RC /= 0 THEN DO
-      CALL log 'LMINIT failed with 'RC
-      g.error = 8
-   END
+      "EXECIO 1 DISKW "_ddn
+   End
 
-   IF g.error == 0 THEN DO
-      _lmopen = "LMOPEN DATAID(&MYID) OPTION(OUTPUT)"
+   "EXECIO 0 DISKW "_ddn" (FINIS"
 
-      ADDRESS ISPEXEC _lmopen
-
-      IF RC /= 0 THEN DO
-         CALL log 'LMOPEN failed with 'RC
-         g.error = 8
-      END
-
-      IF g.error == 0 THEN DO
-         ZLMTIME  = TIME()
-         ZLCDATE = TRANSLATE('yr/mn/dt',DATE('S'),'ceyrmndt')
-         ZLMDATE = TRANSLATE('yr/mn/dt',DATE('S'),'ceyrmndt')
-         ZLUSER   = USERID()
-         MYREC = ZLMTIME ZLCDATE ZLMDATE ZLUSER
-
-         _lmput = "LMPUT DATAID(&MYID) MODE(INVAR)"
-         _lmput = _lmput || " DATALOC(MYREC) DATALEN("LENGTH(MYREC)")"
-
-         ADDRESS ISPEXEC _lmput
-
-         IF RC /= 0 THEN DO
-            CALL log 'LMPUT failed with 'RC
-            g.error = 8
-         END
-
-         IF g.error == 0 THEN DO
-            _lmmadd = "LMMADD DATAID(&MYID) MEMBER("_someMember")"
-            _lmmadd = _lmmadd || " STATS(YES)"
-
-            ADDRESS ISPEXEC _lmmadd
-
-            IF RC /= 0 THEN DO
-               CALL log 'LMMADD failed with 'RC
-               g.error = 8
-            END
-         END
-
-         _lmclose = "LMCLOSE DATAID(&MYID)"
-
-         ADDRESS ISPEXEC _lmclose
-
-         IF RC /= 0 THEN DO
-            CALL log 'LMCLOSE failed with 'RC
-            g.error = 8
-         END
-      END
-   END
-
-   IF g.error == 0 THEN DO
-      ADDRESS ISPEXEC "LMFREE DATAID(&MYID)"
-
-      IF RC /= 0 THEN DO
-         CALL log 'LMFREE failed with 'RC
-         g.error = 8
-      END
-   END
+   _rc = BPXWDYN("FREE FI("_ddn")")
+End
+ELSE DO
+   g.error = 8
+   IF _rc > 0 THEN _rc = D2X(_rc)
+   CALL log 'Dynamic allocation of 'g.pdsmem' failed with '_rc
 END
 
 RETURN
@@ -117,20 +95,27 @@ g.parser.EXPECTED_EOF = 1
 g.parser.EXPECTED_NORMAL = 2
 g.parser.EXPECTED_OPEN_BRACKET = 4
 g.parser.EXPECTED_CLOSE_BRACKET = 8
-g.parser.EXPECTED_DOT = 16
+g.parser.EXPECTED_QUOTE = 16
+g.parser.EXPECTED_DOT = 32
 g.parser.EXPECTED_ANYTHING_ELSE = 64
 
 g.parser.SCAN_STATE_NOT_IN_PARM = 1
 g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM = g.parser.EXPECTED_EOF + ,
-                                          g.parser.EXPECTED_NORMAL
-g.parser.SCAN_STATE_IN_PARM1 = 2
-g.parser.EXPECTED_FOR_STATE_IN_PARM1 = g.parser.EXPECTED_OPEN_BRACKET
-g.parser.SCAN_STATE_IN_PARM2 = 3
+                                          g.parser.EXPECTED_QUOTE
+
+g.parser.SCAN_STATE_NOT_IN_PARM2 = 2
+g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM2 = g.parser.EXPECTED_EOF + ,
+                                           g.parser.EXPECTED_NORMAL
+
+g.parser.SCAN_STATE_IN_PARM1 = 3
+g.parser.EXPECTED_FOR_STATE_IN_PARM1 = g.parser.EXPECTED_NORMAL + ,
+                                       g.parser.EXPECTED_DOT + ,
+                                       g.parser.EXPECTED_ANYTHING_ELSE
+g.parser.SCAN_STATE_IN_PARM2 = 4
 g.parser.EXPECTED_FOR_STATE_IN_PARM2 = g.parser.EXPECTED_NORMAL + ,
-                                       g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_PARM3 = 4
-g.parser.EXPECTED_FOR_STATE_IN_PARM3 = g.parser.EXPECTED_NORMAL + ,
-                                       g.parser.EXPECTED_CLOSE_BRACKET
+                                       g.parser.EXPECTED_DOT + ,
+                                       g.parser.EXPECTED_ANYTHING_ELSE + ,
+                                       g.parser.EXPECTED_QUOTE
 g.parser.SCAN_STATE_IN_DSNAME1 = 5
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME1 = g.parser.EXPECTED_NORMAL + ,
                                          g.parser.EXPECTED_CLOSE_BRACKET
@@ -144,78 +129,88 @@ g.parser.SCAN_STATE_IN_DSNAME4 = 8
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME4 = g.parser.EXPECTED_NORMAL
 g.parser.SCAN_STATE_IN_DSNAME5 = 9
 g.parser.EXPECTED_FOR_STATE_IN_DSNAME5 = g.parser.EXPECTED_CLOSE_BRACKET
-g.parser.SCAN_STATE_IN_PARM_PARM1 = 10
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT + ,
-                                            g.parser.EXPECTED_ANYTHING_ELSE
-g.parser.SCAN_STATE_IN_PARM_PARM2 = 11
-g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2 = g.parser.EXPECTED_NORMAL + ,
-                                            g.parser.EXPECTED_CLOSE_BRACKET + ,
-                                            g.parser.EXPECTED_DOT + ,
-                                            g.parser.EXPECTED_ANYTHING_ELSE
 
 g.parser.scanState = 1
 g.parser.scanStateTable.1 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM
-g.parser.scanStateTable.2 = g.parser.EXPECTED_FOR_STATE_IN_PARM1
-g.parser.scanStateTable.3 = g.parser.EXPECTED_FOR_STATE_IN_PARM2
-g.parser.scanStateTable.4 = g.parser.EXPECTED_FOR_STATE_IN_PARM3
+g.parser.scanStateTable.2 = g.parser.EXPECTED_FOR_STATE_NOT_IN_PARM2
+g.parser.scanStateTable.3 = g.parser.EXPECTED_FOR_STATE_IN_PARM1
+g.parser.scanStateTable.4 = g.parser.EXPECTED_FOR_STATE_IN_PARM2
 g.parser.scanStateTable.5 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME1
 g.parser.scanStateTable.6 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME2
 g.parser.scanStateTable.7 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME3
 g.parser.scanStateTable.8 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME4
 g.parser.scanStateTable.9 = g.parser.EXPECTED_FOR_STATE_IN_DSNAME5
-g.parser.scanStateTable.10 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM1
-g.parser.scanStateTable.11 = g.parser.EXPECTED_FOR_STATE_IN_PARM_PARM2
 
 _parmName = ""
 
 CALL initLexer
 
-DO WHILE g.error == 0
-   CALL lexerGetToken
+CALL lexerGetToken /* Should be quote */
 
-   IF g.error /= 0   | g.scanner.currChar == 'EOF' THEN LEAVE
-
-   _parmName = g.lexer.currToken
-
-   g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
-   CALL lexerGetToken
-   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   SELECT
-   WHEN _parmName == 'DATASET' THEN DO
-      g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-      CALL lexerGetToken
-      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-      DO WHILE g.lexer.currToken /= ')'
-         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
-         _dsname = parseDsname()
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         g.newdummy = _dsname
-         g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
-         CALL lexerGetToken
-         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-         IF g.lexer.currToken /= ')' THEN DO
-            CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
-            g.error = 8
-            RETURN
-         END
-      END
-   END
-   OTHERWISE
-      NOP
-   END
-   IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
-   g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
-END
-
-IF g.error == 0 & g.newdummy == "" THEN DO
-   CALL log 'DATASET(...) expected but not found or specified wrong'
+IF g.error == 0 & g.scanner.currChar == 'EOF' THEN DO
+   CALL log 'No parameters found'
    g.error = 8
 END
 
 IF g.error == 0 THEN DO
-   SAY 'DATASET: 'g.newdummy
+   g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
+
+   _loadmod = ""
+
+   DO UNTIL g.error /= 0
+      CALL lexerGetToken
+
+      IF g.error /= 0 | g.scanner.currChar == "'" THEN LEAVE
+
+      _loadmod = _loadmod || g.lexer.currToken
+
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+   END
+
+   g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM
+END
+
+IF g.error == 0 THEN DO
+   CALL lexerGetToken
+
+   IF g.error == 0 & g.scanner.currChar == 'EOF' THEN DO
+      CALL log 'No PDS(E) data set and member parameter found'
+      g.error = 8
+   END
+
+   IF g.error == 0 THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM1
+
+      CALL lexerGetToken
+
+      IF g.error == 0 THEN DO
+         g.parser.scanState = g.parser.SCAN_STATE_IN_DSNAME1
+
+         _pdsmem = parseDsname()
+
+         IF g.error == 0 THEN DO
+            g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+
+            CALL lexerGetToken
+
+            IF g.error == 0 & g.scanner.currChar /= "'" THEN DO
+               CALL log 'PDS(E) data set and member wrong'
+               g.error = 8
+            END
+         END
+      END
+   END
+
+   g.parser.scanState = g.parser.SCAN_STATE_NOT_IN_PARM2
+END
+
+IF g.error == 0 THEN DO
+   g.loadmod = _loadmod
+   g.pdsmem = _pdsmem
+
+   SAY 'loadmod:  'g.loadmod
+   SAY 'pdsmem:   'g.pdsmem
+/* SAY 'complete parm: 'g.arg */
 END
 
 RETURN
@@ -260,14 +255,13 @@ RETURN _dsname
 /**********************************************************************/
 initLexer: PROCEDURE EXPOSE g. SIGL
 
-g.upperArg = TRANSLATE(g.arg)
-g.upperArgLen = LENGTH(g.upperArg)
+/*g.upperArg = TRANSLATE(g.arg)*/
+g.argLen = LENGTH(g.arg)
 
 g.scanner.colIndex = 0
 
-g.lexer.IDENTIFIER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-g.lexer.IDENTIFIER_STARTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-g.lexer.IDENTIFIER_CHARS = g.lexer.IDENTIFIER_STARTCHARS || "0123456789@#$"
+g.lexer.IDENTIFIER_STARTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ@$#"
+g.lexer.IDENTIFIER_CHARS = g.lexer.IDENTIFIER_STARTCHARS || "0123456789"
 
 RETURN
 
@@ -294,6 +288,18 @@ IF g.error == 0 THEN DO
       END
       ELSE DO
          CALL log 'Unexpected end of parameter at pos 'g.scanner.colIndex
+         g.error = 8
+      END
+      SIGNAL lexerGetToken_complete
+   END
+
+   IF g.scanner.currChar == "'" THEN DO
+      _expected = g.parser.scanStateTable._state
+      IF C2D(BITAND(D2C(_expected), D2C(g.parser.EXPECTED_QUOTE))) /= 0 THEN DO
+         g.lexer.currToken = g.scanner.currChar
+      END
+      ELSE DO
+         CALL log 'Unexpected "''" at pos 'g.scanner.colIndex
          g.error = 8
       END
       SIGNAL lexerGetToken_complete
@@ -346,7 +352,7 @@ IF g.error == 0 THEN DO
          SIGNAL lexerGetToken_complete
       END
       g.lexer.currToken = g.scanner.currChar
-      DO WHILE g.error == 0 & g.scanner.currChar /= 'EOF' & ,
+      DO WHILE g.error == 0 & g.scanner.peekChar /= 'EOF' & ,
                VERIFY(g.scanner.peekChar, g.lexer.IDENTIFIER_CHARS) == 0
          CALL scannerGetChar
 
@@ -379,13 +385,16 @@ scannerGetChar: PROCEDURE EXPOSE g. SIGL
 g.scanner.colIndex = g.scanner.colIndex + 1
 g.scanner.peekChar = ''
 
-IF g.scanner.colIndex > g.upperArgLen THEN DO
+IF g.scanner.colIndex > g.argLen THEN DO
    g.scanner.currChar = 'EOF'
 END
 ELSE DO
-   g.scanner.currChar = SUBSTR(g.upperArg, g.scanner.colIndex, 1)
-   IF g.scanner.colIndex < g.upperArgLen THEN DO
-      g.scanner.peekChar = SUBSTR(g.upperArg, g.scanner.colIndex + 1, 1)
+   g.scanner.currChar = SUBSTR(g.arg, g.scanner.colIndex, 1)
+   IF g.scanner.colIndex < g.argLen THEN DO
+      g.scanner.peekChar = SUBSTR(g.arg, g.scanner.colIndex + 1, 1)
+   END
+   ELSE DO
+      g.scanner.peekChar = 'EOF'
    END
 END
 
@@ -399,5 +408,9 @@ log: PROCEDURE EXPOSE g. SIGL
 PARSE ARG _msg
 
 SAY g.rexxname SIGL _msg
+
+ADDRESS ISPEXEC "VGET (ZERRMSG ZERRSM ZERRLM)"
+SAY ZERRMSG" - "ZERRSM
+SAY ZERRLM
 
 RETURN

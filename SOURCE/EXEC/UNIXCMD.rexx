@@ -46,10 +46,11 @@ executeCmd: PROCEDURE EXPOSE g. SIGL
 /* Execute UNIX command                                               */
 /**********************************************************************/
 
-CALL BPXWUNIX g.arg,,_stdout.,_stderr.
+CALL BPXWUNIX g.arg,,_stdout.,_stderr.,,1
 
-SAY 'RESULT = 'RESULT
-IF RESULT < 0 THEN DO
+CMDRESULT = RESULT
+SAY 'RESULT = 'CMDRESULT
+IF CMDRESULT < 0 THEN DO
    g.error = 8
 END
 

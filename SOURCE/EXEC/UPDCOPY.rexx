@@ -580,7 +580,7 @@ IF g.error == 0 THEN DO
 
    _expected = g.parser.scanStateTable._state
    IF C2D(BITAND(D2C(_expected), ,
-                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN
+                 D2C(g.parser.EXPECTED_ANYTHING_ELSE))) /= 0 THEN DO
      g.lexer.currToken = g.scanner.currChar
      SIGNAL lexerGetToken_complete
    END
