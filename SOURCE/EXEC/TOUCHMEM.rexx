@@ -71,6 +71,10 @@ DO i = 1 TO g.touchds.0
 
       IF RC /= 0 THEN DO
          CALL log 'LMINIT failed with 'RC
+
+         CALL log ZERRMSG" - "ZERRSM
+         CALL log ZERRLM
+
          g.error = 8
       END
 
@@ -86,6 +90,10 @@ DO i = 1 TO g.touchds.0
 
          IF RC /= 0 THEN DO
             CALL log 'LMMSTATS failed with 'RC
+
+            CALL log ZERRMSG" - "ZERRSM
+            CALL log ZERRLM
+
             g.error = 8
          END
       END
@@ -95,6 +103,10 @@ DO i = 1 TO g.touchds.0
 
          IF RC /= 0 THEN DO
             CALL log 'LMFREE failed with 'RC
+
+            CALL log ZERRMSG" - "ZERRSM
+            CALL log ZERRLM
+
             g.error = 8
          END
       END
@@ -393,9 +405,5 @@ log: PROCEDURE EXPOSE g. SIGL
 PARSE ARG _msg
 
 SAY g.rexxname SIGL _msg
-
-/*ADDRESS ISPEXEC "VGET (ZERRMSG ZERRSM ZERRLM)"*/
-SAY ZERRMSG" - "ZERRSM
-SAY ZERRLM
 
 RETURN

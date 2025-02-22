@@ -20,8 +20,9 @@
 /*              >--+--------------------+--+---------------------+->  */
 /*                 '-DBRMLIB(-dbrmlib-)-'  '-SYSPRINT(-listing-)-'    */
 /*                                                                    */
-/*              >--+----------------+--><                             */
-/*                 '-PARM(-params-)-'                                 */
+/*                                                     .-YES-.        */
+/*              >--+----------------+--+---------------+-----+-+--><  */
+/*                 '-PARM(-params-)-'  '-PRINTSUCCESS(-+-NO--+)'      */
 /*                                                                    */
 /*              source : Input source data set.                       */
 /*              precomp: Output pre-compiled source data set.         */
@@ -30,6 +31,8 @@
 /*              dbrmlib: Output DBRM data set.                        */
 /*              listing: Output pre-compilation listing data set.     */
 /*              params : Parameters to DSNHPC.                        */
+/*              printsuccess: Copy listing to job log when successful */
+/*                            pre-compile YES/NO.                     */
 /*                                                                    */
 /* Returns    : 0 when DSNHPC returned 4 or less                      */
 /*              8 when REXX error occurs or when parameter string     */
@@ -88,6 +91,7 @@ g.syscin = ""
 g.dbrmlib = ""
 g.sysprint = ""
 g.parm = ""
+g.printsuccess = 'Y'
 
 g.SYSIN.allocated = 0
 g.SYSLIB.allocated = 0
@@ -376,40 +380,42 @@ ADDRESS LINKMVS _prog '_parm _ddlist'
 
 g.DSNHPC.retcode = RC
 
-"EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+IF g.printsuccess == 'Y' | g.DSNHPC.retcode /= 0 THEN DO
+   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = RC
-
-IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
+   _rc = RC
 
    IF _rc == 0 THEN DO
-      SAY "SYSPRINT copied to DD "_ddn
+      _rc = BPXWDYN("ALLOC SYSOUT(A) REUSE RTDDN(_ddn)")
 
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+      IF _rc == 0 THEN DO
+         SAY "SYSPRINT copied to DD "_ddn
 
-      _rc = RC
+         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         _rc = RC
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         END
+
+         _rc = BPXWDYN("FREE FI("_ddn")")
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "FREE for copy SYSPRINT failed "_rc
+         END
       END
-
-      _rc = BPXWDYN("FREE FI("_ddn")")
-
-      IF _rc /= 0 THEN DO
+      ELSE DO
          g.error = 8
-         CALL log "FREE for copy SYSPRINT failed "_rc
+         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
       g.error = 8
-      CALL log "ALLOC for copy SYSPRINT failed "_rc
+      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 RETURN
@@ -599,6 +605,19 @@ DO WHILE g.error == 0
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
+   WHEN _parmName == 'PRINTSUCCESS' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF TRANSLATE(g.lexer.currToken) == 'NO' THEN DO
+         g.printsuccess = 'N'
+      END
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+      DO WHILE g.lexer.currToken /= ')'
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
    OTHERWISE
       NOP
    END
@@ -622,14 +641,15 @@ IF g.error == 0 & g.dbrmlib == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSIN:    'g.sysin
-   SAY 'SYSCIN:   'g.syscin
+   SAY 'SYSIN:        'g.sysin
+   SAY 'SYSCIN:       'g.syscin
    DO i = 1 to g.syslib.0
-      SAY 'SYSLIB:   'g.syslib.i
+      SAY 'SYSLIB:       'g.syslib.i
    END
-   SAY 'DBRMLIB:  'g.dbrmlib
-   SAY 'SYSPRINT: 'g.sysprint
-   SAY 'PARM:     'g.parm
+   SAY 'DBRMLIB:      'g.dbrmlib
+   SAY 'SYSPRINT:     'g.sysprint
+   SAY 'PARM:         'g.parm
+   SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
 RETURN

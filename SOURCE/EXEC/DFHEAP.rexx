@@ -15,10 +15,16 @@
 /*              >--+---------------------+--+----------------+--><    */
 /*                 '-SYSPRINT(-listing-)-'  '-PARM(-params-)-'        */
 /*                                                                    */
+/*                                 .-YES-.                            */
+/*              >--+---------------+-----+-+--><                      */
+/*                 '-PRINTSUCCESS(-+-NO--+)'                          */
+/*                                                                    */
 /*              source : Input assembler source data set.             */
 /*              xlated : Output translated assembler source data set. */
 /*              listing: Output translation listing data set.         */
 /*              params : Parameters to DFHEAP1$.                      */
+/*              printsuccess: Copy listing to job log when successful */
+/*                            translate YES/NO.                       */
 /*                                                                    */
 /* Returns    : 0 when DFHEAP1$ returned 4 or less                    */
 /*              8 when REXX error occurs or when parameter string     */
@@ -73,6 +79,7 @@ g.sysin = ""
 g.syspunch = ""
 g.sysprint = ""
 g.parm = ""
+g.printsuccess = "Y"
 
 g.SYSIN.allocated = 0
 g.SYSPUNCH.allocated = 0
@@ -198,40 +205,42 @@ ADDRESS LINKMVS _prog '_parm _ddlist'
 
 g.DFHEAP1$.retcode = RC
 
-"EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
+IF g.printsuccess == 'Y' | g.DFHEAP1$.retcode /= 0 THEN DO
+   "EXECIO * DISKR "g.SYSPRINT.ddname" (STEM _sysprint. FINIS"
 
-_rc = RC
-
-IF _rc == 0 THEN DO
-   _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
+   _rc = RC
 
    IF _rc == 0 THEN DO
-      SAY "SYSPRINT copied to DD "_ddn
+      _rc = BPXWDYN("ALLOC SYSOUT(A) RTDDN(_ddn)")
 
-      "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
+      IF _rc == 0 THEN DO
+         SAY "SYSPRINT copied to DD "_ddn
 
-      _rc = RC
+         "EXECIO "_sysprint.0" DISKW "_ddn" (STEM _sysprint. FINIS"
 
-      IF _rc /= 0 THEN DO
-         g.error = 8
-         CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         _rc = RC
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "EXECIO DISKW for copy SYSPRINT failed "_rc
+         END
+
+         _rc = BPXWDYN("FREE FI("_ddn")")
+
+         IF _rc /= 0 THEN DO
+            g.error = 8
+            CALL log "FREE for copy SYSPRINT failed "_rc
+         END
       END
-
-      _rc = BPXWDYN("FREE FI("_ddn")")
-
-      IF _rc /= 0 THEN DO
+      ELSE DO
          g.error = 8
-         CALL log "FREE for copy SYSPRINT failed "_rc
+         CALL log "ALLOC for copy SYSPRINT failed "_rc
       END
    END
    ELSE DO
       g.error = 8
-      CALL log "ALLOC for copy SYSPRINT failed "_rc
+      CALL log "EXECIO DISKR for SYSPRINT failed "_rc
    END
-END
-ELSE DO
-   g.error = 8
-   CALL log "EXECIO DISKR for SYSPRINT failed "_rc
 END
 
 RETURN
@@ -378,6 +387,19 @@ DO WHILE g.error == 0
          IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
       END
    END
+   WHEN _parmName == 'PRINTSUCCESS' THEN DO
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM2
+      CALL lexerGetToken
+      IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      IF TRANSLATE(g.lexer.currToken) == 'NO' THEN DO
+         g.printsuccess = 'N'
+      END
+      g.parser.scanState = g.parser.SCAN_STATE_IN_PARM3
+      DO WHILE g.lexer.currToken /= ')'
+         CALL lexerGetToken
+         IF g.error /= 0 | g.scanner.currChar == 'EOF' THEN LEAVE
+      END
+   END
    OTHERWISE
       NOP
    END
@@ -396,10 +418,11 @@ IF g.error == 0 & g.syspunch == "" THEN DO
 END
 
 IF g.error == 0 THEN DO
-   SAY 'SYSIN:    'g.sysin
-   SAY 'SYSPUNCH: 'g.syspunch
-   SAY 'SYSPRINT: 'g.sysprint
-   SAY 'PARM:     'g.parm
+   SAY 'SYSIN:        'g.sysin
+   SAY 'SYSPUNCH:     'g.syspunch
+   SAY 'SYSPRINT:     'g.sysprint
+   SAY 'PARM:         'g.parm
+   SAY 'PRINTSUCCESS: 'g.printsuccess
 END
 
 RETURN

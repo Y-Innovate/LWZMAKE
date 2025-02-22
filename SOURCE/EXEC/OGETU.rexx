@@ -166,6 +166,10 @@ ELSE DO
 
             IF RC /= 0 THEN DO
                CALL log 'LMINIT failed with 'RC
+
+               CALL log ZERRMSG" - "ZERRSM
+               CALL log ZERRLM
+
                g.error = 8
             END
 
@@ -176,6 +180,10 @@ ELSE DO
 
                IF RC /= 0 THEN DO
                   CALL log 'LMOPEN failed with 'RC
+
+                  CALL log ZERRMSG" - "ZERRSM
+                  CALL log ZERRLM
+
                   g.error = 8
                END
 
@@ -193,7 +201,12 @@ ELSE DO
 
                      IF RC /= 0 THEN DO
                         CALL log 'LMPUT failed with 'RC
+
+                        CALL log ZERRMSG" - "ZERRSM
+                        CALL log ZERRLM
+
                         g.error = 8
+
                         EXIT
                      END
                   END
@@ -207,6 +220,10 @@ ELSE DO
 
                      IF RC /= 0 & RC /= 8 THEN DO
                         CALL log 'LMMREP failed with 'RC
+
+                        CALL log ZERRMSG" - "ZERRSM
+                        CALL log ZERRLM
+
                         g.error = 8
                      END
                   END
@@ -217,6 +234,10 @@ ELSE DO
 
                   IF RC /= 0 THEN DO
                      CALL log 'LMCLOSE failed with 'RC
+
+                     CALL log ZERRMSG" - "ZERRSM
+                     CALL log ZERRLM
+
                      g.error = 8
                   END
                END
@@ -227,6 +248,10 @@ ELSE DO
 
                IF RC /= 0 THEN DO
                   CALL log 'LMFREE failed with 'RC
+
+                  CALL log ZERRMSG" - "ZERRSM
+                  CALL log ZERRLM
+
                   g.error = 8
                END
             END
@@ -308,6 +333,10 @@ IF _someMember /= "" THEN DO
 
    IF RC /= 0 THEN DO
       CALL log 'LMINIT failed with 'RC
+
+      CALL log ZERRMSG" - "ZERRSM
+      CALL log ZERRLM
+
       g.error = 8
    END
 
@@ -323,6 +352,10 @@ IF _someMember /= "" THEN DO
       IF RC /= 0 THEN DO
          CALL log 'LMMSTATS failed with 'RC
          CALL log _lmmstats
+
+         CALL log ZERRMSG" - "ZERRSM
+         CALL log ZERRLM
+
          g.error = 8
       END
    END
@@ -332,6 +365,10 @@ IF _someMember /= "" THEN DO
 
       IF RC /= 0 THEN DO
          CALL log 'LMFREE failed with 'RC
+
+         CALL log ZERRMSG" - "ZERRSM
+         CALL log ZERRLM
+
          g.error = 8
       END
    END
@@ -708,9 +745,5 @@ log: PROCEDURE EXPOSE g. SIGL
 PARSE ARG _msg
 
 SAY g.rexxname SIGL _msg
-
-ADDRESS ISPEXEC "VGET (ZERRMSG ZERRSM ZERRLM)"
-SAY ZERRMSG" - "ZERRSM
-SAY ZERRLM
 
 RETURN
