@@ -1,0 +1,9 @@
+#* test file
+
+.USSHOME = /u/yin/ybtks
+
+a := b
+
+.PHONY c
+c :
+- CALL JUSTECHO $@

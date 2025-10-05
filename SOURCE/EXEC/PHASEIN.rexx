@@ -49,7 +49,7 @@ g.count = 0
 
 g.CONTEXT = ''
 g.SCOPE = ''
-g.VERSION = '0530'
+g.VERSION = '0610'
 g.programs.0 = 0
 
 RETURN

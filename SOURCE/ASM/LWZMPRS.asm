@@ -2383,7 +2383,7 @@ PRS#81   CEEENTRY AUTO=WORKDSAP81_SIZ,MAIN=NO,BASE=R10
             LR    R3,R6
 PRS#81_NEXT_POINT EQU   *
             SRST  R3,R2
-            BRC   1,*-4
+            BC    1,*-4
             IF (4) THEN
                LR    R14,R3
                LA    R2,1(,R3)
