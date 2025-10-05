@@ -2157,6 +2157,8 @@ PRS#71   CEEENTRY AUTO=WORKDSAP71_SIZ,MAIN=NO,BASE=R10
                CLC   G_RETCODE,=A(0)
                BNE   PRS#71_RET
 *
+               MVC   ISTR_retval_P71,=A(0)
+*
                IUSS_BPX1SPN OBJECT=G_IUSS,WORK=WORKP71,                X
                ISTBSH=ISTB_exec_P71,ISTBPTR_RETVAL=ISTR_retval_P71
 *
