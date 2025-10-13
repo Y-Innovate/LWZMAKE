@@ -877,7 +877,8 @@ DO WHILE g.error == 0
             IF g.lexer.currToken /= ')' THEN DO
                IF _parmName == 'SYSLIN' | _parmName == 'SYSIN' | ,
                   _parmName == 'SYSCPRT' | _parmName == 'SYSPRINT' THEN DO
-                  CALL log 'Only single dataset allowed at pos 'g.scanner.colIndex
+                  CALL log 'Only single dataset allowed at pos '
+                           g.scanner.colIndex
                   g.error = 8
                   RETURN
                END
