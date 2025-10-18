@@ -94,8 +94,7 @@ cvt     = C2d( Storage( D2x( 16 ), 4 ) )
 cvttz   = C2d( Storage( D2x( cvt + 304 ), 4 ) )
 cvtext2 = C2d( Storage( D2x( cvt + 328 ), 4 ) )
 cvtldto = C2d( Storage( D2x( cvtext2 + 56 ), 8 ), 8 )
-absldto = Abs( cvtldto )
-secs    = absldto / x2d("F4240000")
+secs    = TRUNC(cvtldto / x2d("F4240000"))
 
 _timestamp = _timestamp + secs
 
