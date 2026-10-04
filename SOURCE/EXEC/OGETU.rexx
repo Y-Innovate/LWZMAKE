@@ -60,6 +60,7 @@ g.pdsmem = ""
 g.binary = 0
 g.load = 0
 g.ibm1047 = 0
+g.iso88591 = 0
 g.notouch = 0
 
 RETURN
@@ -129,6 +130,8 @@ END
 ELSE DO
    IF g.ibm1047 == 1 THEN
       _cmd = "cp '"g.pathname"' '"g.tmpfile"'"
+   ELSE IF g.iso88591 == 1 THEN
+      _cmd = "iconv -f 819 -t 037 -T '"g.pathname"' > '"g.tmpfile"'"
    ELSE
       _cmd = "iconv -f IBM-1047 -t IBM-037 -T '"g.pathname"' > '"g.tmpfile"'"
 
@@ -529,6 +532,8 @@ IF g.error == 0 & g.scanner.currChar /= 'EOF' THEN DO
          g.load = 1
       ELSE IF _upperToken == 'IBM1047' THEN
          g.ibm1047 = 1
+      ELSE IF _upperToken == 'ISO88591' THEN
+         g.iso88591 = 1
       ELSE IF _upperToken == 'NOTOUCH' THEN
          g.notouch = 1
 
@@ -545,6 +550,7 @@ IF g.error == 0 THEN DO
    SAY 'binary:   'g.binary
    SAY 'load:     'g.load
    SAY 'ibm1047:  'g.ibm1047
+   SAY 'iso88591: 'g.iso88591
    SAY 'notouch:  'g.notouch
 /* SAY 'complete parm: 'g.arg */
 END
