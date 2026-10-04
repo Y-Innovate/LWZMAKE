@@ -1751,7 +1751,15 @@ AVL#99   CEEENTRY AUTO=WORKDSAA99_SIZ,MAIN=NO,BASE=R10
             BC    1,*-4          * Compare incomplete, try again
             SELECT
             WHEN CC=8
-               ILOG_Write OBJECT=G_ILOG,WORK=WORKA99,LINE=MAK104E_A99, X
+               ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKA99
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKA99,      X
+               ZSTR=MAK104E_A99
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKA99,      X
+               ZSTR=0(,R3)
+*
+               L     R2,G_ISTB_tmp
+               L     R2,STB_lpBuf-STB_obj(,R2)
+               ILOG_Write OBJECT=G_ILOG,WORK=WORKA99,LINE=0(,R2),      X
                LOGLEVEL=LOG_LEVEL_ERROR
 *
                CALL  CEE3ABD,(=A(1008),=A(3)),MF=(E,WORKA99)
@@ -1891,7 +1899,7 @@ AVL#99_RET EQU   *
 *
                              DS    0F
 MAK104E_A99                  DC    C'MAK104E Duplicate entry not alloweX
-               d',X'00'
+               d ',X'00'
 *
                              DS    0F
 AVL#96A_A99                  DC    A(AVL#96)
@@ -3338,7 +3346,20 @@ AV2#99   CEEENTRY AUTO=WORKDSAB99_SIZ,MAIN=NO,BASE=R10
             C     R14,PARMNODEINDEXB99
             SELECT
             WHEN CC=8
-               ILOG_Write OBJECT=G_ILOG,WORK=WORKB99,LINE=MAK104E_B99, X
+               MVC   G_DEC8,PARMNODEINDEXB99
+               UNPK  G_ZONED8(9),G_DEC8(5)
+               OI    G_ZONED8+7,X'F0'
+               MVI   G_ZONED8+8,X'00'
+*
+               ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKB99
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKB99,      X
+               ZSTR=MAK104E_B99
+               ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKB99,      X
+               ZSTR=G_ZONED8
+*
+               L     R2,G_ISTB_tmp
+               L     R2,STB_lpBuf-STB_obj(,R2)
+               ILOG_Write OBJECT=G_ILOG,WORK=WORKB99,LINE=0(,R2),      X
                LOGLEVEL=LOG_LEVEL_ERROR
 *
                CALL  CEE3ABD,(=A(1008),=A(3)),MF=(E,WORKB99)
@@ -3475,7 +3496,7 @@ AV2#99_RET EQU   *
 *
                              DS    0F
 MAK104E_B99                  DC    C'MAK104E Duplicate entry not alloweX
-               d',X'00'
+               d ',X'00'
 *
                              DS    0F
 AV2#96A_B99                  DC    A(AV2#96)
