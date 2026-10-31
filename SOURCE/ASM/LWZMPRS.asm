@@ -1898,7 +1898,8 @@ PREFFO            USING FFO_obj,R6
                      L     R2,PREFFO.FFO_fname
                      ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
                ZSTR=0(,R2)
-                     IF (CLC,PREFFO.FFO_member,NE,=A(0)) THEN
+                     IF (CLI,PREFFO.FFO_ftype,EQ,C'M'),AND,           X
+               (CLC,PREFFO.FFO_member,NE,=A(0)) THEN
                         ISTB_AppendZString OBJECT=G_ISTB_tmp,          X
                WORK=WORKP70,ZSTR==X'4D00'
                         L     R2,PREFFO.FFO_member
@@ -1929,13 +1930,18 @@ PREFFO            USING FFO_obj,R6
                            L     R2,PREFFO.FFO_fname
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
                WORK=WORKP70,ZSTR=0(,R2)
-                           ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
+*                          Only a PDS member is shown as (member)
+                           IF (CLI,PREFFO.FFO_ftype,EQ,C'M') THEN
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
                WORK=WORKP70,ZSTR==X'4D00'
-                           L     R2,PREFFO.FFO_member
-                           ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
+                              L     R2,PREFFO.FFO_member
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
                WORK=WORKP70,ZSTR=0(,R2)
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
+               WORK=WORKP70,ZSTR==X'5D00'
+                           ENDIF
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
-               WORK=WORKP70,ZSTR==X'5D4000'
+               WORK=WORKP70,ZSTR==X'4000'
                            LA    R1,PREFFO.FFO_alterDate
                            BAL   R14,PRS#70_TIMEDATEZ
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
@@ -1960,13 +1966,18 @@ PREFFO            USING FFO_obj,R6
                            L     R2,PREFFO.FFO_fname
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
                WORK=WORKP70,ZSTR=0(,R2)
-                           ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
+*                          Only a PDS member is shown as (member)
+                           IF (CLI,PREFFO.FFO_ftype,EQ,C'M') THEN
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
                WORK=WORKP70,ZSTR==X'4D00'
-                           L     R2,PREFFO.FFO_member
-                           ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
+                              L     R2,PREFFO.FFO_member
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
                WORK=WORKP70,ZSTR=0(,R2)
+                              ISTB_AppendZString OBJECT=G_ISTB_tmp,    X
+               WORK=WORKP70,ZSTR==X'5D00'
+                           ENDIF
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
-               WORK=WORKP70,ZSTR==X'5D4000'
+               WORK=WORKP70,ZSTR==X'4000'
                            LA    R1,PREFFO.FFO_alterDate
                            BAL   R14,PRS#70_TIMEDATEZ
                            ISTB_AppendZString OBJECT=G_ISTB_tmp,       X
