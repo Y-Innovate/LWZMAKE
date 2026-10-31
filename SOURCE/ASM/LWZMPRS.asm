@@ -1898,7 +1898,7 @@ PREFFO            USING FFO_obj,R6
                      L     R2,PREFFO.FFO_fname
                      ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
                ZSTR=0(,R2)
-                     IF (CLI,PREFFO.FFO_ftype,EQ,C'M'),AND,           X
+                     IF (CLI,PREFFO.FFO_ftype,EQ,C'M'),AND,            X
                (CLC,PREFFO.FFO_member,NE,=A(0)) THEN
                         ISTB_AppendZString OBJECT=G_ISTB_tmp,          X
                WORK=WORKP70,ZSTR==X'4D00'
