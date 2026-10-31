@@ -376,6 +376,41 @@ FMG#04   CEEENTRY AUTO=WORKDSAF04_SIZ,MAIN=NO,BASE=R10
 *
 FMG#04_FTYPE_OK EQU   *
 *
+*        File name not recognized as data set, member or USS path, keep
+*        the name for messages and treat it as non-existent
+         IF (CLI,FFO_ftype,EQ,X'00') THEN
+            LA    R1,WORKF04
+            L     R2,FNAMELENF04
+            LA    R2,1(,R2)
+            ST    R2,0(,R1)
+            LA    R15,FFO_fname
+            ST    R15,4(,R1)
+            L     R15,G_GTST
+            BASR  R14,R15
+*
+            LR    R3,R2
+            L     R2,FFO_fname
+            L     R14,PARMFNAMEF04
+            LR    R15,R3
+            MVCL  R2,R14
+*
+            MVC   FFO_fnameLen,FNAMELENF04
+*
+            ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKF04
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF04,         X
+               ZSTR=MAK202W_F04
+            L     R2,FFO_fname
+            ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKF04,         X
+               ZSTR=0(,R2)
+*
+            L     R2,G_ISTB_tmp
+            L     R2,STB_lpBuf-STB_obj(,R2)
+            ILOG_Write OBJECT=G_ILOG,WORK=WORKF04,LINE=0(,R2),         X
+               LOGLEVEL=LOG_LEVEL_WARNING
+*
+            B     FMG#04_RET
+         ENDIF
+*
          IF (CLI,FFO_ftype,EQ,C'D'),OR,(CLI,FFO_ftype,EQ,C'M') THEN
             LA    R1,WORKF04
             ST    R7,0(,R1)
@@ -453,6 +488,9 @@ FMG#04_RET EQU   *
                              DS    0F
 MAK112E_F04                  DC    C'MAK112E Member specified on non-PDX
                S: ',X'00'
+                             DS    0F
+MAK202W_F04                  DC    C'MAK202W Unrecognized file name, trX
+               eated as non-existent: ',X'00'
 *
 *                            DS    0F
 *AK310I_F04                  DC    C'MAK310I Data set is cataloged: ',XX
@@ -1171,6 +1209,12 @@ FMG#96   CEEENTRY AUTO=WORKDSAF96_SIZ,MAIN=NO,BASE=R10
          ST    R7,IFFO_F96       * Save in local var
          USING FFO_obj,R7        * Address FFO object
 *
+*        Member name must be 1-8 chars, otherwise treat as not found
+         IF (CLC,FFO_memberLen,LT,=A(1)),OR,                           X
+               (CLC,FFO_memberLen,GT,=A(8)) THEN
+            B     FMG#96_RET
+         ENDIF
+*
          LA    R1,WORKF96
          MVC   0(4,R1),IFFO_F96
          XR    R15,R15
@@ -1578,6 +1622,12 @@ FMG#97   CEEENTRY AUTO=WORKDSAF97_SIZ,MAIN=NO,BASE=R10
          L     R7,0(,R1)         * Parm 1 is IFFO object
          ST    R7,IFFO_F97       * Save in local var
          USING FFO_obj,R7        * Address FFO object
+*
+*        Member name must be 1-8 chars, otherwise treat as not found
+         IF (CLC,FFO_memberLen,LT,=A(1)),OR,                           X
+               (CLC,FFO_memberLen,GT,=A(8)) THEN
+            B     FMG#97_RET
+         ENDIF
 *
          LA    R1,WORKF97
          MVC   0(4,R1),IFFO_F97

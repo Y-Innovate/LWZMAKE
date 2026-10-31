@@ -310,6 +310,7 @@ REX#04   CEEENTRY AUTO=WORKDSAR04_SIZ,MAIN=NO,BASE=R10
                MVC   EVALBLOCK_EVSIZE,=A(34) * 272 / 8
                DROP  R6
             ELSE
+               L     R6,REX_EVALBLK_Ptr * Could be a larger GETRLTE blk
                MVC   EVALBLOCK_EVLEN-EVALBLOCK(4,R6),=A(0)
             ENDIF
 *
@@ -398,11 +399,12 @@ REX#04   CEEENTRY AUTO=WORKDSAR04_SIZ,MAIN=NO,BASE=R10
 *
             ST    R15,RETCODER04
 *
-            LA    R5,REX_EVALBLK
+            L     R5,REX_EVALBLK_Ptr * EVALBLOCK used by IRXEXEC
             USING EVALBLOCK,R5
             LT    R7,EVALBLOCK_EVLEN
-            IF (2) THEN
-               IF (CLC,ISTBPTR_retval_R04,NE,=A(0)) THEN
+            IF (NM) THEN         * Result (possibly empty) fits
+               IF (CLC,ISTBPTR_retval_R04,NE,=A(0)),AND,               X
+               (C,R7,GT,=A(0)) THEN
                   LA    R1,WORKR04
                   LA    R15,1(,R7)
                   ST    R15,0(,R1)
@@ -470,15 +472,17 @@ REX#04   CEEENTRY AUTO=WORKDSAR04_SIZ,MAIN=NO,BASE=R10
                BASR  R14,R15
 *
                IF (C,R15,EQ,=A(0)),OR,(C,R15,EQ,=A(4)) THEN
+*                 Only pass on the result if the caller asked for it
                   IF (CLC,ISTBPTR_retval_R04,NE,=A(0)) THEN
                      L     R2,ISTBPTR_retval_R04
                      L     R3,REX_EVALBLK_Ptr
                      LA    R3,EVALBLOCK_EVDATA-EVALBLOCK(,R3)
                      ISTB_AppendZString OBJECT=0(,R2),WORK=WORKR04,    X
                ZSTR=0(,R3)
-                  ELSE
-                     CALL  CEE3ABD,(=A(1005),=A(3)),MF=(E,WORKR04)
                   ENDIF
+               ELSE
+*                 IRXRLT GETRLTE failed
+                  CALL  CEE3ABD,(=A(1005),=A(3)),MF=(E,WORKR04)
                ENDIF
             ENDIF
             DROP  R5

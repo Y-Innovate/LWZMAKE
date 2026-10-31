@@ -42,6 +42,7 @@ LWZMPRS  CEEENTRY AUTO=WORKDSA_SIZ,MAIN=NO,BASE=R10
 *
 *           Instantiate a new IAVL object
             MINSTANT GUID=G_IAVL_GUID,WORK=WORK,OBJPTR=IAVL_phonies
+            MINSTANT GUID=G_IAVL_GUID,WORK=WORK,OBJPTR=IAVL_inProgress
 *
 *           MVI   firstBuild,C'Y'
 *
@@ -228,6 +229,9 @@ PRS#03   CEEENTRY AUTO=WORKDSAP03_SIZ,MAIN=NO,BASE=(R10)
             IAVL_Release OBJECT=IAVL_targets,WORK=WORKP03
             MVC   IAVL_targets,=A(0)
 *
+            IAVL_Release OBJECT=IAVL_inProgress,WORK=WORKP03
+            MVC   IAVL_inProgress,=A(0)
+*
             IAV2_Release OBJECT=IAV2_statements,WORK=WORKP03
             MVC   IAV2_statements,=A(0)
 *
@@ -378,7 +382,7 @@ ti2         USING TFO_obj,R6
                MVC   0(4,R1),IPSS_ps_P04
                MVC   4(4,R1),ITOK_tokenizer_P04
                MVC   8(4,R1),ITFO_ti2_P04
-               XR    R14,R15
+               XR    R14,R14
                IC    R14,=C'N'
                ST    R14,12(,R1)
                MVC   16(4,R1),=A(0)
@@ -411,7 +415,7 @@ ti3            USING TFO_obj,R5
                   MVC   0(4,R1),IPSS_ps_P04
                   MVC   4(4,R1),ITOK_tokenizer_P04
                   MVC   8(4,R1),ITFO_ti3_P04
-                  XR    R14,R15
+                  XR    R14,R14
                   IC    R14,=C'N'
                   ST    R14,12(,R1)
                   MVC   16(4,R1),=A(0)
@@ -495,7 +499,7 @@ ti2         USING TFO_obj,R6
                MVC   0(4,R1),IPSS_ps_P04
                MVC   4(4,R1),ITOK_TGTDS_P04
                MVC   8(4,R1),ITFO_ti2_P04
-               XR    R14,R15
+               XR    R14,R14
                IC    R14,=C'N'
                ST    R14,12(,R1)
                MVC   16(4,R1),=A(0)
@@ -518,10 +522,15 @@ ti2         USING TFO_obj,R6
                L     R5,ITFO_ti3_P04
 ti3            USING TFO_obj,R5
 *
+               MVI   lineSkipped_P04,C'N'
+*
+*              Skip comments and line ends between targets
                DO WHILE=(CLC,G_RETCODE,EQ,=A(0),AND,                   X
-               CLC,ti1.TFO_tokenType,NE,=A(TOKEN_TYPE_EOF))
-                  IF (CLC,ti1.TFO_tokenType,EQ,=A(TOKEN_TYPE_COMMENT)),X
-               OR,(CLC,ti1.TFO_tokenType,EQ,=A(TOKEN_TYPE_EOL)) THEN
+               CLC,ti3.TFO_tokenType,NE,=A(TOKEN_TYPE_EOF))
+                  IF (CLC,ti3.TFO_tokenType,EQ,=A(TOKEN_TYPE_COMMENT)),X
+               OR,(CLC,ti3.TFO_tokenType,EQ,=A(TOKEN_TYPE_EOL)) THEN
+                     MVI   lineSkipped_P04,C'Y'
+*
 *                    Get the next token
                      ITOK_GetNextToken OBJECT=ITOK_TGTDS_P04,          X
                WORK=WORKP04,IPSS=IPSS_ps_P04,ITFOPTR=ITFO_ti3_P04
@@ -532,6 +541,9 @@ ti3            USING TFO_obj,R5
                   ENDIF
                ENDDO
 *
+               CLC   G_RETCODE,=A(0)
+               BNE   PRS#04_RET
+*
                IF (CLC,ti3.TFO_tokenType,EQ,=A(TOKEN_TYPE_EOF)) THEN
                   ASMLEAVE
                ENDIF
@@ -541,7 +553,7 @@ ti3            USING TFO_obj,R5
                   MVC   0(4,R1),IPSS_ps_P04
                   MVC   4(4,R1),ITOK_TGTDS_P04
                   MVC   8(4,R1),ITFO_ti3_P04
-                  XR    R14,R15
+                  XR    R14,R14
                   IC    R14,=C'N'
                   ST    R14,12(,R1)
                   MVC   16(4,R1),=A(0)
@@ -553,6 +565,9 @@ ti3            USING TFO_obj,R5
                MVC   0(4,R1),ITFO_ti2_P04
                MVC   4(4,R1),ITFO_ti3_P04
                MVC   8(4,R1),=A(2) * include all spaces
+               IF (CLI,lineSkipped_P04,EQ,C'Y') THEN
+                  MVC   8(4,R1),=A(1) * new line, so single space
+               ENDIF
                L     R15,PRS#80A_P04 * appendToken
                BASR  R14,R15
             ENDDO
@@ -610,6 +625,7 @@ ITOK_TGTDS_P04               DS    A
 *
 logLevel_P04                 DS    F
 *
+lineSkipped_P04              DS    C
 datasetTypeP04               DS    C
 datasetNameP04               DS    CL44
 *
@@ -698,7 +714,7 @@ ti1      USING TFO_obj,R7
                MVC   0(4,R1),IPSS_ps_P05
                MVC   4(4,R1),ITOK_tokenizer_P05
                MVC   8(4,R1),ITFO_ti1_P05
-               XR    R14,R15
+               XR    R14,R14
                IC    R14,=C'Y'
                ST    R14,12(,R1)
                MVC   16(4,R1),=A(0)
@@ -870,7 +886,7 @@ ti1            USING TFO_obj,R7
             ELSE
                LA    R1,WORKP05
                MVC   0(4,R1),ITFO_ti1_P05
-               MVC   0(4,R1),=A(0)
+               MVC   4(4,R1),=A(0)
                L     R15,PRS#90A_P05 * ParserException
                BASR  R14,R15
 *
@@ -1133,6 +1149,10 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
          MVI   varTargetP07,X'00'
          MVC   varTargetP07+1(VARIANT_SIZ-1),varTargetP07
 *
+         MVI   varInProgP07,X'00'
+         MVC   varInProgP07+1(VARIANT_SIZ-1),varInProgP07
+         MVC   varInProgP07+(vt-VARIANT)(4),=A(VT_UI4)
+*
          MVC   currIndexP07,=F'-1'
 *
          IAV2_Next OBJECT=PARMIAV2TGTSP07,WORK=WORKP07,                X
@@ -1149,6 +1169,34 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
                VARIANT_OUT=varTargetP07
 *
             IF (CLC,varTargetP07+vt-VARIANT(4),NE,=A(VT_NULL)) THEN
+*              If this target is already being built further up the
+*              call chain, it (indirectly) depends on itself
+               L     R15,varBuildTgtP07+value-VARIANT
+               MVC   tgtNameP07,STR_lpString-STR_obj(R15)
+*
+               IAVL_Exists OBJECT=IAVL_inProgress,WORK=WORKP07,        X
+               NAME_IN=tgtNameP07
+*
+               IF (C,R15,EQ,=A(1)) THEN
+                  ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKP07
+                  ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP07,   X
+               ZSTR=MAK121E_P07
+                  L     R2,tgtNameP07
+                  ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP07,   X
+               ZSTR=0(,R2)
+*
+                  L     R2,G_ISTB_tmp
+                  L     R2,STB_lpBuf-STB_obj(,R2)
+                  ILOG_Write OBJECT=G_ILOG,WORK=WORKP07,LINE=0(,R2),   X
+               LOGLEVEL=LOG_LEVEL_ERROR
+*
+                  MVC   G_RETCODE,=A(8)
+                  B     PRS#07_RET
+               ENDIF
+*
+               IAVL_Insert OBJECT=IAVL_inProgress,WORK=WORKP07,        X
+               NAME_IN=tgtNameP07,VARIANT_IN=varInProgP07
+*
                LA    R1,WORKP07
                MVC   0(4,R1),varTargetP07+(value-VARIANT)
                L     R15,varBuildTgtP07+value-VARIANT
@@ -1193,6 +1241,9 @@ PRS#07   CEEENTRY AUTO=WORKDSAP07_SIZ,MAIN=NO,BASE=R10
                   BASR  R14,R15  * Perform build statements
                ENDIF
 *
+               IAVL_Delete OBJECT=IAVL_inProgress,WORK=WORKP07,        X
+               NAME_IN=tgtNameP07
+*
 *           ELSE
 *              IF (CLI,firstBuild,EQ,C'Y') THEN
 *                 ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKP07
@@ -1226,7 +1277,10 @@ PRS#07_RET EQU   *
                              DS    0F
 MAK106E_P07                  DC    C'MAK106E Target not found: ',X'00'
                              DS    0F
-MAK306I_P07                  DC    C'MAK307I Building target: ',X'00'
+MAK121E_P07                  DC    C'MAK121E Circular dependency on tarX
+               get ',X'00'
+                             DS    0F
+MAK306I_P07                  DC    C'MAK306I Building target: ',X'00'
                              DS    0F
 MAK307I_P07                  DC    C'MAK307I Building phony target: ',XX
                '00'
@@ -1248,6 +1302,8 @@ currIndexP07                 DS    F
 nextIndexP07                 DS    F
 varBuildTgtP07               DS    CL(VARIANT_SIZ)
 varTargetP07                 DS    CL(VARIANT_SIZ)
+varInProgP07                 DS    CL(VARIANT_SIZ)
+tgtNameP07                   DS    A
 shouldBuildP07               DS    C
 *
 WORKDSAP07_SIZ               EQU   *-WORKDSAP07
@@ -1842,13 +1898,15 @@ PREFFO            USING FFO_obj,R6
                      L     R2,PREFFO.FFO_fname
                      ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
                ZSTR=0(,R2)
-                     ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
-               ZSTR==X'4D00'
-                     L     R2,PREFFO.FFO_member
-                     ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
-               ZSTR=0(,R2)
-                     ISTB_AppendZString OBJECT=G_ISTB_tmp,WORK=WORKP70,X
-               ZSTR==X'5D00'
+                     IF (CLC,PREFFO.FFO_member,NE,=A(0)) THEN
+                        ISTB_AppendZString OBJECT=G_ISTB_tmp,          X
+               WORK=WORKP70,ZSTR==X'4D00'
+                        L     R2,PREFFO.FFO_member
+                        ISTB_AppendZString OBJECT=G_ISTB_tmp,          X
+               WORK=WORKP70,ZSTR=0(,R2)
+                        ISTB_AppendZString OBJECT=G_ISTB_tmp,          X
+               WORK=WORKP70,ZSTR==X'5D00'
+                     ENDIF
 *
                      L     R2,G_ISTB_tmp
                      L     R2,STB_lpBuf-STB_obj(,R2)
@@ -1886,7 +1944,7 @@ PREFFO            USING FFO_obj,R6
                            L     R2,G_ISTB_tmp
                            L     R2,STB_lpBuf-STB_obj(,R2)
                            ILOG_Write OBJECT=G_ILOG,WORK=WORKP70,      X
-               LINE=0(,R2),LOGLEVEL=LOG_LEVEL_ERROR
+               LINE=0(,R2),LOGLEVEL=LOG_LEVEL_INFO
 *
                            L     R15,PARMSHOULDBUILDP70
                            MVI   0(R15),C'Y'
@@ -1917,7 +1975,7 @@ PREFFO            USING FFO_obj,R6
                            L     R2,G_ISTB_tmp
                            L     R2,STB_lpBuf-STB_obj(,R2)
                            ILOG_Write OBJECT=G_ILOG,WORK=WORKP70,      X
-               LINE=0(,R2),LOGLEVEL=LOG_LEVEL_ERROR
+               LINE=0(,R2),LOGLEVEL=LOG_LEVEL_INFO
 *
                            L     R15,PARMSHOULDBUILDP70
                            MVI   0(R15),C'Y'
