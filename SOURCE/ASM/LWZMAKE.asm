@@ -38,7 +38,9 @@
 * MAK118E Undefined variable <variable name>                          *
 * MAK119E BPX1xxx error <retcode> <reason>                            *
 * MAK120E Invalid BUILDWHEN value <value>                             *
+* MAK121E Circular dependency on target <target name>                 *
 * MAK201W Member without statistics <data set name>                   *
+* MAK202W Unrecognized file name, treated as non-existent <name>      *
 * MAK301I Start                                                       *
 * MAK302I Done                                                        *
 * MAK303I Opened input data set with DD name                          *
@@ -275,8 +277,8 @@ INIT     DS    0H
          MVC   G_IST7_GUID,=XL16'7A000760334A4FB1847765E2A3CF16C6'
          MVC   G_IST8_GUID,=XL16'5DD95BAC9C554672A2657E70DA626DF1'
          MVC   G_ITFO_GUID,=XL16'636548D956D74AEBB65B07032B1FA868'
-         MVC   G_ITOK_GUID,=XL16'A90CC60AC47042589BE8D7B09B55353E'
          MVC   G_ITOK_GUID,=XL16'A1F14400723E4ADBA13EE0BA41E5FDB4'
+         MVC   G_IUSS_GUID,=XL16'A90CC60AC47042589BE8D7B09B55353E'
 *
          MVC   G_BUILDWHEN(3),=C'TOM'
          MVI   G_BUILDWHEN+3,X'00'
@@ -692,17 +694,17 @@ LWZMAKE  CSECT
 TRT_ANY_BUT_SPACE            DS    0AD
                              DC    (C' ')X'00'
                              DC    X'FF'
-                             DC    (255-C' '-1)X'00'
+                             DC    (256-C' '-1)X'00'
 *
 TRT_ONLY_SPACE               DS    0AD
                              DC    (C' ')X'FF'
                              DC    X'00'
-                             DC    (255-C' '-1)X'FF'
+                             DC    (256-C' '-1)X'FF'
 *
 TRT_ONLY_ZEROS               DS    0AD
                              DC    (C'0')X'FF'
                              DC    X'00'
-                             DC    (255-C'0'-1)X'FF'
+                             DC    (256-C'0'-1)X'FF'
 *
 HEXTAB                       DS    0AD
                              DC    (C'0')X'00'

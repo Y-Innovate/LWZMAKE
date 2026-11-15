@@ -154,7 +154,7 @@ LWZMINP  CEEENTRY AUTO=WORKDSA_SIZ,MAIN=NO,BASE=R10
 *
             L     R15,G_ILOG
             IF (CLI,13(R15),GE,LOG_LEVEL_DEBUG2) THEN
-               ST    R7,G_DEC8
+               ST    R14,G_DEC8
                UNPK  G_ZONED8(9),G_DEC8(5)
                L     R15,G_HEXTAB
                TR    G_ZONED8(8),0(R15)
@@ -404,7 +404,7 @@ IND#04   CEEENTRY AUTO=WORKDSAD04_SIZ,MAIN=NO,BASE=R10
                   IF (CLC,POSD04,LT,IND_nCurrLineLength) THEN
                      ISTR_CharAt OBJECT=IND_ISTR_currLine,WORK=WORKD04,X
                POS=POSD04,CHAROUT=IND_cPeekChar2
-                     MVC   IFO_cPeekChar2,IND_cPeekChar
+                     MVC   IFO_cPeekChar2,IND_cPeekChar2
                   ENDIF
                ENDIF
             ELSE
@@ -658,7 +658,7 @@ IND#06_RET EQU   *
 *
                              DS    0F
 *                                                          DDNAME__ RC
-MAK102E_D06                  DC    C'MAK101E Error closing ',X'00'
+MAK102E_D06                  DC    C'MAK102E Error closing ',X'00'
                              DS    0F
 MAK304I_D06                  DC    C'MAK304I Closed input data set withX
                 DD name ',X'00'
@@ -890,7 +890,7 @@ INF#04   CEEENTRY AUTO=WORKDSAF04_SIZ,MAIN=NO,BASE=R10
                   IF (CLC,POSF04,LT,INF_nCurrLineLength) THEN
                      ISTB_CharAt OBJECT=INF_ISTB_currLine,WORK=WORKF04,X
                POS=POSF04,CHAROUT=INF_cPeekChar2
-                     MVC   IFO_cPeekChar2,INF_cPeekChar
+                     MVC   IFO_cPeekChar2,INF_cPeekChar2
                   ENDIF
                ENDIF
             ELSE
@@ -1038,7 +1038,7 @@ INF#06_RET EQU   *
 *
                              DS    0F
 *                                                          DDNAME__ RC
-MAK102E_F06                  DC    C'MAK101E Error closing ',X'00'
+MAK102E_F06                  DC    C'MAK102E Error closing ',X'00'
                              DS    0F
 MAK304I_F06                  DC    C'MAK304I Closed input data set withX
                 DD name ',X'00'
@@ -1090,7 +1090,16 @@ INF#99_RED EQU   *
                   ASI   INF_nLine,1    * Increase line number
                ENDIF
             ELSE
-               MVI   INF_bEOF,C'Y'
+*              Last line without newline still counts as a line
+               L     R14,INF_ISTB_currLine
+               LT    R14,STB_nStrLen-STB_obj(,R14)
+               IF (NZ) THEN
+                  ST    R14,INF_nCurrLineLength
+                  MVC   INF_pos,=A(0)  * Reset pos
+                  ASI   INF_nLine,1    * Increase line number
+               ELSE
+                  MVI   INF_bEOF,C'Y'
+               ENDIF
             ENDIF
          ENDIF
 *
@@ -1264,7 +1273,7 @@ INS#04   CEEENTRY AUTO=WORKDSAS04_SIZ,MAIN=NO,BASE=R10
                   IF (CLC,POSS04,LT,INS_nCurrLineLength) THEN
                      ISTR_CharAt OBJECT=INS_ISTR_currLine,WORK=WORKS04,X
                POS=POSS04,CHAROUT=INS_cPeekChar2
-                     MVC   IFO_cPeekChar2,INS_cPeekChar
+                     MVC   IFO_cPeekChar2,INS_cPeekChar2
                   ENDIF
                ENDIF
             ELSE

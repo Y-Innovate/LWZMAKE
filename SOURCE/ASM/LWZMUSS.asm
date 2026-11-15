@@ -465,6 +465,9 @@ USS#05   CEEENTRY AUTO=WORKDSAU05_SIZ,MAIN=NO,BASE=R10
 *
             BAL   R6,USS#05_MAK119E
 *
+            LA    R2,USS_FD      * Close /dev/null
+            BAL   R4,USS#05_CLOSEFD
+*
             B     USS#05_RET
          ENDIF
 *
@@ -559,10 +562,21 @@ USS#05   CEEENTRY AUTO=WORKDSAU05_SIZ,MAIN=NO,BASE=R10
 *
             BAL   R6,USS#05_MAK119E
 *
+            LA    R2,USS_FD      * Close /dev/null
+            BAL   R4,USS#05_CLOSEFD
+            LA    R2,USS_BPX1PIP_FDREAD1 * Close pipe read end
+            BAL   R4,USS#05_CLOSEFD
+            LA    R2,USS_BPX1PIP_FDWRITE1 * Close pipe write end
+            BAL   R4,USS#05_CLOSEFD
+*
             B     USS#05_RET
          ENDIF
 *
          MVC   processId_U05,USS_RETVAL
+*
+*        Child has its own copy of stdin, close ours
+         LA    R2,USS_FD
+         BAL   R4,USS#05_CLOSEFD
 *
          LA    R1,USS_PAR15A
          LA    R15,USS_BPX1PIP_FDWRITE1
@@ -586,6 +600,9 @@ USS#05   CEEENTRY AUTO=WORKDSAU05_SIZ,MAIN=NO,BASE=R10
                ZSTR=USS_MAK119E
 *
             BAL   R6,USS#05_MAK119E
+*
+            LA    R2,USS_BPX1PIP_FDREAD1 * Close pipe read end
+            BAL   R4,USS#05_CLOSEFD
 *
             B     USS#05_RET
          ENDIF
@@ -629,6 +646,9 @@ USS#05_RED EQU   *
                ZSTR=USS_MAK119E
 *
             BAL   R6,USS#05_MAK119E
+*
+            LA    R2,USS_BPX1PIP_FDREAD1 * Close pipe read end
+            BAL   R4,USS#05_CLOSEFD
 *
             B     USS#05_RET
          ENDIF
@@ -759,10 +779,28 @@ USS#05_MAK119E DS    0H
 *
          BR    R6
 *
+* Close the file descriptor R2 points to, errors are ignored
+*
+USS#05_CLOSEFD DS    0H
+         LA    R1,USS_PAR15A
+         ST    R2,0(,R1)
+         LA    R15,USS_RETVAL
+         ST    R15,4(,R1)
+         LA    R15,USS_RETCODE
+         ST    R15,8(,R1)
+         LA    R15,USS_REASON
+         ST    R15,12(,R1)
+         OI    12(R1),X'80'
+*
+         L     R15,G_BPX1CLOA
+         BASR  R14,R15
+*
+         BR    R4
+*
          LTORG
 *
                              DS    0F
-STDOUT_U05                   DC    C'//dd:STDOUT',X'00'
+STDOUT_U05                  DC    C'//dd:STDOUT',X'00'
                              DS    0F
 EXECSTR_U05                  DC    C'/bin/sh',X'00'
 EXECLEN_U05                  DC    A(L'EXECSTR_U05)

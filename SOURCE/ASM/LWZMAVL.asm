@@ -1368,7 +1368,8 @@ AVL#98   CEEENTRY AUTO=WORKDSAA98_SIZ,MAIN=NO,BASE=R10
          MVC   RETCODEA98,=A(0)  * Preset retcode to not found
 *
          L     R5,PARMROOTPTRA98 * Ptr to ptr to root node
-         L     R5,0(,R5)         * Ptr to node
+         LT    R5,0(,R5)         * Ptr to node
+         BZ    AVL#98_RET        * Name not in tree, nothing to delete
          USING AVLNODE,R5        * Addressability of AVL node
 *
 *        Compare Delete name with current node's name
@@ -1418,8 +1419,6 @@ AVL#98   CEEENTRY AUTO=WORKDSAA98_SIZ,MAIN=NO,BASE=R10
                ENDIF
                IF (Z) THEN
 *                 End up here if both kids are NULL
-                  LR    R4,R5    * Save node ptr in R4
-                  XR    R5,R5    * Zero out current node reg
                   L     R14,PARMROOTPTRA98 * Get root node ptr
                   MVC   0(4,R14),=A(0) * Also zero out ptr 2 ptr 2 node
                ELSE
@@ -1427,17 +1426,30 @@ AVL#98   CEEENTRY AUTO=WORKDSAA98_SIZ,MAIN=NO,BASE=R10
                   MVC   AVLNODE_PARENT-AVLNODE(4,R4),AVLNODE_PARENT
                   L     R14,PARMROOTPTRA98 * Get root node ptr
                   ST    R4,0(,R14) * Kid becomes the parent
-                  LR    R4,R5    * Save node ptr in R4
-                  L     R5,0(,R14) * Put kid ptr in curr node reg
                ENDIF
 *
-               IF (C,R4,EQ,firstNode) THEN
-                  MVC   firstNode,AVLNODE_PARENT
+*              Unlink node from the insertion order list
+               LT    R14,AVLNODE_PREV
+               IF (NZ) THEN
+                  MVC   AVLNODE_NEXT-AVLNODE(4,R14),AVLNODE_NEXT
                ENDIF
 *
-               IF (C,R4,EQ,lastNode) THEN
-                  MVC   lastNode,AVLNODE_PARENT
+               LT    R14,AVLNODE_NEXT
+               IF (NZ) THEN
+                  MVC   AVLNODE_PREV-AVLNODE(4,R14),AVLNODE_PREV
                ENDIF
+*
+               IF (C,R5,EQ,firstNode) THEN
+                  MVC   firstNode,AVLNODE_NEXT
+               ENDIF
+*
+               IF (C,R5,EQ,lastNode) THEN
+                  MVC   lastNode,AVLNODE_PREV
+               ENDIF
+*
+               LR    R4,R5       * Save node ptr in R4
+               L     R14,PARMROOTPTRA98 * Get root node ptr
+               L     R5,0(,R14)  * Kid ptr (or NULL) is curr node
 *
 *              Dispose of node, but first make sure only the node, not
 *              recursively go through children
@@ -2956,7 +2968,8 @@ AV2#98   CEEENTRY AUTO=WORKDSAB98_SIZ,MAIN=NO,BASE=R10
          MVC   RETCODEB98,=A(0)  * Preset retcode to not found
 *
          L     R5,PARMROOTPTRB98 * Ptr to ptr to root node
-         L     R5,0(,R5)         * Ptr to node
+         LT    R5,0(,R5)         * Ptr to node
+         BZ    AV2#98_RET        * Index not in tree, nothing to delete
          USING AVLNODE,R5        * Addressability of AVL node
 *
 *        Compare Delete index with current node's index
@@ -3005,62 +3018,35 @@ AV2#98   CEEENTRY AUTO=WORKDSAB98_SIZ,MAIN=NO,BASE=R10
 *                 End up here if both kids are NULL
                   L     R14,PARMROOTPTRB98 * Get root node ptr
                   MVC   0(4,R14),=A(0) * Also zero out ptr 2 ptr 2 node
-*
-                  LT    R14,AVLNODE_PREV
-                  IF (NZ) THEN
-                     MVC   AVLNODE_NEXT-AVLNODE(4,R14),AVLNODE_NEXT
-                  ENDIF
-*
-                  LT    R14,AVLNODE_NEXT
-                  IF (NZ) THEN
-                     MVC   AVLNODE_PREV-AVLNODE(4,R14),AVLNODE_PREV
-                  ENDIF
-*
-                  IF (C,R5,EQ,firstNode) THEN
-                     MVC   firstNode,AVLNODE_PARENT
-                  ENDIF
-*
-                  IF (C,R5,EQ,lastNode) THEN
-                     MVC   lastNode,AVLNODE_PARENT
-                  ENDIF
-*
-                  LR    R4,R5    * Save node ptr in R4
-                  XR    R5,R5    * Zero out current node reg
                ELSE
 *                 End up here if just one kid is not NULL
                   MVC   AVLNODE_PARENT-AVLNODE(4,R4),AVLNODE_PARENT
                   L     R14,PARMROOTPTRB98 * Get root node ptr
                   ST    R4,0(,R14) * Kid becomes the parent
-*
-                  LT    R14,AVLNODE_PREV
-                  IF (NZ) THEN
-                     MVC   AVLNODE_NEXT-AVLNODE(4,R14),AVLNODE_NEXT
-                  ENDIF
-*
-                  LT    R14,AVLNODE_NEXT
-                  IF (NZ) THEN
-                     MVC   AVLNODE_PREV-AVLNODE(4,R14),AVLNODE_PREV
-                  ENDIF
-*
-                  IF (C,R5,EQ,firstNode) THEN
-                     MVC   firstNode,AVLNODE_PARENT
-                  ENDIF
-*
-                  IF (C,R5,EQ,lastNode) THEN
-                     MVC   lastNode,AVLNODE_PARENT
-                  ENDIF
-*
-                  LR    R4,R5    * Save node ptr in R4
-                  L     R5,0(,R14) * Put kid ptr in curr node reg
                ENDIF
 *
-               IF (C,R4,EQ,firstNode) THEN
-                  MVC   firstNode,AVLNODE_PARENT
+*              Unlink node from the insertion order list
+               LT    R14,AVLNODE_PREV
+               IF (NZ) THEN
+                  MVC   AVLNODE_NEXT-AVLNODE(4,R14),AVLNODE_NEXT
                ENDIF
 *
-               IF (C,R4,EQ,lastNode) THEN
-                  MVC   lastNode,AVLNODE_PARENT
+               LT    R14,AVLNODE_NEXT
+               IF (NZ) THEN
+                  MVC   AVLNODE_PREV-AVLNODE(4,R14),AVLNODE_PREV
                ENDIF
+*
+               IF (C,R5,EQ,firstNode) THEN
+                  MVC   firstNode,AVLNODE_NEXT
+               ENDIF
+*
+               IF (C,R5,EQ,lastNode) THEN
+                  MVC   lastNode,AVLNODE_PREV
+               ENDIF
+*
+               LR    R4,R5       * Save node ptr in R4
+               L     R14,PARMROOTPTRB98 * Get root node ptr
+               L     R5,0(,R14)  * Kid ptr (or NULL) is curr node
 *
 *              Dispose of node, but first make sure only the node, not
 *              recursively go through children

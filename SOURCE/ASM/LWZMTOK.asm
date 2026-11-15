@@ -749,7 +749,7 @@ TOK#05_NORMAL     EQU   *
                CLI,IFO_cPeekChar,NE,C' ',AND,                          X
                CLI,IFO_cPeekChar,NE,C'+',AND,                          X
                CLI,IFO_cPeekChar,NE,C'$',AND,                          X
-               CLC,IFO_cPeekChar,NE,=C'#*')
+               CLC,IFO_cPeekChar(2),NE,=C'#*')
                         IF (CLI,IFO_cPeekChar,EQ,C')'),OR,             X
                (CLI,IFO_cPeekChar,EQ,C'}') THEN
                            IF (CLC,lastState_T05,EQ,=A(PARSER_STATE_IN_X

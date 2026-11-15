@@ -10,6 +10,7 @@ IAV2_statements              DS    A   * ArrayList of statements
 IAVL_variables               DS    A   * HashMap of variables
 IAVL_targets                 DS    A   * HashMap of targets
 IAVL_phonies                 DS    A   * HashMap of phonies
+IAVL_inProgress              DS    A   * Targets being built (cycles)
 *
 firstRuleStatement           DS    A   * First rule statement
 firstBuild                   DS    C   * Flag first call to BuildTgts

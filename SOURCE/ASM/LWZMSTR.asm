@@ -213,7 +213,7 @@ STR#03   CEEENTRY AUTO=WORKDSAS03_SIZ,MAIN=NO,BASE=(R10)
                ST    R6,G_DEC8
                UNPK  G_ZONED8(9),G_DEC8(5)
                L     R15,G_HEXTAB
-               TR    G_ZONED8(8),0(R5)
+               TR    G_ZONED8(8),0(R15)
                MVI   G_ZONED8+8,X'00'
 *
                ISTB_Init OBJECT=G_ISTB_tmp,WORK=WORKS03
@@ -494,6 +494,7 @@ THATSTR  USING STR_obj,R7
          L     R3,THATSTR.STR_nStrLen
          LARL  R4,TRT_UPPER_037
          TRE   R2,R4
+         BC    1,*-4             * CPU interrupted, continue
 *
 STR#08_RET EQU   *
          CEETERM
@@ -560,6 +561,7 @@ THATSTR  USING STR_obj,R7
          L     R3,THATSTR.STR_nStrLen
          LARL  R4,TRT_LOWER_037
          TRE   R2,R4
+         BC    1,*-4             * CPU interrupted, continue
 *
 STR#09_RET EQU   *
          CEETERM
@@ -919,6 +921,7 @@ THATSTR  USING STR_obj,R7
          L     R3,THATSTR.STR_nStrLen
          LARL  R4,TRT_UPPER_037
          TRE   R2,R4
+         BC    1,*-4             * CPU interrupted, continue
 *
 STB#08_RET EQU   *
          CEETERM
@@ -985,6 +988,7 @@ THATSTR  USING STR_obj,R7
          L     R3,THATSTR.STR_nStrLen
          LARL  R4,TRT_LOWER_037
          TRE   R2,R4
+         BC    1,*-4             * CPU interrupted, continue
 *
 STB#09_RET EQU   *
          CEETERM
@@ -1019,10 +1023,11 @@ STB#10   CEEENTRY AUTO=WORKDSAB10_SIZ,MAIN=NO,BASE=R10
          L     R15,4(,R1)        * Parm 2 is character to append
          STC   R15,charB10       * Save as local var
 *
-*        Is there room for another char?
+*        Is there room for another char plus zero terminator?
          L     R7,STB_nBufSize   * Get buffer size
          L     R6,STB_nStrLen    * Get current string length
-         IF (CR,R7,LE,R6) THEN   * Nope, so enlarge
+         LA    R0,1(,R6)         * Length after append
+         IF (CR,R7,LE,R0) THEN   * Nope, so enlarge
             LA    R7,3(,R7)      * Add 2 for halfword prefix + 1 zero
             SLL   R7,2           * Buffer size x 4
 *
@@ -1051,6 +1056,7 @@ STB#10   CEEENTRY AUTO=WORKDSAB10_SIZ,MAIN=NO,BASE=R10
          L     R5,STB_lpBuf      * Get buffer pointer
          AR    R5,R6             * Advance current length
          MVC   0(1,R5),charB10   * Append char
+         MVI   1(R5),X'00'       * Keep string zero terminated
          LA    R6,1(,R6)         * Add 1 to string length
          ST    R6,STB_nStrLen    * And save as property
 *
@@ -1090,11 +1096,12 @@ STB#11   CEEENTRY AUTO=WORKDSAB11_SIZ,MAIN=NO,BASE=R10
          L     R6,STB_nBufSize   * Get stringbuffer size
          LR    R5,R6             * Copy it
          S     R5,STB_nStrLen    * Subtract current string length
-         IF (C,R5,LT,STR_nStrLen) THEN
+         IF (C,R5,LE,STR_nStrLen) THEN
             LA    R6,3(,R6)      * Add 2 for halfword prefix + 1 zero
             DO UNTIL=(C,R5,GT,STR_nStrLen)
                SLL   R6,2        * Buffer size x 4
                LR    R5,R6       * Copy it
+               S     R5,=A(2)    * Subtract halfword prefix
                S     R5,STB_nStrLen * Subtract current string length
             ENDDO
 *
@@ -1184,6 +1191,7 @@ STB#12   CEEENTRY AUTO=WORKDSAB12_SIZ,MAIN=NO,BASE=R10
             DO UNTIL=(C,R5,GT,NEWSTRLENB12)
                SLL   R6,2        * Buffer size x 4
                LR    R5,R6       * Copy it
+               S     R5,=A(2)    * Subtract halfword prefix
                S     R5,STB_nStrLen * Subtract current string length
             ENDDO
 *
